@@ -13,28 +13,6 @@ use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Select};
 use evtx::{EvtxParser, ParserSettings, RecordAllocation};
 use hashbrown::{HashMap, HashSet};
-use suzaku::afterfact::{self, AfterfactInfo, AfterfactWriter};
-use suzaku::debug::checkpoint_process_timer::CHECKPOINT;
-use suzaku::detections::configs::{
-    load_pivot_keywords, Action, ConfigReader, EventKeyAliasConfig, StoredStatic, TargetEventTime,
-    TargetIds, CURRENT_EXE_PATH, STORED_EKEY_ALIAS, STORED_STATIC,
-};
-use suzaku::detections::detection::{self, EvtxRecordInfo};
-use suzaku::detections::message::{AlertMessage, DetectInfo, ERROR_LOG_STACK};
-use suzaku::detections::rule::{get_detection_keys, RuleNode};
-use suzaku::detections::utils;
-use suzaku::detections::utils::{
-    check_setting_path, get_writable_color, output_and_data_stack_for_html, output_profile_name,
-};
-use suzaku::options::htmlreport::{self, HTML_REPORTER};
-use suzaku::options::pivot::create_output;
-use suzaku::options::pivot::PIVOT_KEYWORD;
-use suzaku::options::profile::set_default_profile;
-use suzaku::options::{level_tuning::LevelTuning, update::Update};
-use suzaku::timeline::computer_metrics::countup_event_by_computer;
-use suzaku::{detections::configs, timeline::timelines::Timeline};
-use suzaku::{detections::utils::write_color_buffer, filter};
-use suzaku::{options, yaml};
 use indicatif::ProgressBar;
 use indicatif::{ProgressDrawTarget, ProgressStyle};
 use itertools::Itertools;
@@ -59,6 +37,28 @@ use std::{
     path::PathBuf,
     vec,
 };
+use suzaku::afterfact::{self, AfterfactInfo, AfterfactWriter};
+use suzaku::debug::checkpoint_process_timer::CHECKPOINT;
+use suzaku::detections::configs::{
+    load_pivot_keywords, Action, ConfigReader, EventKeyAliasConfig, StoredStatic, TargetEventTime,
+    TargetIds, CURRENT_EXE_PATH, STORED_EKEY_ALIAS, STORED_STATIC,
+};
+use suzaku::detections::detection::{self, EvtxRecordInfo};
+use suzaku::detections::message::{AlertMessage, DetectInfo, ERROR_LOG_STACK};
+use suzaku::detections::rule::{get_detection_keys, RuleNode};
+use suzaku::detections::utils;
+use suzaku::detections::utils::{
+    check_setting_path, get_writable_color, output_and_data_stack_for_html, output_profile_name,
+};
+use suzaku::options::htmlreport::{self, HTML_REPORTER};
+use suzaku::options::pivot::create_output;
+use suzaku::options::pivot::PIVOT_KEYWORD;
+use suzaku::options::profile::set_default_profile;
+use suzaku::options::{level_tuning::LevelTuning, update::Update};
+use suzaku::timeline::computer_metrics::countup_event_by_computer;
+use suzaku::{detections::configs, timeline::timelines::Timeline};
+use suzaku::{detections::utils::write_color_buffer, filter};
+use suzaku::{options, yaml};
 use termcolor::{BufferWriter, Color, ColorChoice};
 use tokio::runtime::Runtime;
 use tokio::spawn;
@@ -2179,6 +2179,7 @@ mod tests {
     use crate::App;
     use chrono::Local;
     use hashbrown::HashSet;
+    use itertools::Itertools;
     use suzaku::{
         afterfact::{self, AfterfactInfo},
         detections::{
@@ -2194,7 +2195,6 @@ mod tests {
         options::htmlreport::HTML_REPORTER,
         timeline::timelines::Timeline,
     };
-    use itertools::Itertools;
     use yaml_rust::YamlLoader;
 
     fn create_dummy_stored_static() -> StoredStatic {
