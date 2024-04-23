@@ -753,7 +753,7 @@ impl App {
         time_filter: &TargetEventTime,
         stored_static: &mut StoredStatic,
     ) {
-        let event_timeline_config = &stored_static.event_timeline_config;
+        // let event_timeline_config = &stored_static.event_timeline_config;
         let target_level = stored_static
             .output_option
             .as_ref()
@@ -1202,7 +1202,7 @@ impl App {
         let mut detection = detection::Detection::new(rule_files);
         let mut tl = Timeline::new();
 
-        *STORED_EKEY_ALIAS.write().unwrap() = Some(stored_static.eventkey_alias.clone());
+        *STORED_EKEY_ALIAS.write().unwrap() = Some(EventKeyAliasConfig::default());
         *STORED_STATIC.write().unwrap() = Some(stored_static.clone());
         let mut afterfact_info = AfterfactInfo::default();
         let mut all_detect_infos = vec![];
@@ -1400,7 +1400,7 @@ impl App {
                 // channelがnullである場合はフィルタリングする。
                 if !self._is_valid_channel(
                     &data,
-                    &stored_static.eventkey_alias,
+                    &EventKeyAliasConfig::default(),
                     "Event.EventData.Channel",
                 ) {
                     continue;

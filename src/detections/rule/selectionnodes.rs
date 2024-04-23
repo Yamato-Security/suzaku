@@ -589,7 +589,6 @@ mod tests {
     fn check_select(rule_str: &str, record_str: &str, expect_select: bool) {
         let mut rule_node = parse_rule_from_str(rule_str);
         let dummy_stored_static = create_dummy_stored_static();
-        *STORED_EKEY_ALIAS.write().unwrap() = Some(dummy_stored_static.eventkey_alias.clone());
 
         match serde_json::from_str(record_str) {
             Ok(record) => {
@@ -602,7 +601,6 @@ mod tests {
                         dummy_stored_static.verbose_flag,
                         dummy_stored_static.quiet_errors_flag,
                         dummy_stored_static.json_input_flag,
-                        &dummy_stored_static.eventkey_alias
                     ),
                     expect_select
                 );

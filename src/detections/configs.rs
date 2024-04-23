@@ -55,18 +55,11 @@ impl Default for ConfigReader {
 pub struct StoredStatic {
     pub config: Config,
     pub config_path: PathBuf,
-    pub eventkey_alias: EventKeyAliasConfig,
-    pub ch_config: HashMap<CompactString, CompactString>,
-    pub disp_abbr_generic: AhoCorasick,
-    pub disp_abbr_general_values: Vec<CompactString>,
-    pub provider_abbr_config: HashMap<CompactString, CompactString>,
     pub quiet_errors_flag: bool,
     pub verbose_flag: bool,
     pub output_option: Option<OutputOption>,
-    pub default_details: HashMap<CompactString, CompactString>,
     pub html_report_flag: bool,
     pub profiles: Option<Vec<(CompactString, Profile)>>,
-    pub event_timeline_config: EventInfoConfig,
     pub target_ruleids: TargetIds,
     pub thread_number: Option<usize>,
     pub json_input_flag: bool,
@@ -243,20 +236,6 @@ impl StoredStatic {
             Some(Action::JsonTimeline(opt)) => opt.output.as_ref(),
             _ => None,
         };
-        let general_ch_abbr = create_output_filter_config(
-            utils::check_setting_path(config_path, "generic_abbreviations.txt", false)
-                .unwrap_or_else(|| {
-                    utils::check_setting_path(
-                        &CURRENT_EXE_PATH.to_path_buf(),
-                        "rules/config/generic_abbreviations.txt",
-                        true,
-                    )
-                    .unwrap()
-                })
-                .to_str()
-                .unwrap(),
-            false,
-        );
         let multiline_flag = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.multiline,
             _ => false,
@@ -332,23 +311,7 @@ impl StoredStatic {
             Some(Action::JsonTimeline(opt)) => opt.output_options.no_field,
             _ => false,
         };
-        let field_data_map = if no_field_data_mapping_flag {
-            None
-        } else {
-            create_field_data_map(Path::new(
-                check_setting_path(config_path, "data_mapping", false)
-                    .unwrap_or_else(|| {
-                        check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/data_mapping",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ))
-        };
+        let field_data_map = None;
 
         let timeline_offset = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.output_options.input_args.timeline_offset.clone(),
@@ -384,85 +347,12 @@ impl StoredStatic {
         let mut ret = StoredStatic {
             config: input_config.as_ref().unwrap().to_owned(),
             config_path: config_path.to_path_buf(),
-            ch_config: create_output_filter_config(
-                utils::check_setting_path(config_path, "channel_abbreviations.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/channel_abbreviations.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-                true,
-            ),
-            disp_abbr_generic: AhoCorasickBuilder::new()
-                .ascii_case_insensitive(true)
-                .match_kind(MatchKind::LeftmostLongest)
-                .build(general_ch_abbr.keys().map(|x| x.as_str()))
-                .unwrap(),
-            disp_abbr_general_values: general_ch_abbr.values().map(|x| x.to_owned()).collect_vec(),
-            provider_abbr_config: create_output_filter_config(
-                utils::check_setting_path(config_path, "provider_abbreviations.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/provider_abbreviations.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-                false,
-            ),
-            default_details: Self::get_default_details(
-                utils::check_setting_path(config_path, "default_details.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/default_details.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ),
-            eventkey_alias: load_eventkey_alias(
-                utils::check_setting_path(config_path, "eventkey_alias.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/eventkey_alias.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ),
             output_option: extract_output_options(input_config.as_ref().unwrap()),
             quiet_errors_flag,
             verbose_flag,
             html_report_flag: htmlreport::check_html_flag(input_config.as_ref().unwrap()),
             profiles: None,
             thread_number: check_thread_number(input_config.as_ref().unwrap()),
-            event_timeline_config: load_eventcode_info(
-                utils::check_setting_path(config_path, "channel_eid_info.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/channel_eid_info.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ),
             target_ruleids,
             json_input_flag,
             output_path: output_path.cloned(),

@@ -221,7 +221,7 @@ impl Detection {
                 stored_static.verbose_flag,
                 stored_static.quiet_errors_flag,
                 stored_static.json_input_flag,
-                &stored_static.eventkey_alias,
+                &EventKeyAliasConfig::default(),
             );
             if !result {
                 continue;
@@ -323,17 +323,7 @@ impl Detection {
                     profile_converter.insert(
                         key.as_str(),
                         Channel(
-                            stored_static
-                                .disp_abbr_generic
-                                .replace_all(
-                                    stored_static
-                                        .ch_config
-                                        .get(&CompactString::from(ch_str.to_ascii_lowercase()))
-                                        .unwrap_or(ch_str)
-                                        .as_str(),
-                                    &stored_static.disp_abbr_general_values,
-                                )
-                                .into(),
+                            "dummy".into(),
                         ),
                     );
                 }
@@ -509,15 +499,7 @@ impl Detection {
                     profile_converter.insert(
                         key.as_str(),
                         Provider(
-                            stored_static
-                                .disp_abbr_generic
-                                .replace_all(
-                                    stored_static
-                                        .provider_abbr_config
-                                        .get(&provider_value)
-                                        .unwrap_or(&provider_value),
-                                    &stored_static.disp_abbr_general_values,
-                                )
+                            "dummy"
                                 .into(),
                         ),
                     );
@@ -693,13 +675,9 @@ impl Detection {
         //ルール側にdetailsの項目があればそれをそのまま出力し、そうでない場合はproviderとeventidの組で設定したdetailsの項目を出力する
         let details_fmt_str = match rule.yaml["details"].as_str() {
             Some(s) => s.to_string(),
-            None => match stored_static
-                .default_details
-                .get(&CompactString::from(format!("{provider}_{eid}")))
-            {
-                Some(str) => str.to_string(),
-                None => create_recordinfos(&record_info.record, &FieldDataMapKey::default(), &None)
-                    .join(" ¦ "),
+            None => {
+                create_recordinfos(&record_info.record, &FieldDataMapKey::default(), &None)
+                    .join(" ¦ ")
             },
         };
         let field_data_map_key: FieldDataMapKey = if stored_static.field_data_map.is_none() {
