@@ -947,7 +947,7 @@ mod tests {
                 Ok(rec) => {
                     let keys = detections::rule::get_detection_keys(&rule_node);
                     let recinfo =
-                        utils::create_rec_info(rec, "testpath".to_owned(), &keys, &false, &false);
+                        utils::create_rec_info(rec, "testpath".to_owned(), &keys, &false);
                     let _result = rule_node.select(
                         &recinfo,
                         dummy_stored_static.verbose_flag,
@@ -1726,7 +1726,6 @@ mod tests {
                         record,
                         "testpath".to_owned(),
                         &keys,
-                        &false,
                         &false,
                     );
                     let result = &rule_node.select(

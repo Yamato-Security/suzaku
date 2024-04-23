@@ -886,7 +886,7 @@ mod tests {
             Ok(record) => {
                 let keys = detections::rule::get_detection_keys(&rule_node);
                 let recinfo =
-                    utils::create_rec_info(record, "testpath".to_owned(), &keys, &false, &false);
+                    utils::create_rec_info(record, "testpath".to_owned(), &keys, &false);
                 assert_eq!(
                     rule_node.select(
                         &recinfo,

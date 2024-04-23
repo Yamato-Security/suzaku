@@ -24,7 +24,6 @@ use crate::detections::rule::{self, AggResult, RuleNode};
 use crate::detections::utils::{get_serde_number_to_string, make_ascii_titlecase};
 use crate::filter;
 use crate::options::htmlreport;
-use crate::options::pivot::insert_pivot_keyword;
 use crate::yaml::ParseYaml;
 use hashbrown::HashMap;
 use serde_json::Value;
@@ -142,19 +141,13 @@ impl Detection {
             .map(|rule_file_tuple| rule::create_rule(rule_file_tuple.0, rule_file_tuple.1))
             .filter_map(return_if_success)
             .collect();
-        if !(stored_static.logon_summary_flag
-            || stored_static.search_flag
-            || stored_static.metrics_flag
-            || stored_static.computer_metrics_flag)
-        {
-            Detection::print_rule_load_info(
+        Detection::print_rule_load_info(
                 &rulefile_loader.rulecounter,
                 &rulefile_loader.rule_load_cnt,
                 &rulefile_loader.rule_status_cnt,
                 &parseerror_count,
                 stored_static,
             );
-        }
         ret
     }
 
@@ -231,11 +224,6 @@ impl Detection {
                 &stored_static.eventkey_alias,
             );
             if !result {
-                continue;
-            }
-
-            if stored_static.pivot_keyword_list_flag {
-                insert_pivot_keyword(&record_info.record, &stored_static.eventkey_alias);
                 continue;
             }
 
@@ -1605,7 +1593,7 @@ mod tests {
             let keys = detections::rule::get_detection_keys(&dummy_rule);
 
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &dummy_rule;
                 let record_info = &input_evtxrecord;
@@ -1742,7 +1730,7 @@ mod tests {
             let keys = detections::rule::get_detection_keys(&dummy_rule);
 
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &dummy_rule;
                 let record_info = &input_evtxrecord;
@@ -1891,7 +1879,7 @@ mod tests {
 
             let keys = detections::rule::get_detection_keys(&rule_node);
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &rule_node;
                 let record_info = &input_evtxrecord;
@@ -2040,7 +2028,7 @@ mod tests {
 
             let keys = detections::rule::get_detection_keys(&rule_node);
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &rule_node;
                 let record_info = &input_evtxrecord;
