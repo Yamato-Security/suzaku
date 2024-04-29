@@ -24,7 +24,6 @@ use crate::detections::rule::{self, AggResult, RuleNode};
 use crate::detections::utils::{get_serde_number_to_string, make_ascii_titlecase};
 use crate::filter;
 use crate::options::htmlreport;
-use crate::options::pivot::insert_pivot_keyword;
 use crate::yaml::ParseYaml;
 use hashbrown::HashMap;
 use serde_json::Value;
@@ -142,19 +141,13 @@ impl Detection {
             .map(|rule_file_tuple| rule::create_rule(rule_file_tuple.0, rule_file_tuple.1))
             .filter_map(return_if_success)
             .collect();
-        if !(stored_static.logon_summary_flag
-            || stored_static.search_flag
-            || stored_static.metrics_flag
-            || stored_static.computer_metrics_flag)
-        {
-            Detection::print_rule_load_info(
-                &rulefile_loader.rulecounter,
-                &rulefile_loader.rule_load_cnt,
-                &rulefile_loader.rule_status_cnt,
-                &parseerror_count,
-                stored_static,
-            );
-        }
+        Detection::print_rule_load_info(
+            &rulefile_loader.rulecounter,
+            &rulefile_loader.rule_load_cnt,
+            &rulefile_loader.rule_status_cnt,
+            &parseerror_count,
+            stored_static,
+        );
         ret
     }
 
@@ -228,14 +221,9 @@ impl Detection {
                 stored_static.verbose_flag,
                 stored_static.quiet_errors_flag,
                 stored_static.json_input_flag,
-                &stored_static.eventkey_alias,
+                &EventKeyAliasConfig::default(),
             );
             if !result {
-                continue;
-            }
-
-            if stored_static.pivot_keyword_list_flag {
-                insert_pivot_keyword(&record_info.record, &stored_static.eventkey_alias);
                 continue;
             }
 
@@ -277,7 +265,7 @@ impl Detection {
         let ch_str =
             &get_serde_number_to_string(&record_info.record["Event"]["System"]["Channel"], false)
                 .unwrap_or_default();
-        let provider = get_serde_number_to_string(
+        let _provider = get_serde_number_to_string(
             &record_info.record["Event"]["System"]["Provider_attributes"]["Name"],
             false,
         )
@@ -332,22 +320,7 @@ impl Detection {
                     profile_converter.insert(key.as_str(), Computer(computer_name.into()));
                 }
                 Channel(_) => {
-                    profile_converter.insert(
-                        key.as_str(),
-                        Channel(
-                            stored_static
-                                .disp_abbr_generic
-                                .replace_all(
-                                    stored_static
-                                        .ch_config
-                                        .get(&CompactString::from(ch_str.to_ascii_lowercase()))
-                                        .unwrap_or(ch_str)
-                                        .as_str(),
-                                    &stored_static.disp_abbr_general_values,
-                                )
-                                .into(),
-                        ),
-                    );
+                    profile_converter.insert(key.as_str(), Channel("dummy".into()));
                 }
                 Level(_) => {
                     let str_level = level.as_str();
@@ -513,26 +486,12 @@ impl Detection {
                     );
                 }
                 Provider(_) => {
-                    let provider_value = CompactString::from(
+                    let _provider_value = CompactString::from(
                         record_info.record["Event"]["System"]["Provider_attributes"]["Name"]
                             .to_string()
                             .replace('\"', ""),
                     );
-                    profile_converter.insert(
-                        key.as_str(),
-                        Provider(
-                            stored_static
-                                .disp_abbr_generic
-                                .replace_all(
-                                    stored_static
-                                        .provider_abbr_config
-                                        .get(&provider_value)
-                                        .unwrap_or(&provider_value),
-                                    &stored_static.disp_abbr_general_values,
-                                )
-                                .into(),
-                        ),
-                    );
+                    profile_converter.insert(key.as_str(), Provider("dummy".into()));
                 }
                 RecoveredRecord(_) => {
                     profile_converter
@@ -705,14 +664,8 @@ impl Detection {
         //ルール側にdetailsの項目があればそれをそのまま出力し、そうでない場合はproviderとeventidの組で設定したdetailsの項目を出力する
         let details_fmt_str = match rule.yaml["details"].as_str() {
             Some(s) => s.to_string(),
-            None => match stored_static
-                .default_details
-                .get(&CompactString::from(format!("{provider}_{eid}")))
-            {
-                Some(str) => str.to_string(),
-                None => create_recordinfos(&record_info.record, &FieldDataMapKey::default(), &None)
-                    .join(" ¦ "),
-            },
+            None => create_recordinfos(&record_info.record, &FieldDataMapKey::default(), &None)
+                .join(" ¦ "),
         };
         let field_data_map_key: FieldDataMapKey = if stored_static.field_data_map.is_none() {
             FieldDataMapKey::default()
@@ -1605,7 +1558,7 @@ mod tests {
             let keys = detections::rule::get_detection_keys(&dummy_rule);
 
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &dummy_rule;
                 let record_info = &input_evtxrecord;
@@ -1742,7 +1695,7 @@ mod tests {
             let keys = detections::rule::get_detection_keys(&dummy_rule);
 
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &dummy_rule;
                 let record_info = &input_evtxrecord;
@@ -1891,7 +1844,7 @@ mod tests {
 
             let keys = detections::rule::get_detection_keys(&rule_node);
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &rule_node;
                 let record_info = &input_evtxrecord;
@@ -2040,7 +1993,7 @@ mod tests {
 
             let keys = detections::rule::get_detection_keys(&rule_node);
             let input_evtxrecord =
-                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false, &false);
+                utils::create_rec_info(event, test_filepath.to_owned(), &keys, &false);
             {
                 let rule = &rule_node;
                 let record_info = &input_evtxrecord;

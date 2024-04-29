@@ -1,16 +1,14 @@
-use crate::detections::field_data_map::{create_field_data_map, FieldDataMap};
+use crate::detections::field_data_map::FieldDataMap;
 use crate::detections::message::AlertMessage;
 use crate::detections::utils;
 use crate::options::geoip_search::GeoIPSearch;
 use crate::options::htmlreport;
-use crate::options::pivot::PIVOT_KEYWORD;
 use crate::options::profile::{load_profile, Profile};
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use chrono::{DateTime, Days, Duration, Local, Months, Utc};
 use clap::{ArgAction, ArgGroup, Args, ColorChoice, Command, CommandFactory, Parser, Subcommand};
 use compact_str::CompactString;
 use hashbrown::{HashMap, HashSet};
-use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env::current_exe;
@@ -20,7 +18,7 @@ use std::{fs, process};
 use terminal_size::{terminal_size, Width};
 use yaml_rust::{Yaml, YamlLoader};
 
-use super::message::{create_output_filter_config, LEVEL_ABBR_MAP};
+use super::message::LEVEL_ABBR_MAP;
 use super::utils::check_setting_path;
 
 lazy_static! {
@@ -56,70 +54,39 @@ impl Default for ConfigReader {
 pub struct StoredStatic {
     pub config: Config,
     pub config_path: PathBuf,
-    pub eventkey_alias: EventKeyAliasConfig,
-    pub ch_config: HashMap<CompactString, CompactString>,
-    pub disp_abbr_generic: AhoCorasick,
-    pub disp_abbr_general_values: Vec<CompactString>,
-    pub provider_abbr_config: HashMap<CompactString, CompactString>,
     pub quiet_errors_flag: bool,
     pub verbose_flag: bool,
-    pub metrics_flag: bool,
-    pub logon_summary_flag: bool,
-    pub search_flag: bool,
-    pub computer_metrics_flag: bool,
-    pub search_option: Option<SearchOption>,
     pub output_option: Option<OutputOption>,
-    pub pivot_keyword_list_flag: bool,
-    pub default_details: HashMap<CompactString, CompactString>,
     pub html_report_flag: bool,
     pub profiles: Option<Vec<(CompactString, Profile)>>,
-    pub event_timeline_config: EventInfoConfig,
-    pub target_eventids: TargetIds,
     pub target_ruleids: TargetIds,
     pub thread_number: Option<usize>,
     pub json_input_flag: bool,
     pub output_path: Option<PathBuf>,
     pub common_options: CommonOptions,
     pub multiline_flag: bool,
-    pub include_computer: HashSet<CompactString>,
-    pub exclude_computer: HashSet<CompactString>,
-    pub include_eid: HashSet<CompactString>,
-    pub exclude_eid: HashSet<CompactString>,
     pub include_status: HashSet<CompactString>, // 読み込み対象ルールのステータスのセット。*はすべてのステータスを読み込む
     pub field_data_map: Option<FieldDataMap>,
-    pub no_pwsh_field_extraction: bool,
-    pub enable_recover_records: bool,
     pub timeline_offset: Option<String>,
     pub is_low_memory: bool,
 }
 impl StoredStatic {
     /// main.rsでパースした情報からデータを格納する関数
     pub fn create_static_data(input_config: Option<Config>) -> StoredStatic {
-        let action_id = Action::to_usize(input_config.as_ref().unwrap().action.as_ref());
         let quiet_errors_flag = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.output_options.detect_common_options.quiet_errors,
             Some(Action::JsonTimeline(opt)) => {
                 opt.output_options.detect_common_options.quiet_errors
             }
-            Some(Action::LogonSummary(opt)) => opt.detect_common_options.quiet_errors,
-            Some(Action::EidMetrics(opt)) => opt.detect_common_options.quiet_errors,
-            Some(Action::PivotKeywordsList(opt)) => opt.detect_common_options.quiet_errors,
-            Some(Action::Search(opt)) => opt.quiet_errors,
-            Some(Action::ComputerMetrics(opt)) => opt.quiet_errors,
             _ => false,
         };
         let common_options = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.output_options.common_options,
             Some(Action::JsonTimeline(opt)) => opt.output_options.common_options,
             Some(Action::LevelTuning(opt)) => opt.common_options,
-            Some(Action::LogonSummary(opt)) => opt.common_options,
-            Some(Action::EidMetrics(opt)) => opt.common_options,
-            Some(Action::PivotKeywordsList(opt)) => opt.common_options,
             Some(Action::SetDefaultProfile(opt)) => opt.common_options,
             Some(Action::ListContributors(opt)) | Some(Action::ListProfiles(opt)) => *opt,
             Some(Action::UpdateRules(opt)) => opt.common_options,
-            Some(Action::Search(opt)) => opt.common_options,
-            Some(Action::ComputerMetrics(opt)) => opt.common_options,
             None => CommonOptions {
                 no_color: false,
                 quiet: false,
@@ -130,30 +97,16 @@ impl StoredStatic {
         let config_path = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => &opt.output_options.detect_common_options.config,
             Some(Action::JsonTimeline(opt)) => &opt.output_options.detect_common_options.config,
-            Some(Action::LogonSummary(opt)) => &opt.detect_common_options.config,
-            Some(Action::EidMetrics(opt)) => &opt.detect_common_options.config,
-            Some(Action::PivotKeywordsList(opt)) => &opt.detect_common_options.config,
-            Some(Action::Search(opt)) => &opt.config,
-            Some(Action::ComputerMetrics(opt)) => &opt.config,
             _ => &binding,
         };
         let verbose_flag = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.output_options.detect_common_options.verbose,
             Some(Action::JsonTimeline(opt)) => opt.output_options.detect_common_options.verbose,
-            Some(Action::LogonSummary(opt)) => opt.detect_common_options.verbose,
-            Some(Action::EidMetrics(opt)) => opt.detect_common_options.verbose,
-            Some(Action::PivotKeywordsList(opt)) => opt.detect_common_options.verbose,
-            Some(Action::Search(opt)) => opt.verbose,
-            Some(Action::ComputerMetrics(opt)) => opt.verbose,
             _ => false,
         };
         let json_input_flag = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.output_options.detect_common_options.json_input,
             Some(Action::JsonTimeline(opt)) => opt.output_options.detect_common_options.json_input,
-            Some(Action::LogonSummary(opt)) => opt.detect_common_options.json_input,
-            Some(Action::EidMetrics(opt)) => opt.detect_common_options.json_input,
-            Some(Action::PivotKeywordsList(opt)) => opt.detect_common_options.json_input,
-            Some(Action::ComputerMetrics(opt)) => opt.json_input,
             _ => false,
         };
         let is_valid_min_level = match &input_config.as_ref().unwrap().action {
@@ -163,9 +116,6 @@ impl StoredStatic {
             Some(Action::JsonTimeline(opt)) => LEVEL_ABBR_MAP
                 .keys()
                 .any(|level| &opt.output_options.min_level.to_lowercase() == level),
-            Some(Action::PivotKeywordsList(opt)) => LEVEL_ABBR_MAP
-                .keys()
-                .any(|level| &opt.min_level.to_lowercase() == level),
             _ => true,
         };
         let is_valid_exact_level = match &input_config.as_ref().unwrap().action {
@@ -190,12 +140,6 @@ impl StoredStatic {
                             .to_lowercase()
                             == level
                     })
-            }
-            Some(Action::PivotKeywordsList(opt)) => {
-                opt.exact_level.is_none()
-                    || LEVEL_ABBR_MAP
-                        .keys()
-                        .any(|level| &opt.exact_level.as_ref().unwrap().to_lowercase() == level)
             }
             _ => true,
         };
@@ -289,30 +233,10 @@ impl StoredStatic {
         let output_path = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.output.as_ref(),
             Some(Action::JsonTimeline(opt)) => opt.output.as_ref(),
-            Some(Action::EidMetrics(opt)) => opt.output.as_ref(),
-            Some(Action::PivotKeywordsList(opt)) => opt.output.as_ref(),
-            Some(Action::LogonSummary(opt)) => opt.output.as_ref(),
-            Some(Action::Search(opt)) => opt.output.as_ref(),
-            Some(Action::ComputerMetrics(opt)) => opt.output.as_ref(),
             _ => None,
         };
-        let general_ch_abbr = create_output_filter_config(
-            utils::check_setting_path(config_path, "generic_abbreviations.txt", false)
-                .unwrap_or_else(|| {
-                    utils::check_setting_path(
-                        &CURRENT_EXE_PATH.to_path_buf(),
-                        "rules/config/generic_abbreviations.txt",
-                        true,
-                    )
-                    .unwrap()
-                })
-                .to_str()
-                .unwrap(),
-            false,
-        );
         let multiline_flag = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.multiline,
-            Some(Action::Search(opt)) => opt.multiline,
             _ => false,
         };
         let proven_rule_flag = match &input_config.as_ref().unwrap().action {
@@ -337,7 +261,7 @@ impl StoredStatic {
         } else {
             TargetIds::default()
         };
-        let include_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
+        let _include_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
         {
             Some(Action::CsvTimeline(opt)) => opt
                 .output_options
@@ -357,33 +281,9 @@ impl StoredStatic {
                 .iter()
                 .map(CompactString::from)
                 .collect(),
-            Some(Action::EidMetrics(opt)) => opt
-                .detect_common_options
-                .include_computer
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::PivotKeywordsList(opt)) => opt
-                .detect_common_options
-                .include_computer
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::LogonSummary(opt)) => opt
-                .detect_common_options
-                .include_computer
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
             _ => HashSet::default(),
         };
-        let exclude_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
+        let _exclude_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
         {
             Some(Action::CsvTimeline(opt)) => opt
                 .output_options
@@ -403,132 +303,15 @@ impl StoredStatic {
                 .iter()
                 .map(CompactString::from)
                 .collect(),
-            Some(Action::EidMetrics(opt)) => opt
-                .detect_common_options
-                .exclude_computer
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::PivotKeywordsList(opt)) => opt
-                .detect_common_options
-                .exclude_computer
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::LogonSummary(opt)) => opt
-                .detect_common_options
-                .exclude_computer
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
             _ => HashSet::default(),
         };
-        let include_eid: HashSet<CompactString> = match &input_config.as_ref().unwrap().action {
-            Some(Action::CsvTimeline(opt)) => opt
-                .output_options
-                .include_eid
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::JsonTimeline(opt)) => opt
-                .output_options
-                .include_eid
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::PivotKeywordsList(opt)) => opt
-                .include_eid
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            _ => HashSet::default(),
-        };
-        let exclude_eid: HashSet<CompactString> = match &input_config.as_ref().unwrap().action {
-            Some(Action::CsvTimeline(opt)) => opt
-                .output_options
-                .exclude_eid
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::JsonTimeline(opt)) => opt
-                .output_options
-                .exclude_eid
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            Some(Action::PivotKeywordsList(opt)) => opt
-                .exclude_eid
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(CompactString::from)
-                .collect(),
-            _ => HashSet::default(),
-        };
-        let no_field_data_mapping_flag = match &input_config.as_ref().unwrap().action {
-            Some(Action::CsvTimeline(opt)) => opt.output_options.no_field,
-            Some(Action::JsonTimeline(opt)) => opt.output_options.no_field,
-            _ => false,
-        };
-        let field_data_map = if no_field_data_mapping_flag {
-            None
-        } else {
-            create_field_data_map(Path::new(
-                check_setting_path(config_path, "data_mapping", false)
-                    .unwrap_or_else(|| {
-                        check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/data_mapping",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ))
-        };
+        let field_data_map = None;
 
-        let no_pwsh_field_extraction_flag = match &input_config.as_ref().unwrap().action {
-            Some(Action::CsvTimeline(opt)) => opt.output_options.no_pwsh_field_extraction,
-            Some(Action::JsonTimeline(opt)) => opt.output_options.no_pwsh_field_extraction,
-            _ => false,
-        };
-
-        let enable_recover_records = match &input_config.as_ref().unwrap().action {
-            Some(Action::CsvTimeline(opt)) => opt.output_options.input_args.recover_records,
-            Some(Action::JsonTimeline(opt)) => opt.output_options.input_args.recover_records,
-            Some(Action::EidMetrics(opt)) => opt.input_args.recover_records,
-            Some(Action::LogonSummary(opt)) => opt.input_args.recover_records,
-            Some(Action::PivotKeywordsList(opt)) => opt.input_args.recover_records,
-            Some(Action::Search(opt)) => opt.input_args.recover_records,
-            _ => false,
-        };
         let timeline_offset = match &input_config.as_ref().unwrap().action {
             Some(Action::CsvTimeline(opt)) => opt.output_options.input_args.timeline_offset.clone(),
             Some(Action::JsonTimeline(opt)) => {
                 opt.output_options.input_args.timeline_offset.clone()
             }
-            Some(Action::EidMetrics(opt)) => opt.input_args.timeline_offset.clone(),
-            Some(Action::LogonSummary(opt)) => opt.input_args.timeline_offset.clone(),
-            Some(Action::PivotKeywordsList(opt)) => opt.input_args.timeline_offset.clone(),
-            Some(Action::Search(opt)) => opt.input_args.timeline_offset.clone(),
-            Some(Action::ComputerMetrics(opt)) => opt.input_args.timeline_offset.clone(),
             _ => None,
         };
         let include_status: HashSet<CompactString> = match &input_config.as_ref().unwrap().action {
@@ -548,13 +331,6 @@ impl StoredStatic {
                 .iter()
                 .map(|x| x.into())
                 .collect(),
-            Some(Action::PivotKeywordsList(opt)) => opt
-                .include_status
-                .as_ref()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(|x| x.into())
-                .collect(),
             _ => HashSet::default(),
         };
         let is_low_memory = match &input_config.as_ref().unwrap().action {
@@ -565,116 +341,18 @@ impl StoredStatic {
         let mut ret = StoredStatic {
             config: input_config.as_ref().unwrap().to_owned(),
             config_path: config_path.to_path_buf(),
-            ch_config: create_output_filter_config(
-                utils::check_setting_path(config_path, "channel_abbreviations.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/channel_abbreviations.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-                true,
-            ),
-            disp_abbr_generic: AhoCorasickBuilder::new()
-                .ascii_case_insensitive(true)
-                .match_kind(MatchKind::LeftmostLongest)
-                .build(general_ch_abbr.keys().map(|x| x.as_str()))
-                .unwrap(),
-            disp_abbr_general_values: general_ch_abbr.values().map(|x| x.to_owned()).collect_vec(),
-            provider_abbr_config: create_output_filter_config(
-                utils::check_setting_path(config_path, "provider_abbreviations.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/provider_abbreviations.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-                false,
-            ),
-            default_details: Self::get_default_details(
-                utils::check_setting_path(config_path, "default_details.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/default_details.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ),
-            eventkey_alias: load_eventkey_alias(
-                utils::check_setting_path(config_path, "eventkey_alias.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/eventkey_alias.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ),
-            logon_summary_flag: action_id == 2,
-            metrics_flag: action_id == 3,
-            search_flag: action_id == 10,
-            computer_metrics_flag: action_id == 11,
-            search_option: extract_search_options(input_config.as_ref().unwrap()),
             output_option: extract_output_options(input_config.as_ref().unwrap()),
-            pivot_keyword_list_flag: action_id == 4,
             quiet_errors_flag,
             verbose_flag,
             html_report_flag: htmlreport::check_html_flag(input_config.as_ref().unwrap()),
             profiles: None,
             thread_number: check_thread_number(input_config.as_ref().unwrap()),
-            event_timeline_config: load_eventcode_info(
-                utils::check_setting_path(config_path, "channel_eid_info.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/channel_eid_info.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ),
-            target_eventids: load_target_ids(
-                utils::check_setting_path(config_path, "target_event_IDs.txt", false)
-                    .unwrap_or_else(|| {
-                        utils::check_setting_path(
-                            &CURRENT_EXE_PATH.to_path_buf(),
-                            "rules/config/target_event_IDs.txt",
-                            true,
-                        )
-                        .unwrap()
-                    })
-                    .to_str()
-                    .unwrap(),
-            ),
             target_ruleids,
             json_input_flag,
             output_path: output_path.cloned(),
             common_options,
             multiline_flag,
-            include_computer,
-            exclude_computer,
-            include_eid,
-            exclude_eid,
             field_data_map,
-            no_pwsh_field_extraction: no_pwsh_field_extraction_flag,
-            enable_recover_records,
             timeline_offset,
             include_status,
             is_low_memory,
@@ -762,9 +440,6 @@ fn check_thread_number(config: &Config) -> Option<usize> {
     match config.action.as_ref()? {
         Action::CsvTimeline(opt) => opt.output_options.detect_common_options.thread_number,
         Action::JsonTimeline(opt) => opt.output_options.detect_common_options.thread_number,
-        Action::LogonSummary(opt) => opt.detect_common_options.thread_number,
-        Action::EidMetrics(opt) => opt.detect_common_options.thread_number,
-        Action::PivotKeywordsList(opt) => opt.detect_common_options.thread_number,
         _ => None,
     }
 }
@@ -789,42 +464,6 @@ pub enum Action {
     )]
     /// Save the timeline in JSON/JSONL format.
     JsonTimeline(JSONOutputOption),
-
-    #[clap(
-        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
-        help_template = "\nSuzaku v1.0.0 - Dev Build\n{author-with-newline}\n{usage-heading}\n  suzaku.exe logon-summary <INPUT> [OPTIONS]\n\n{all-args}",
-        term_width = 400,
-        display_order = 383
-    )]
-    /// Print a summary of successful and failed logons
-    LogonSummary(LogonSummaryOption),
-
-    #[clap(
-        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
-        help_template = "\nSuzaku v1.0.0 - Dev Build\n{author-with-newline}\n{usage-heading}\n  suzaku.exe eid-metrics <INPUT> [OPTIONS]\n\n{all-args}",
-        term_width = 400,
-        display_order = 310
-    )]
-    /// Print event ID metrics
-    EidMetrics(EidMetricsOption),
-
-    #[clap(
-        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
-        help_template = "\nSuzaku v1.0.0 - Dev Build\n{author-with-newline}\n{usage-heading}\n  suzaku.exe pivot-keywords-list <INPUT> [OPTIONS]\n\n{all-args}",
-        term_width = 400,
-        display_order = 420
-    )]
-    /// Create a list of pivot keywords
-    PivotKeywordsList(PivotKeywordOption),
-
-    #[clap(
-        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
-        help_template = "\nSuzaku v1.0.0 - Dev Build\n{author-with-newline}\n{usage-heading}\n  suzaku.exe search <INPUT> <--keywords \"<KEYWORDS>\" OR --regex \"<REGEX>\"> [OPTIONS]\n\n{all-args}",
-        term_width = 400,
-        display_order = 450
-    )]
-    /// Search all events by keyword(s) or regular expression
-    Search(SearchOption),
 
     #[clap(
         author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
@@ -860,15 +499,6 @@ pub enum Action {
     #[clap(display_order = 382)]
     /// List the output profiles
     ListProfiles(CommonOptions),
-
-    #[clap(
-        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
-        help_template = "\nSuzaku v1.0.0 - Dev Build\n{author-with-newline}\n{usage-heading}\n  {usage}\n\n{all-args}",
-        term_width = 400,
-        display_order = 290
-    )]
-    /// Print computer name metrics
-    ComputerMetrics(ComputerMetricsOption),
 }
 
 impl Action {
@@ -877,16 +507,11 @@ impl Action {
             match a {
                 Action::CsvTimeline(_) => 0,
                 Action::JsonTimeline(_) => 1,
-                Action::LogonSummary(_) => 2,
-                Action::EidMetrics(_) => 3,
-                Action::PivotKeywordsList(_) => 4,
-                Action::UpdateRules(_) => 5,
-                Action::LevelTuning(_) => 6,
-                Action::SetDefaultProfile(_) => 7,
-                Action::ListContributors(_) => 8,
-                Action::ListProfiles(_) => 9,
-                Action::Search(_) => 10,
-                Action::ComputerMetrics(_) => 11,
+                Action::UpdateRules(_) => 2,
+                Action::LevelTuning(_) => 3,
+                Action::SetDefaultProfile(_) => 4,
+                Action::ListContributors(_) => 5,
+                Action::ListProfiles(_) => 6,
             }
         } else {
             100
@@ -897,16 +522,11 @@ impl Action {
             match a {
                 Action::CsvTimeline(_) => "csv-timeline",
                 Action::JsonTimeline(_) => "json-timeline",
-                Action::LogonSummary(_) => "logon-summary",
-                Action::EidMetrics(_) => "eid-metrics",
-                Action::PivotKeywordsList(_) => "pivot-keywords-list",
                 Action::UpdateRules(_) => "update-rules",
                 Action::LevelTuning(_) => "level-tuning",
                 Action::SetDefaultProfile(_) => "set-default-profile",
                 Action::ListContributors(_) => "list-contributors",
                 Action::ListProfiles(_) => "list-profiles",
-                Action::Search(_) => "search",
-                Action::ComputerMetrics(_) => "computer-metrics",
             }
         } else {
             ""
@@ -1925,84 +1545,6 @@ impl TargetEventTime {
                 );
                 Self::set(parse_success_flag, start_time, end_time)
             }
-            Action::PivotKeywordsList(option) => {
-                let start_time = if timeline_offset.is_some() {
-                    get_time(
-                        timeline_offset.as_ref(),
-                        "Invalid timeline offset. Please use one of the following formats: 1y, 3M, 30d, 24h, 30m",
-                        &mut parse_success_flag,
-                    )
-                } else {
-                    get_time(
-                        option.start_timeline.as_ref(),
-                        "start-timeline field: the timestamp format is not correct.",
-                        &mut parse_success_flag,
-                    )
-                };
-                let end_time = get_time(
-                    option.end_timeline.as_ref(),
-                    "end-timeline field: the timestamp format is not correct.",
-                    &mut parse_success_flag,
-                );
-                Self::set(parse_success_flag, start_time, end_time)
-            }
-            Action::LogonSummary(option) => {
-                let start_time = if timeline_offset.is_some() {
-                    get_time(
-                        timeline_offset.as_ref(),
-                        "Invalid timeline offset. Please use one of the following formats: 1y, 3M, 30d, 24h, 30m",
-                        &mut parse_success_flag,
-                    )
-                } else {
-                    get_time(
-                        option.start_timeline.as_ref(),
-                        "start-timeline field: the timestamp format is not correct.",
-                        &mut parse_success_flag,
-                    )
-                };
-                let end_time = get_time(
-                    option.end_timeline.as_ref(),
-                    "end-timeline field: the timestamp format is not correct.",
-                    &mut parse_success_flag,
-                );
-                Self::set(parse_success_flag, start_time, end_time)
-            }
-            Action::ComputerMetrics(_) => {
-                let start_time = if timeline_offset.is_some() {
-                    get_time(
-                        timeline_offset.as_ref(),
-                        "Invalid timeline offset. Please use one of the following formats: 1y, 3M, 30d, 24h, 30m",
-                        &mut parse_success_flag,
-                    )
-                } else {
-                    None
-                };
-                Self::set(parse_success_flag, start_time, None)
-            }
-            Action::EidMetrics(_) => {
-                let start_time = if timeline_offset.is_some() {
-                    get_time(
-                        timeline_offset.as_ref(),
-                        "Invalid timeline offset. Please use one of the following formats: 1y, 3M, 30d, 24h, 30m",
-                        &mut parse_success_flag,
-                    )
-                } else {
-                    None
-                };
-                Self::set(parse_success_flag, start_time, None)
-            }
-            Action::Search(_) => {
-                let start_time = if timeline_offset.is_some() {
-                    get_time(
-                        timeline_offset.as_ref(),
-                        "Invalid timeline offset. Please use one of the following formats: 1y, 3M, 30d, 24h, 30m",
-                        &mut parse_success_flag,
-                    )
-                } else {
-                    None
-                };
-                Self::set(parse_success_flag, start_time, None)
-            }
             _ => Self::set(parse_success_flag, None, None),
         }
     }
@@ -2104,45 +1646,6 @@ pub fn load_eventkey_alias(path: &str) -> EventKeyAliasConfig {
     config
 }
 
-///設定ファイルを読み込み、keyとfieldsのマップをPIVOT_KEYWORD大域変数にロードする。
-pub fn load_pivot_keywords(path: &str) {
-    let read_result = match utils::read_txt(path) {
-        Ok(v) => v,
-        Err(e) => {
-            AlertMessage::alert(&e).ok();
-            return;
-        }
-    };
-
-    read_result.iter().for_each(|line| {
-        let mut map = line.split('.').take(2);
-        if let Some(size) = map.size_hint().1 {
-            if size < 2 {
-                return;
-            }
-        } else {
-            return;
-        }
-        let key = map.next().unwrap();
-        let value = map.next().unwrap();
-
-        //存在しなければ、keyを作成
-        PIVOT_KEYWORD
-            .write()
-            .unwrap()
-            .entry(key.to_string())
-            .or_default();
-
-        PIVOT_KEYWORD
-            .write()
-            .unwrap()
-            .get_mut(key)
-            .unwrap()
-            .fields
-            .insert(value.to_string());
-    });
-}
-
 /// --target-file-extで追加された拡張子から、調査対象ファイルの拡張子セットを返す関数。--json-inputがtrueの場合はjsonのみを対象とする
 pub fn get_target_extensions(arg: Option<&Vec<String>>, json_input_flag: bool) -> HashSet<String> {
     let mut target_file_extensions: HashSet<String> = convert_option_vecs_to_hs(arg);
@@ -2160,322 +1663,11 @@ pub fn convert_option_vecs_to_hs(arg: Option<&Vec<String>>) -> HashSet<String> {
     ret
 }
 
-fn extract_search_options(config: &Config) -> Option<SearchOption> {
-    match &config.action.as_ref()? {
-        Action::Search(option) => Some(SearchOption {
-            input_args: option.input_args.clone(),
-            keywords: option.keywords.clone(),
-            regex: option.regex.clone(),
-            ignore_case: option.ignore_case,
-            filter: option.filter.clone(),
-            output: option.output.clone(),
-            common_options: option.common_options,
-            evtx_file_ext: option.evtx_file_ext.clone(),
-            thread_number: option.thread_number,
-            quiet_errors: option.quiet_errors,
-            config: option.config.clone(),
-            verbose: option.verbose,
-            multiline: option.multiline,
-            clobber: option.clobber,
-            json_output: option.json_output,
-            jsonl_output: option.jsonl_output,
-            european_time: option.european_time,
-            iso_8601: option.iso_8601,
-            rfc_2822: option.rfc_2822,
-            rfc_3339: option.rfc_3339,
-            us_military_time: option.us_military_time,
-            us_time: option.us_time,
-            utc: option.utc,
-            and_logic: option.and_logic,
-        }),
-        _ => None,
-    }
-}
-
 /// configから出力に関連したオプションの値を格納した構造体を抽出する関数
 fn extract_output_options(config: &Config) -> Option<OutputOption> {
     match &config.action.as_ref()? {
         Action::CsvTimeline(option) => Some(option.output_options.clone()),
         Action::JsonTimeline(option) => Some(option.output_options.clone()),
-        Action::PivotKeywordsList(option) => Some(OutputOption {
-            input_args: option.input_args.clone(),
-            enable_deprecated_rules: option.enable_deprecated_rules,
-            enable_noisy_rules: option.enable_noisy_rules,
-            profile: None,
-            exclude_status: option.exclude_status.clone(),
-            min_level: option.min_level.clone(),
-            exact_level: option.exact_level.clone(),
-            end_timeline: option.end_timeline.clone(),
-            start_timeline: option.start_timeline.clone(),
-            eid_filter: option.eid_filter,
-            european_time: false,
-            iso_8601: false,
-            rfc_2822: false,
-            rfc_3339: false,
-            us_military_time: false,
-            us_time: false,
-            utc: false,
-            visualize_timeline: false,
-            rules: Path::new("./rules").to_path_buf(),
-            html_report: None,
-            no_summary: false,
-            common_options: option.common_options,
-            detect_common_options: option.detect_common_options.clone(),
-            enable_unsupported_rules: option.enable_unsupported_rules,
-            clobber: option.clobber,
-            proven_rules: false,
-            include_tag: option.include_tag.clone(),
-            exclude_tag: option.exclude_tag.clone(),
-            include_category: None,
-            exclude_category: None,
-            include_eid: option.include_eid.clone(),
-            exclude_eid: option.exclude_eid.clone(),
-            no_field: false,
-            no_pwsh_field_extraction: false,
-            remove_duplicate_data: false,
-            remove_duplicate_detections: false,
-            no_wizard: option.no_wizard,
-            include_status: option.include_status.clone(),
-            low_memory_mode: false,
-        }),
-        Action::EidMetrics(option) => Some(OutputOption {
-            input_args: option.input_args.clone(),
-            enable_deprecated_rules: false,
-            enable_noisy_rules: false,
-            profile: None,
-            exclude_status: None,
-            min_level: String::default(),
-            exact_level: None,
-            end_timeline: None,
-            start_timeline: None,
-            eid_filter: false,
-            european_time: option.european_time,
-            iso_8601: option.iso_8601,
-            rfc_2822: option.rfc_2822,
-            rfc_3339: option.rfc_3339,
-            us_military_time: option.us_military_time,
-            us_time: option.us_time,
-            utc: option.utc,
-            visualize_timeline: false,
-            rules: Path::new("./rules").to_path_buf(),
-            html_report: None,
-            no_summary: false,
-            common_options: option.common_options,
-            detect_common_options: option.detect_common_options.clone(),
-            enable_unsupported_rules: false,
-            clobber: option.clobber,
-            proven_rules: false,
-            include_tag: None,
-            exclude_tag: None,
-            include_category: None,
-            exclude_category: None,
-            include_eid: None,
-            exclude_eid: None,
-            no_field: false,
-            no_pwsh_field_extraction: false,
-            remove_duplicate_data: false,
-            remove_duplicate_detections: false,
-            no_wizard: true,
-            include_status: None,
-            low_memory_mode: false,
-        }),
-        Action::LogonSummary(option) => Some(OutputOption {
-            input_args: option.input_args.clone(),
-            enable_deprecated_rules: false,
-            enable_noisy_rules: false,
-            profile: None,
-            exclude_status: None,
-            min_level: String::default(),
-            exact_level: None,
-            end_timeline: None,
-            start_timeline: None,
-            eid_filter: false,
-            european_time: option.european_time,
-            iso_8601: option.iso_8601,
-            rfc_2822: option.rfc_2822,
-            rfc_3339: option.rfc_3339,
-            us_military_time: option.us_military_time,
-            us_time: option.us_time,
-            utc: option.utc,
-            visualize_timeline: false,
-            rules: Path::new("./rules").to_path_buf(),
-            html_report: None,
-            no_summary: false,
-            common_options: option.common_options,
-            detect_common_options: option.detect_common_options.clone(),
-            enable_unsupported_rules: false,
-            clobber: option.clobber,
-            proven_rules: false,
-            include_tag: None,
-            exclude_tag: None,
-            include_category: None,
-            exclude_category: None,
-            include_eid: None,
-            exclude_eid: None,
-            no_field: false,
-            no_pwsh_field_extraction: false,
-            remove_duplicate_data: false,
-            remove_duplicate_detections: false,
-            no_wizard: true,
-            include_status: None,
-            low_memory_mode: false,
-        }),
-        Action::ComputerMetrics(option) => Some(OutputOption {
-            input_args: option.input_args.clone(),
-            profile: None,
-            common_options: option.common_options,
-            enable_deprecated_rules: false,
-            enable_unsupported_rules: false,
-            exclude_status: None,
-            include_tag: None,
-            include_category: None,
-            exclude_category: None,
-            min_level: String::default(),
-            exact_level: None,
-            enable_noisy_rules: false,
-            end_timeline: None,
-            start_timeline: None,
-            eid_filter: false,
-            proven_rules: false,
-            exclude_tag: None,
-            detect_common_options: DetectCommonOption {
-                json_input: option.json_input,
-                evtx_file_ext: option.evtx_file_ext.clone(),
-                thread_number: option.thread_number,
-                quiet_errors: option.quiet_errors,
-                config: option.config.clone(),
-                verbose: option.verbose,
-                include_computer: None,
-                exclude_computer: None,
-            },
-            european_time: false,
-            iso_8601: false,
-            rfc_2822: false,
-            rfc_3339: false,
-            us_military_time: false,
-            us_time: false,
-            utc: false,
-            visualize_timeline: false,
-            rules: Path::new("./rules").to_path_buf(),
-            html_report: None,
-            no_summary: false,
-            clobber: option.clobber,
-            include_eid: None,
-            exclude_eid: None,
-            no_field: false,
-            no_pwsh_field_extraction: false,
-            remove_duplicate_data: false,
-            remove_duplicate_detections: false,
-            no_wizard: true,
-            include_status: None,
-            low_memory_mode: false,
-        }),
-        Action::Search(option) => Some(OutputOption {
-            input_args: option.input_args.clone(),
-            enable_deprecated_rules: false,
-            enable_noisy_rules: false,
-            profile: None,
-            exclude_status: None,
-            min_level: String::default(),
-            end_timeline: None,
-            start_timeline: None,
-            eid_filter: false,
-            european_time: option.european_time,
-            iso_8601: option.iso_8601,
-            rfc_2822: option.rfc_2822,
-            rfc_3339: option.rfc_3339,
-            us_military_time: option.us_military_time,
-            us_time: option.us_time,
-            utc: option.utc,
-            visualize_timeline: false,
-            rules: Path::new("./rules").to_path_buf(),
-            html_report: None,
-            no_summary: false,
-            common_options: option.common_options,
-            detect_common_options: DetectCommonOption {
-                json_input: false,
-                evtx_file_ext: option.evtx_file_ext.clone(),
-                thread_number: option.thread_number,
-                quiet_errors: option.quiet_errors,
-                config: option.config.clone(),
-                verbose: option.verbose,
-                include_computer: None,
-                exclude_computer: None,
-            },
-            exact_level: None,
-            enable_unsupported_rules: false,
-            clobber: option.clobber,
-            proven_rules: false,
-            include_tag: None,
-            exclude_tag: None,
-            include_category: None,
-            exclude_category: None,
-            include_eid: None,
-            exclude_eid: None,
-            no_field: false,
-            no_pwsh_field_extraction: false,
-            remove_duplicate_data: false,
-            remove_duplicate_detections: false,
-            no_wizard: true,
-            include_status: None,
-            low_memory_mode: false,
-        }),
-        Action::SetDefaultProfile(option) => Some(OutputOption {
-            input_args: InputOption {
-                directory: None,
-                filepath: None,
-                live_analysis: false,
-                recover_records: false,
-                timeline_offset: None,
-            },
-            enable_deprecated_rules: false,
-            enable_noisy_rules: false,
-            profile: None,
-            exclude_status: None,
-            min_level: String::default(),
-            exact_level: None,
-            end_timeline: None,
-            start_timeline: None,
-            eid_filter: false,
-            european_time: false,
-            iso_8601: false,
-            rfc_2822: false,
-            rfc_3339: false,
-            us_military_time: false,
-            us_time: false,
-            utc: false,
-            visualize_timeline: false,
-            rules: Path::new("./rules").to_path_buf(),
-            html_report: None,
-            no_summary: false,
-            common_options: option.common_options,
-            detect_common_options: DetectCommonOption {
-                evtx_file_ext: None,
-                thread_number: None,
-                quiet_errors: false,
-                config: Path::new("./rules/config").to_path_buf(),
-                verbose: false,
-                json_input: false,
-                include_computer: None,
-                exclude_computer: None,
-            },
-            enable_unsupported_rules: false,
-            clobber: false,
-            proven_rules: false,
-            include_tag: None,
-            exclude_tag: None,
-            include_category: None,
-            exclude_category: None,
-            include_eid: None,
-            exclude_eid: None,
-            no_field: false,
-            no_pwsh_field_extraction: false,
-            remove_duplicate_data: false,
-            remove_duplicate_detections: false,
-            no_wizard: true,
-            include_status: None,
-            low_memory_mode: false,
-        }),
         Action::UpdateRules(option) => Some(OutputOption {
             input_args: InputOption {
                 directory: None,
@@ -2576,38 +1768,6 @@ impl EventInfoConfig {
     }
 }
 
-fn load_eventcode_info(path: &str) -> EventInfoConfig {
-    let mut infodata = EventInfo::new();
-    let mut config = EventInfoConfig::new();
-    let read_result = match utils::read_csv(path) {
-        Ok(v) => v,
-        Err(e) => {
-            AlertMessage::alert(&e).ok();
-            return config;
-        }
-    };
-
-    // channel_eid_info.txtが読み込めなかったらエラーで終了とする。
-    read_result.iter().for_each(|line| {
-        if line.len() != 3 {
-            return;
-        }
-
-        let empty = &"".to_string();
-        let channel = line.first().unwrap_or(empty);
-        let eventcode = line.get(1).unwrap_or(empty);
-        let event_title = line.get(2).unwrap_or(empty);
-        infodata = EventInfo {
-            evttitle: event_title.to_string(),
-        };
-        config.eventinfo.insert(
-            (channel.to_lowercase(), eventcode.to_owned()),
-            infodata.to_owned(),
-        );
-    });
-    config
-}
-
 fn create_control_chat_replace_map() -> HashMap<char, CompactString> {
     let mut ret = HashMap::new();
     let replace_char = '\0'..='\x1F';
@@ -2632,30 +1792,10 @@ mod tests {
         DetectCommonOption, InputOption, JSONOutputOption, OutputOption, StoredStatic,
         TargetEventTime,
     };
-    use crate::detections::configs::{
-        self, EidMetricsOption, LogonSummaryOption, PivotKeywordOption, SearchOption,
-    };
+    use crate::detections::configs;
     use chrono::{DateTime, Utc};
     use compact_str::CompactString;
     use hashbrown::{HashMap, HashSet};
-
-    //     #[test]
-    //     #[ignore]
-    //     fn singleton_read_and_write() {
-    //         let message =
-    //             "EventKeyAliasConfig { key_to_eventkey: {\"EventID\": \"Event.System.EventID\"} }";
-    //         configs::EVENT_KEY_ALIAS_CONFIG =
-    //             configs::load_eventkey_alias("test_files/config/eventkey_alias.txt");
-    //         let display = format!(
-    //             "{}",
-    //             format_args!(
-    //                 "{:?}",
-    //                 configs::CONFIG.write().unwrap().event_key_alias_config
-    //             )
-    //         );
-    //         assert_eq!(message, display);
-    //     }
-    // }
 
     #[test]
     fn target_event_time_filter() {
@@ -2871,202 +2011,5 @@ mod tests {
         let actual = TargetEventTime::new(&json_timeline);
         let actual_diff = now - actual.start_time.unwrap();
         assert!(actual_diff.num_days() == 365 || actual_diff.num_days() == 366);
-    }
-
-    #[test]
-    fn test_timeline_offset_search() {
-        let json_timeline = StoredStatic::create_static_data(Some(Config {
-            action: Some(Action::Search(SearchOption {
-                output: None,
-                common_options: CommonOptions {
-                    no_color: false,
-                    quiet: false,
-                    help: None,
-                },
-                input_args: InputOption {
-                    directory: None,
-                    filepath: None,
-                    live_analysis: false,
-                    recover_records: false,
-                    timeline_offset: Some("1h".to_string()),
-                },
-                keywords: Some(vec!["mimikatz".to_string()]),
-                regex: None,
-                ignore_case: true,
-                and_logic: false,
-                filter: vec![],
-                evtx_file_ext: None,
-                thread_number: None,
-                quiet_errors: false,
-                config: Path::new("./rules/config").to_path_buf(),
-                verbose: false,
-                multiline: false,
-                clobber: true,
-                json_output: false,
-                jsonl_output: false,
-                european_time: false,
-                iso_8601: false,
-                rfc_2822: false,
-                rfc_3339: false,
-                us_military_time: false,
-                us_time: false,
-                utc: false,
-            })),
-            debug: false,
-        }));
-        let now = Utc::now();
-        let actual = TargetEventTime::new(&json_timeline);
-        let actual_diff = now - actual.start_time.unwrap();
-        assert!(actual_diff.num_hours() == 1);
-    }
-
-    #[test]
-    fn test_timeline_offset_eid_metrics() {
-        let eid_metrics = StoredStatic::create_static_data(Some(Config {
-            action: Some(Action::EidMetrics(EidMetricsOption {
-                output: None,
-                common_options: CommonOptions {
-                    no_color: false,
-                    quiet: false,
-                    help: None,
-                },
-                input_args: InputOption {
-                    directory: None,
-                    filepath: None,
-                    live_analysis: false,
-                    recover_records: false,
-                    timeline_offset: Some("1h1m".to_string()),
-                },
-                clobber: true,
-                european_time: false,
-                iso_8601: false,
-                rfc_2822: false,
-                rfc_3339: false,
-                us_military_time: false,
-                us_time: false,
-                utc: false,
-                detect_common_options: DetectCommonOption {
-                    evtx_file_ext: None,
-                    thread_number: None,
-                    quiet_errors: false,
-                    config: Path::new("./rules/config").to_path_buf(),
-                    verbose: false,
-                    json_input: true,
-                    include_computer: None,
-                    exclude_computer: None,
-                },
-            })),
-            debug: false,
-        }));
-        let now = Utc::now();
-        let actual = TargetEventTime::new(&eid_metrics);
-        let actual_diff = now - actual.start_time.unwrap();
-        assert!(actual_diff.num_hours() == 1 && actual_diff.num_minutes() == 61);
-    }
-
-    #[test]
-    fn test_timeline_offset_logon_summary() {
-        let logon_summary = StoredStatic::create_static_data(Some(Config {
-            action: Some(Action::LogonSummary(LogonSummaryOption {
-                output: None,
-                common_options: CommonOptions {
-                    no_color: false,
-                    quiet: false,
-                    help: None,
-                },
-                input_args: InputOption {
-                    directory: None,
-                    filepath: None,
-                    live_analysis: false,
-                    recover_records: false,
-                    timeline_offset: Some("1y1d1h".to_string()),
-                },
-                clobber: true,
-                european_time: false,
-                iso_8601: false,
-                rfc_2822: false,
-                rfc_3339: false,
-                us_military_time: false,
-                us_time: false,
-                utc: false,
-                detect_common_options: DetectCommonOption {
-                    evtx_file_ext: None,
-                    thread_number: None,
-                    quiet_errors: false,
-                    config: Path::new("./rules/config").to_path_buf(),
-                    verbose: false,
-                    json_input: true,
-                    include_computer: None,
-                    exclude_computer: None,
-                },
-                end_timeline: None,
-                start_timeline: None,
-            })),
-            debug: false,
-        }));
-        let now = Utc::now();
-        let actual = TargetEventTime::new(&logon_summary);
-        let actual_diff = now - actual.start_time.unwrap();
-        let days = actual_diff.num_days();
-        assert!(
-            (days == 366 && actual_diff.num_hours() == days * 24 + 1)
-                || (days == 367 && actual_diff.num_hours() == days * 24 + 1)
-        );
-    }
-
-    #[test]
-    fn test_timeline_offset_pivot() {
-        let pivot_keywords_list = StoredStatic::create_static_data(Some(Config {
-            action: Some(Action::PivotKeywordsList(PivotKeywordOption {
-                output: None,
-                common_options: CommonOptions {
-                    no_color: false,
-                    quiet: false,
-                    help: None,
-                },
-                input_args: InputOption {
-                    directory: None,
-                    filepath: None,
-                    live_analysis: false,
-                    recover_records: false,
-                    timeline_offset: Some("1y1M1s".to_string()),
-                },
-                clobber: true,
-                detect_common_options: DetectCommonOption {
-                    evtx_file_ext: None,
-                    thread_number: None,
-                    quiet_errors: false,
-                    config: Path::new("./rules/config").to_path_buf(),
-                    verbose: false,
-                    json_input: true,
-                    include_computer: None,
-                    exclude_computer: None,
-                },
-                end_timeline: None,
-                start_timeline: None,
-                enable_deprecated_rules: false,
-                enable_unsupported_rules: false,
-                exclude_status: None,
-                min_level: "informational".to_string(),
-                exact_level: None,
-                enable_noisy_rules: false,
-                eid_filter: false,
-                include_eid: None,
-                exclude_eid: None,
-                no_wizard: true,
-                include_tag: None,
-                exclude_tag: None,
-                include_status: None,
-            })),
-            debug: false,
-        }));
-        let now = Utc::now();
-        let actual = TargetEventTime::new(&pivot_keywords_list);
-        let actual_diff = now - actual.start_time.unwrap();
-        let actual_diff_day = actual_diff.num_days();
-        assert!(
-            (393..=397).contains(&actual_diff_day)
-                && actual_diff.num_seconds() - (actual_diff_day * 24 * 60 * 60) == 1
-        );
     }
 }

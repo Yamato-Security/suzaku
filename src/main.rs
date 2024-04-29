@@ -11,30 +11,7 @@ use compact_str::CompactString;
 use console::{style, Style};
 use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Select};
-use evtx::{EvtxParser, ParserSettings, RecordAllocation};
 use hashbrown::{HashMap, HashSet};
-use suzaku::afterfact::{self, AfterfactInfo, AfterfactWriter};
-use suzaku::debug::checkpoint_process_timer::CHECKPOINT;
-use suzaku::detections::configs::{
-    load_pivot_keywords, Action, ConfigReader, EventKeyAliasConfig, StoredStatic, TargetEventTime,
-    TargetIds, CURRENT_EXE_PATH, STORED_EKEY_ALIAS, STORED_STATIC,
-};
-use suzaku::detections::detection::{self, EvtxRecordInfo};
-use suzaku::detections::message::{AlertMessage, DetectInfo, ERROR_LOG_STACK};
-use suzaku::detections::rule::{get_detection_keys, RuleNode};
-use suzaku::detections::utils;
-use suzaku::detections::utils::{
-    check_setting_path, get_writable_color, output_and_data_stack_for_html, output_profile_name,
-};
-use suzaku::options::htmlreport::{self, HTML_REPORTER};
-use suzaku::options::pivot::create_output;
-use suzaku::options::pivot::PIVOT_KEYWORD;
-use suzaku::options::profile::set_default_profile;
-use suzaku::options::{level_tuning::LevelTuning, update::Update};
-use suzaku::timeline::computer_metrics::countup_event_by_computer;
-use suzaku::{detections::configs, timeline::timelines::Timeline};
-use suzaku::{detections::utils::write_color_buffer, filter};
-use suzaku::{options, yaml};
 use indicatif::ProgressBar;
 use indicatif::{ProgressDrawTarget, ProgressStyle};
 use itertools::Itertools;
@@ -46,19 +23,31 @@ use serde_json::{Map, Value};
 use std::borrow::BorrowMut;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
-use std::fmt::Write as _;
-use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::ptr::null_mut;
 use std::sync::Arc;
 use std::time::Duration;
 use std::u128;
-use std::{
-    env,
-    fs::{self, File},
-    path::PathBuf,
-    vec,
+use std::{env, fs, path::PathBuf, vec};
+use suzaku::afterfact::{self, AfterfactInfo, AfterfactWriter};
+use suzaku::debug::checkpoint_process_timer::CHECKPOINT;
+use suzaku::detections::configs::{
+    Action, ConfigReader, EventKeyAliasConfig, StoredStatic, TargetEventTime, TargetIds,
+    CURRENT_EXE_PATH, STORED_EKEY_ALIAS, STORED_STATIC,
 };
+use suzaku::detections::detection::{self, EvtxRecordInfo};
+use suzaku::detections::message::{AlertMessage, DetectInfo, ERROR_LOG_STACK};
+use suzaku::detections::rule::{get_detection_keys, RuleNode};
+use suzaku::detections::utils;
+use suzaku::detections::utils::{
+    check_setting_path, output_and_data_stack_for_html, output_profile_name,
+};
+use suzaku::options::htmlreport::{self, HTML_REPORTER};
+use suzaku::options::profile::set_default_profile;
+use suzaku::options::{level_tuning::LevelTuning, update::Update};
+use suzaku::{detections::configs, timeline::timelines::Timeline};
+use suzaku::{detections::utils::write_color_buffer, filter};
+use suzaku::{options, yaml};
 use termcolor::{BufferWriter, Color, ColorChoice};
 use tokio::runtime::Runtime;
 use tokio::spawn;
@@ -179,37 +168,6 @@ impl App {
         let time_filter = TargetEventTime::new(stored_static);
         if !time_filter.is_parse_success() {
             return;
-        }
-
-        if stored_static.metrics_flag {
-            write_color_buffer(
-                &BufferWriter::stdout(ColorChoice::Always),
-                None,
-                "Generating Event ID Metrics",
-                true,
-            )
-            .ok();
-            println!();
-        }
-        if stored_static.logon_summary_flag {
-            write_color_buffer(
-                &BufferWriter::stdout(ColorChoice::Always),
-                None,
-                "Generating Logon Summary",
-                true,
-            )
-            .ok();
-            println!();
-        }
-        if stored_static.search_flag {
-            write_color_buffer(
-                &BufferWriter::stdout(ColorChoice::Always),
-                None,
-                "Searching...",
-                true,
-            )
-            .ok();
-            println!();
         }
 
         write_color_buffer(
@@ -333,197 +291,6 @@ impl App {
             Action::ListContributors(_) => {
                 self.print_contributors();
                 return;
-            }
-            Action::LogonSummary(_) => {
-                let mut target_output_path = Nested::<String>::new();
-                if let Some(path) = &stored_static.output_path {
-                    for suffix in &["-successful.csv", "-failed.csv"] {
-                        let output_file = format!("{}{suffix}", path.to_str().unwrap());
-                        if !(stored_static.output_option.as_ref().unwrap().clobber)
-                            && utils::check_file_expect_not_exist(
-                                Path::new(output_file.as_str()),
-                                format!(
-                                " The files with a base name of {} already exist. Please specify a different base filename or add the -C, --clobber option to overwrite.\n",
-                                path.as_os_str().to_str().unwrap()
-                            ),
-                            )
-                        {
-                            return;
-                        }
-                        target_output_path.push(output_file);
-                    }
-                }
-                self.analysis_start(&target_extensions, &time_filter, stored_static);
-                for target_path in target_output_path.iter() {
-                    let mut msg = "";
-                    if target_path.ends_with("-successful.csv") {
-                        msg = "Successful logon results"
-                    }
-                    if target_path.ends_with("-failed.csv") {
-                        msg = "Failed logon results"
-                    }
-                    output_saved_file(
-                        &Some(Path::new(target_path).to_path_buf()),
-                        msg,
-                        &stored_static.html_report_flag,
-                    );
-                }
-                println!();
-            }
-            Action::EidMetrics(_) | Action::Search(_) => {
-                if let Some(path) = &stored_static.output_path {
-                    if !(stored_static.output_option.as_ref().unwrap().clobber)
-                        && utils::check_file_expect_not_exist(
-                            path.as_path(),
-                            format!(
-                                " The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.\n",
-                                path.as_os_str().to_str().unwrap()
-                            ),
-                        )
-                    {
-                        return;
-                    }
-                }
-                self.analysis_start(&target_extensions, &time_filter, stored_static);
-                output_saved_file(
-                    &stored_static.output_path,
-                    "Saved results",
-                    &stored_static.html_report_flag,
-                );
-            }
-            Action::ComputerMetrics(_) => {
-                if let Some(path) = &stored_static.output_path {
-                    if !(stored_static.output_option.as_ref().unwrap().clobber)
-                        && utils::check_file_expect_not_exist(
-                            path.as_path(),
-                            format!(
-                                " The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.\n",
-                                path.as_os_str().to_str().unwrap()
-                            ),
-                        )
-                    {
-                        return;
-                    }
-                }
-                self.analysis_start(&target_extensions, &time_filter, stored_static);
-                output_saved_file(
-                    &stored_static.output_path,
-                    "Saved results",
-                    &stored_static.html_report_flag,
-                );
-                println!();
-            }
-            Action::PivotKeywordsList(_) => {
-                load_pivot_keywords(
-                    utils::check_setting_path(
-                        &CURRENT_EXE_PATH.to_path_buf(),
-                        "rules/config/pivot_keywords.txt",
-                        true,
-                    )
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
-                );
-
-                // pivot 機能でファイルを出力する際に同名ファイルが既に存在していた場合はエラー文を出して終了する。
-                let mut error_flag = false;
-                if let Some(csv_path) = &stored_static.output_path {
-                    let pivot_key_unions = PIVOT_KEYWORD.read().unwrap();
-                    pivot_key_unions.iter().for_each(|(key, _)| {
-                        let keywords_file_name =
-                            csv_path.as_path().display().to_string() + "-" + key + ".txt";
-                        if !(stored_static.output_option.as_ref().unwrap().clobber) && utils::check_file_expect_not_exist(
-                            Path::new(&keywords_file_name),
-                            format!(
-                                " The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
-                                &keywords_file_name
-                            ),
-                        ) {
-                            error_flag = true
-                        };
-                    });
-                }
-                if error_flag {
-                    println!();
-                    return;
-                }
-
-                self.analysis_start(&target_extensions, &time_filter, stored_static);
-
-                let pivot_key_unions = PIVOT_KEYWORD.read().unwrap();
-                if let Some(pivot_file) = &stored_static.output_path {
-                    //ファイル出力の場合
-                    pivot_key_unions.iter().for_each(|(key, pivot_keyword)| {
-                        let mut f = BufWriter::new(
-                            fs::File::create(
-                                pivot_file.as_path().display().to_string() + "-" + key + ".txt",
-                            )
-                            .unwrap(),
-                        );
-                        f.write_all(
-                            create_output(
-                                String::default(),
-                                key,
-                                pivot_keyword,
-                                "file",
-                                stored_static,
-                            )
-                            .as_bytes(),
-                        )
-                        .unwrap();
-                    });
-                    let mut output =
-                        "Pivot keyword results were saved to the following files:\n".to_string();
-
-                    pivot_key_unions.iter().for_each(|(key, _)| {
-                        writeln!(
-                            output,
-                            "{}",
-                            &(pivot_file.as_path().display().to_string() + "-" + key + ".txt")
-                        )
-                        .ok();
-                    });
-                    write_color_buffer(
-                        &BufferWriter::stdout(ColorChoice::Always),
-                        None,
-                        &output,
-                        true,
-                    )
-                    .ok();
-                } else {
-                    //標準出力の場合
-                    let output = "\nThe following pivot keywords were found:\n";
-                    write_color_buffer(
-                        &BufferWriter::stdout(ColorChoice::Always),
-                        None,
-                        output,
-                        true,
-                    )
-                    .ok();
-
-                    pivot_key_unions.iter().for_each(|(key, pivot_keyword)| {
-                        create_output(
-                            String::default(),
-                            key,
-                            pivot_keyword,
-                            "standard",
-                            stored_static,
-                        );
-
-                        if pivot_keyword.keywords.is_empty() {
-                            write_color_buffer(
-                                &BufferWriter::stdout(ColorChoice::Always),
-                                get_writable_color(
-                                    Some(Color::Red),
-                                    stored_static.common_options.no_color,
-                                ),
-                                "No keywords found\n",
-                                true,
-                            )
-                            .ok();
-                        }
-                    });
-                }
             }
             Action::UpdateRules(_) => {
                 let update_target = match &stored_static.config.action.as_ref().unwrap() {
@@ -981,8 +748,7 @@ impl App {
         time_filter: &TargetEventTime,
         stored_static: &mut StoredStatic,
     ) {
-        let event_timeline_config = &stored_static.event_timeline_config;
-        let target_event_ids = &stored_static.target_eventids;
+        // let event_timeline_config = &stored_static.event_timeline_config;
         let target_level = stored_static
             .output_option
             .as_ref()
@@ -1023,12 +789,7 @@ impl App {
         let total_size_output = format!("Total file size: {}", total_file_size.to_string_as(false));
         println!("{total_size_output}");
         let mut status_append_output = None;
-        if !(stored_static.metrics_flag
-            || stored_static.logon_summary_flag
-            || stored_static.search_flag
-            || stored_static.computer_metrics_flag
-            || stored_static.output_option.as_ref().unwrap().no_wizard)
-        {
+        if !(stored_static.output_option.as_ref().unwrap().no_wizard) {
             CHECKPOINT
                 .lock()
                 .as_mut()
@@ -1379,57 +1140,34 @@ impl App {
             .to_uppercase();
 
         println!();
-        if !(stored_static.logon_summary_flag
-            || stored_static.search_flag
-            || stored_static.metrics_flag
-            || stored_static.computer_metrics_flag)
-        {
-            println!("Loading detection rules. Please wait.");
-        } else if stored_static.logon_summary_flag {
-            println!("Currently scanning for the logon summary. Please wait.");
-        } else if stored_static.search_flag {
-            println!("Currently searching. Please wait.");
-        } else if stored_static.metrics_flag {
-            println!("Currently scanning for event ID metrics. Please wait.");
-        } else if stored_static.computer_metrics_flag {
-            println!("Currently scanning for computer metrics. Please wait.");
-        }
+
+        println!("Loading detection rules. Please wait.");
+
         println!();
 
-        let mut rule_files = vec![];
-        if !(stored_static.logon_summary_flag
-            || stored_static.search_flag
-            || stored_static.metrics_flag
-            || stored_static.computer_metrics_flag)
-        {
-            rule_files = detection::Detection::parse_rule_files(
-                &level,
-                &target_level,
-                &stored_static.output_option.as_ref().unwrap().rules,
-                &filter::exclude_ids(stored_static),
-                stored_static,
-            );
-            CHECKPOINT
-                .lock()
-                .as_mut()
-                .unwrap()
-                .rap_checkpoint("Rule Parse Processing Time");
-            CHECKPOINT
-                .lock()
-                .as_mut()
-                .unwrap()
-                .set_checkpoint(Local::now());
-            let unused_rules_option = stored_static.logon_summary_flag
-                || stored_static.search_flag
-                || stored_static.computer_metrics_flag
-                || stored_static.metrics_flag;
-            if !unused_rules_option && rule_files.is_empty() {
-                AlertMessage::alert(
+        let rule_files = detection::Detection::parse_rule_files(
+            &level,
+            &target_level,
+            &stored_static.output_option.as_ref().unwrap().rules,
+            &filter::exclude_ids(stored_static),
+            stored_static,
+        );
+        CHECKPOINT
+            .lock()
+            .as_mut()
+            .unwrap()
+            .rap_checkpoint("Rule Parse Processing Time");
+        CHECKPOINT
+            .lock()
+            .as_mut()
+            .unwrap()
+            .set_checkpoint(Local::now());
+        if rule_files.is_empty() {
+            AlertMessage::alert(
                         "No rules were loaded. Please download the latest rules with the update-rules command.\r\n",
                     )
                     .ok();
-                return;
-            }
+            return;
         }
 
         let template = if stored_static.common_options.no_color {
@@ -1456,7 +1194,7 @@ impl App {
         let mut detection = detection::Detection::new(rule_files);
         let mut tl = Timeline::new();
 
-        *STORED_EKEY_ALIAS.write().unwrap() = Some(stored_static.eventkey_alias.clone());
+        *STORED_EKEY_ALIAS.write().unwrap() = Some(EventKeyAliasConfig::default());
         *STORED_STATIC.write().unwrap() = Some(stored_static.clone());
         let mut afterfact_info = AfterfactInfo::default();
         let mut all_detect_infos = vec![];
@@ -1470,24 +1208,18 @@ impl App {
                 pb.set_message(pb_msg);
             }
 
-            let (detection_tmp, cnt_tmp, tl_tmp, recover_cnt_tmp, mut detect_infos) =
-                if evtx_file.extension().unwrap() == "json" {
-                    self.analysis_json_file(
-                        (evtx_file, time_filter, target_event_ids, stored_static),
-                        detection,
-                        tl.to_owned(),
-                        &mut afterfact_writer,
-                        &mut afterfact_info,
-                    )
-                } else {
-                    self.analysis_file(
-                        (evtx_file, time_filter, target_event_ids, stored_static),
-                        detection,
-                        tl.to_owned(),
-                        &mut afterfact_writer,
-                        &mut afterfact_info,
-                    )
-                };
+            if evtx_file.extension().unwrap() != "json" {
+                println!("suzaku is only supported for .tar.gz files.");
+                return;
+            }
+            let (detection_tmp, cnt_tmp, tl_tmp, recover_cnt_tmp, mut detect_infos) = self
+                .analysis_json_file(
+                    (evtx_file, time_filter, stored_static),
+                    detection,
+                    tl.to_owned(),
+                    &mut afterfact_writer,
+                    &mut afterfact_info,
+                );
             detection = detection_tmp;
             tl = tl_tmp;
             afterfact_info.record_cnt += cnt_tmp as u128;
@@ -1511,54 +1243,39 @@ impl App {
             .unwrap()
             .set_checkpoint(Local::now());
 
-        if stored_static.metrics_flag {
-            tl.tm_stats_dsp_msg(event_timeline_config, stored_static);
-        } else if stored_static.logon_summary_flag {
-            tl.tm_logon_stats_dsp_msg(stored_static);
-        } else if stored_static.search_flag {
-            tl.search_dsp_msg(event_timeline_config, stored_static);
-        } else if stored_static.computer_metrics_flag {
-            tl.computer_metrics_dsp_msg(stored_static)
+        println!();
+        let mut log_records = detection.add_aggcondition_msges(&self.rt, stored_static);
+        if stored_static.is_low_memory {
+            let empty_ids = HashSet::new();
+            afterfact::emit_csv(
+                &log_records,
+                &empty_ids,
+                stored_static,
+                &mut afterfact_writer,
+                &mut afterfact_info,
+            );
+        } else {
+            all_detect_infos.append(&mut log_records);
         }
-        if !(stored_static.metrics_flag
-            || stored_static.logon_summary_flag
-            || stored_static.search_flag
-            || stored_static.pivot_keyword_list_flag
-            || stored_static.computer_metrics_flag)
-        {
-            println!();
-            let mut log_records = detection.add_aggcondition_msges(&self.rt, stored_static);
-            if stored_static.is_low_memory {
-                let empty_ids = HashSet::new();
-                afterfact::emit_csv(
-                    &log_records,
-                    &empty_ids,
-                    stored_static,
-                    &mut afterfact_writer,
-                    &mut afterfact_info,
-                );
-            } else {
-                all_detect_infos.append(&mut log_records);
-            }
-            afterfact_info.tl_starttime = tl.stats.start_time;
-            afterfact_info.tl_endtime = tl.stats.end_time;
+        afterfact_info.tl_starttime = tl.stats.start_time;
+        afterfact_info.tl_endtime = tl.stats.end_time;
 
-            // output afterfact
-            if stored_static.is_low_memory {
-                afterfact::output_additional_afterfact(
-                    stored_static,
-                    &mut afterfact_writer,
-                    &afterfact_info,
-                );
-            } else {
-                afterfact::output_afterfact(
-                    &mut all_detect_infos,
-                    &mut afterfact_writer,
-                    stored_static,
-                    &mut afterfact_info,
-                );
-            }
+        // output afterfact
+        if stored_static.is_low_memory {
+            afterfact::output_additional_afterfact(
+                stored_static,
+                &mut afterfact_writer,
+                &afterfact_info,
+            );
+        } else {
+            afterfact::output_afterfact(
+                &mut all_detect_infos,
+                &mut afterfact_writer,
+                stored_static,
+                &mut afterfact_info,
+            );
         }
+
         CHECKPOINT
             .lock()
             .as_mut()
@@ -1571,178 +1288,10 @@ impl App {
             .set_checkpoint(Local::now());
     }
 
-    // Windowsイベントログファイルを1ファイル分解析する。
-    fn analysis_file(
-        &self,
-        (evtx_filepath, time_filter, target_event_ids, stored_static): (
-            PathBuf,
-            &TargetEventTime,
-            &TargetIds,
-            &StoredStatic,
-        ),
-        mut detection: detection::Detection,
-        mut tl: Timeline,
-        afterfact_writer: &mut AfterfactWriter,
-        afterfact_info: &mut AfterfactInfo,
-    ) -> (
-        detection::Detection,
-        usize,
-        Timeline,
-        usize,
-        Vec<DetectInfo>,
-    ) {
-        let path = evtx_filepath.display();
-        let parser = self.evtx_to_jsons(&evtx_filepath, stored_static.enable_recover_records);
-        let mut record_cnt = 0;
-        let mut recover_records_cnt = 0;
-        let mut detect_infos: Vec<DetectInfo> = vec![];
-        if parser.is_none() {
-            return (detection, record_cnt, tl, 0, detect_infos);
-        }
-
-        let mut parser = parser.unwrap();
-        let mut records = parser.records_json_value();
-
-        let verbose_flag = stored_static.verbose_flag;
-        let quiet_errors_flag = stored_static.quiet_errors_flag;
-        loop {
-            let mut records_per_detect = vec![];
-            while records_per_detect.len() < MAX_DETECT_RECORDS {
-                // パースに失敗している場合、エラーメッセージを出力
-                let next_rec = records.next();
-                if next_rec.is_none() {
-                    break;
-                }
-                record_cnt += 1;
-                let record_result = next_rec.unwrap();
-
-                if record_result.is_ok()
-                    && record_result.as_ref().unwrap().allocation == RecordAllocation::EmptyPage
-                {
-                    recover_records_cnt += 1;
-                }
-
-                if record_result.is_err() {
-                    let evtx_filepath = &path;
-                    let errmsg = format!(
-                        "Failed to parse event file.\nEventFile: {}\nError: {}\n",
-                        evtx_filepath,
-                        record_result.unwrap_err()
-                    );
-                    if verbose_flag {
-                        AlertMessage::alert(&errmsg).ok();
-                    }
-                    if !quiet_errors_flag {
-                        ERROR_LOG_STACK
-                            .lock()
-                            .unwrap()
-                            .push(format!("[ERROR] {errmsg}"));
-                    }
-                    continue;
-                }
-
-                let data = &record_result.as_ref().unwrap().data;
-                if stored_static.computer_metrics_flag {
-                    countup_event_by_computer(data, &stored_static.eventkey_alias, &mut tl);
-                    // computer-metricsコマンドでは検知は行わないためカウントのみ行い次のレコードを確認する
-                    continue;
-                }
-
-                // Searchならすべてのフィルタを無視
-                if !stored_static.search_flag {
-                    // Computer名がinclude_computerで指定されたものに合致しないまたはexclude_computerで指定されたものに合致した場合はフィルタリングする。
-                    if utils::is_filtered_by_computer_name(
-                        utils::get_event_value(
-                            "Event.System.Computer",
-                            data,
-                            &stored_static.eventkey_alias,
-                        ),
-                        (
-                            &stored_static.include_computer,
-                            &stored_static.exclude_computer,
-                        ),
-                    ) {
-                        continue;
-                    }
-
-                    // EventIDがinclude_eidで指定されたものに合致しないまたはexclude_eidで指定されたものに合致した場合、target_eventids.txtで指定されたEventIDではない場合はフィルタリングする。
-                    if self.is_filtered_by_eid(
-                        data,
-                        &stored_static.eventkey_alias,
-                        (&stored_static.include_eid, &stored_static.exclude_eid),
-                        stored_static.output_option.as_ref().unwrap().eid_filter,
-                        target_event_ids,
-                    ) {
-                        continue;
-                    }
-
-                    // channelがnullである場合はフィルタリングする。
-                    if !self._is_valid_channel(
-                        data,
-                        &stored_static.eventkey_alias,
-                        "Event.System.Channel",
-                    ) {
-                        continue;
-                    }
-                }
-                // EventID側の条件との条件の混同を防ぐため時間でのフィルタリングの条件分岐を分離した
-                let timestamp = record_result.as_ref().unwrap().timestamp;
-                if !time_filter.is_target(&Some(timestamp)) {
-                    continue;
-                }
-
-                let recover_record_flag = record_result.is_ok()
-                    && record_result.as_ref().unwrap().allocation == RecordAllocation::EmptyPage;
-                records_per_detect.push((data.to_owned(), recover_record_flag));
-            }
-            if records_per_detect.is_empty() {
-                break;
-            }
-
-            let records_per_detect = self.rt.block_on(App::create_rec_infos(
-                records_per_detect,
-                &path,
-                self.rule_keys.to_owned(),
-                stored_static.no_pwsh_field_extraction,
-            ));
-
-            // timeline機能の実行
-            tl.start(&records_per_detect, stored_static);
-            if !(stored_static.metrics_flag
-                || stored_static.logon_summary_flag
-                || stored_static.search_flag)
-            {
-                // detect event record by rule file
-                let (detection_tmp, mut log_records) =
-                    detection.start(&self.rt, records_per_detect);
-                if stored_static.is_low_memory {
-                    let empty_ids = HashSet::new();
-                    afterfact::emit_csv(
-                        &log_records,
-                        &empty_ids,
-                        stored_static,
-                        afterfact_writer,
-                        afterfact_info,
-                    );
-                } else {
-                    detect_infos.append(&mut log_records);
-                }
-                detection = detection_tmp;
-            }
-        }
-        tl.total_record_cnt += record_cnt;
-        (detection, record_cnt, tl, recover_records_cnt, detect_infos)
-    }
-
     // JSON形式のイベントログファイルを1ファイル分解析する。
     fn analysis_json_file(
         &self,
-        (filepath, time_filter, target_event_ids, stored_static): (
-            PathBuf,
-            &TargetEventTime,
-            &TargetIds,
-            &StoredStatic,
-        ),
+        (filepath, time_filter, stored_static): (PathBuf, &TargetEventTime, &StoredStatic),
         mut detection: detection::Detection,
         mut tl: Timeline,
         afterfact_writer: &mut AfterfactWriter,
@@ -1835,42 +1384,10 @@ impl App {
                         data["Event"]["EventData"]["Hostname"].clone();
                 }
 
-                if stored_static.computer_metrics_flag {
-                    countup_event_by_computer(&data, &stored_static.eventkey_alias, &mut tl);
-                    // computer-metricsコマンドでは検知は行わないためカウントのみ行い次のレコードを確認する
-                    continue;
-                }
-
-                // Computer名がinclude_computerで指定されたものに合致しないまたはexclude_computerで指定されたものに合致した場合はフィルタリングする。
-                if utils::is_filtered_by_computer_name(
-                    utils::get_event_value(
-                        "Event.System.Computer",
-                        &data,
-                        &stored_static.eventkey_alias,
-                    ),
-                    (
-                        &stored_static.include_computer,
-                        &stored_static.exclude_computer,
-                    ),
-                ) {
-                    continue;
-                }
-
-                // EventIDがinclude_eidで指定されたものに合致しないまたはexclude_eidで指定されたものに合致した場合、EventID Filter optionが指定されていないかつtarget_eventids.txtで指定されたEventIDではない場合はフィルタリングする。
-                if self.is_filtered_by_eid(
-                    &data,
-                    &stored_static.eventkey_alias,
-                    (&stored_static.include_eid, &stored_static.exclude_eid),
-                    stored_static.output_option.as_ref().unwrap().eid_filter,
-                    target_event_ids,
-                ) {
-                    continue;
-                }
-
                 // channelがnullである場合はフィルタリングする。
                 if !self._is_valid_channel(
                     &data,
-                    &stored_static.eventkey_alias,
+                    &EventKeyAliasConfig::default(),
                     "Event.EventData.Channel",
                 ) {
                     continue;
@@ -1924,34 +1441,23 @@ impl App {
                 records_per_detect,
                 &path,
                 self.rule_keys.to_owned(),
-                stored_static.no_pwsh_field_extraction,
             ));
 
-            // timeline機能の実行
-            tl.start(&records_per_detect, stored_static);
-
-            // 以下のコマンドの際にはルールにかけない
-            if !(stored_static.metrics_flag
-                || stored_static.logon_summary_flag
-                || stored_static.search_flag)
-            {
-                // ruleファイルの検知
-                let (detection_tmp, mut log_records) =
-                    detection.start(&self.rt, records_per_detect);
-                if stored_static.is_low_memory {
-                    let empty_ids = HashSet::new();
-                    afterfact::emit_csv(
-                        &log_records,
-                        &empty_ids,
-                        stored_static,
-                        afterfact_writer,
-                        afterfact_info,
-                    );
-                } else {
-                    detect_infos.append(&mut log_records);
-                }
-                detection = detection_tmp;
+            // ruleファイルの検知
+            let (detection_tmp, mut log_records) = detection.start(&self.rt, records_per_detect);
+            if stored_static.is_low_memory {
+                let empty_ids = HashSet::new();
+                afterfact::emit_csv(
+                    &log_records,
+                    &empty_ids,
+                    stored_static,
+                    afterfact_writer,
+                    afterfact_info,
+                );
+            } else {
+                detect_infos.append(&mut log_records);
             }
+            detection = detection_tmp;
         }
         tl.total_record_cnt += record_cnt;
         (detection, record_cnt, tl, recover_records_cnt, detect_infos)
@@ -1961,9 +1467,7 @@ impl App {
         records_per_detect: Vec<(Value, bool)>,
         path: &dyn Display,
         rule_keys: Nested<String>,
-        no_pwsh_field_extraction: bool,
     ) -> Vec<EvtxRecordInfo> {
-        let no_pwsh_field_extraction = Arc::new(no_pwsh_field_extraction);
         let path = Arc::new(path.to_string());
         let rule_keys = Arc::new(rule_keys);
         let threads: Vec<JoinHandle<EvtxRecordInfo>> = {
@@ -1971,14 +1475,12 @@ impl App {
                 |(rec, recovered_record_flag)| -> JoinHandle<EvtxRecordInfo> {
                     let arc_rule_keys = Arc::clone(&rule_keys);
                     let arc_path = Arc::clone(&path);
-                    let arc_no_pwsh_field_extraction = Arc::clone(&no_pwsh_field_extraction);
                     spawn(async move {
                         utils::create_rec_info(
                             rec,
                             arc_path.to_string(),
                             &arc_rule_keys,
                             &recovered_record_flag,
-                            &arc_no_pwsh_field_extraction,
                         )
                     })
                 },
@@ -2037,57 +1539,6 @@ impl App {
         match channel.unwrap() {
             Value::String(s) => s != "null",
             _ => false, // channelの値は文字列を想定しているため、それ以外のデータが来た場合はfalseを返す
-        }
-    }
-
-    fn is_filtered_by_eid(
-        &self,
-        data: &Value,
-        eventkey_alias: &EventKeyAliasConfig,
-        (include_eid, exclude_eid): (&HashSet<CompactString>, &HashSet<CompactString>),
-        eid_filter: bool,
-        target_event_ids: &TargetIds,
-    ) -> bool {
-        let target_eid = if !include_eid.is_empty() || !exclude_eid.is_empty() {
-            if let Some(eid_record) =
-                utils::get_event_value(&utils::get_event_id_key(), data, eventkey_alias)
-            {
-                utils::get_serde_number_to_string(eid_record, false).unwrap_or_default()
-            } else {
-                CompactString::default()
-            }
-        } else {
-            CompactString::default()
-        };
-        // 以下の場合はフィルタリングする。
-        // 1. include_eidが指定されているが、include_eidに含まれていない場合
-        // 2. exclude_eidが指定されていて、exclude_eidに含まれている場合
-        // 3. eid_filterが指定されていて、target_eventids.txtで指定されたEventIDでない場合
-        (!include_eid.is_empty() && !include_eid.contains(&target_eid))
-            || (!exclude_eid.is_empty() && exclude_eid.contains(&target_eid))
-            || (eid_filter && !self._is_target_event_id(data, target_event_ids, eventkey_alias))
-    }
-
-    fn evtx_to_jsons(
-        &self,
-        evtx_filepath: &PathBuf,
-        enable_recover_records: bool,
-    ) -> Option<EvtxParser<File>> {
-        match EvtxParser::from_path(evtx_filepath) {
-            Ok(evtx_parser) => {
-                // parserのデフォルト設定を変更
-                let mut parse_config =
-                    ParserSettings::default().parse_empty_chunks(enable_recover_records);
-                parse_config = parse_config.separate_json_attributes(true); // XMLのattributeをJSONに変換する時のルールを設定
-                parse_config = parse_config.num_threads(0); // 設定しないと遅かったので、設定しておく。
-
-                let evtx_parser = evtx_parser.with_configuration(parse_config);
-                Option::Some(evtx_parser)
-            }
-            Err(e) => {
-                eprintln!("{e}");
-                Option::None
-            }
         }
     }
 
@@ -2156,14 +1607,9 @@ impl App {
 
     fn check_is_valid_args_num(&self, action: Option<&Action>) -> bool {
         match action.as_ref().unwrap() {
-            Action::CsvTimeline(_)
-            | Action::JsonTimeline(_)
-            | Action::LogonSummary(_)
-            | Action::EidMetrics(_)
-            | Action::PivotKeywordsList(_)
-            | Action::SetDefaultProfile(_)
-            | Action::Search(_)
-            | Action::ComputerMetrics(_) => std::env::args().len() != 2,
+            Action::CsvTimeline(_) | Action::JsonTimeline(_) | Action::SetDefaultProfile(_) => {
+                std::env::args().len() != 2
+            }
             _ => true,
         }
     }
@@ -2179,6 +1625,7 @@ mod tests {
     use crate::App;
     use chrono::Local;
     use hashbrown::HashSet;
+    use itertools::Itertools;
     use suzaku::{
         afterfact::{self, AfterfactInfo},
         detections::{
@@ -2194,7 +1641,6 @@ mod tests {
         options::htmlreport::HTML_REPORTER,
         timeline::timelines::Timeline,
     };
-    use itertools::Itertools;
     use yaml_rust::YamlLoader;
 
     fn create_dummy_stored_static() -> StoredStatic {

@@ -304,7 +304,6 @@ pub fn create_rec_info(
     path: String,
     keys: &Nested<String>,
     recovered_record: &bool,
-    no_pwsh_field_extraction: &bool,
 ) -> EvtxRecordInfo {
     // 高速化のための処理
 
@@ -330,19 +329,15 @@ pub fn create_rec_info(
             continue;
         }
 
-        if !*no_pwsh_field_extraction {
-            if key == "EventID" {
-                event_id = val.clone();
-            }
-            if key == "Channel" {
-                channel = val.clone();
-            }
+        if key == "EventID" {
+            event_id = val.clone();
+        }
+        if key == "Channel" {
+            channel = val.clone();
         }
         key_2_values.insert(key.to_string(), val.unwrap());
     }
-    if !*no_pwsh_field_extraction {
-        extract_fields(channel, event_id, &mut data, &mut key_2_values);
-    }
+    extract_fields(channel, event_id, &mut data, &mut key_2_values);
 
     // EvtxRecordInfoを作る
     let data_str = data.to_string();
@@ -1127,10 +1122,7 @@ mod tests {
         // include_computerで合致しない場合フィルタリングされる
         assert!(utils::is_filtered_by_computer_name(
             Some(&event_record["Event"]["System"]["Computer"]),
-            (
-                &HashSet::from_iter(vec!["Suzaku".into()]),
-                &HashSet::new()
-            ),
+            (&HashSet::from_iter(vec!["Suzaku".into()]), &HashSet::new()),
         ));
 
         // include_computerで合致する場合フィルタリングされない

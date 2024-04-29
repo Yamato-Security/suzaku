@@ -61,19 +61,11 @@ impl EventMetrics {
     pub fn evt_stats_start(
         &mut self,
         records: &[EvtxRecordInfo],
-        stored_static: &StoredStatic,
-        (include_computer, exclude_computer): (&HashSet<CompactString>, &HashSet<CompactString>),
+        _stored_static: &StoredStatic,
+        (_include_computer, _exclude_computer): (&HashSet<CompactString>, &HashSet<CompactString>),
     ) {
         // recordsから、 最初のレコードの時刻と最後のレコードの時刻、レコードの総数を取得する
-        self.stats_time_cnt(records, &stored_static.eventkey_alias);
-
-        // 引数でmetricsオプションが指定されている時だけ、統計情報を出力する。
-        if !stored_static.metrics_flag {
-            return;
-        }
-
-        // EventIDで集計
-        self.stats_eventid(records, stored_static, (include_computer, exclude_computer));
+        self.stats_time_cnt(records, &EventKeyAliasConfig::default());
     }
 
     pub fn logon_stats_start(
@@ -163,45 +155,6 @@ impl EventMetrics {
         self.total += records.len();
     }
 
-    /// EventIDで集計
-    fn stats_eventid(
-        &mut self,
-        records: &[EvtxRecordInfo],
-        stored_static: &StoredStatic,
-        (include_computer, exclude_computer): (&HashSet<CompactString>, &HashSet<CompactString>),
-    ) {
-        for record in records.iter() {
-            if utils::is_filtered_by_computer_name(
-                utils::get_event_value(
-                    "Event.System.Computer",
-                    &record.record,
-                    &stored_static.eventkey_alias,
-                ),
-                (include_computer, exclude_computer),
-            ) {
-                continue;
-            }
-            let channel = if let Some(ch) =
-                utils::get_event_value("Channel", &record.record, &stored_static.eventkey_alias)
-            {
-                ch.as_str().unwrap()
-            } else {
-                "-"
-            };
-            if let Some(idnum) =
-                utils::get_event_value("EventID", &record.record, &stored_static.eventkey_alias)
-            {
-                let count: &mut usize = self
-                    .stats_list
-                    .entry((
-                        idnum.to_string().replace('\"', "").to_lowercase().into(),
-                        channel.to_lowercase().into(),
-                    ))
-                    .or_insert(0);
-                *count += 1;
-            };
-        }
-    }
     // Login event
     fn stats_login_eventid(
         &mut self,
@@ -382,7 +335,7 @@ mod tests {
         let mut timeline = Timeline::new();
         // テスト1: レコードのチャンネルがaliasに含まれている場合
         let alias_ch_record_str = r#"{
-            "Event": {"System": {"EventID": 4103, "Channel": "Security", "Computer":"SUZAKU-DESKTOP"}},
+            "Event": {"System": {"EventID": 4103, "Channel": "Security", "Computer":"HAYABUSA-DESKTOP"}},
             "Event_attributes": {"xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"}
         }"#;
         let mut input_datas = vec![];
@@ -397,7 +350,7 @@ mod tests {
 
         // テスト2: レコードのチャンネル名がaliasに含まれていない場合
         let no_alias_ch_record_str = r#"{
-            "Event": {"System": {"EventID": 4104, "Channel": "NotExistInAlias", "Computer":"SUZAKU-DESKTOP"}},
+            "Event": {"System": {"EventID": 4104, "Channel": "NotExistInAlias", "Computer":"HAYABUSA-DESKTOP"}},
             "Event_attributes": {"xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"}
         }"#;
 

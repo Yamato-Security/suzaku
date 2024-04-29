@@ -786,38 +786,6 @@ pub fn output_additional_afterfact(
             true,
         )
         .ok();
-        if stored_static.enable_recover_records {
-            write_color_buffer(
-                &afterfact_writer.disp_wtr,
-                get_writable_color(
-                    Some(Color::Rgb(0, 255, 255)),
-                    stored_static.common_options.no_color,
-                ),
-                "Recovered records",
-                false,
-            )
-            .ok();
-            write_color_buffer(
-                &afterfact_writer.disp_wtr,
-                get_writable_color(None, stored_static.common_options.no_color),
-                ": ",
-                false,
-            )
-            .ok();
-            let recovered_record_output = afterfact_info
-                .recover_record_cnt
-                .to_formatted_string(&Locale::en);
-            write_color_buffer(
-                &afterfact_writer.disp_wtr,
-                get_writable_color(
-                    Some(Color::Rgb(0, 255, 255)),
-                    stored_static.common_options.no_color,
-                ),
-                &recovered_record_output,
-                true,
-            )
-            .ok();
-        }
         println!();
 
         if stored_static.html_report_flag {
