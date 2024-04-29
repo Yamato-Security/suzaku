@@ -1,2 +1,2 @@
-pub mod timelines;
 pub mod metrics;
+pub mod timelines;

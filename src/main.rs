@@ -12,25 +12,6 @@ use console::{style, Style};
 use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Select};
 use hashbrown::{HashMap, HashSet};
-use suzaku::afterfact::{self, AfterfactInfo, AfterfactWriter};
-use suzaku::debug::checkpoint_process_timer::CHECKPOINT;
-use suzaku::detections::configs::{
-    Action, ConfigReader, EventKeyAliasConfig, StoredStatic, TargetEventTime,
-    TargetIds, CURRENT_EXE_PATH, STORED_EKEY_ALIAS, STORED_STATIC,
-};
-use suzaku::detections::detection::{self, EvtxRecordInfo};
-use suzaku::detections::message::{AlertMessage, DetectInfo, ERROR_LOG_STACK};
-use suzaku::detections::rule::{get_detection_keys, RuleNode};
-use suzaku::detections::utils;
-use suzaku::detections::utils::{
-    check_setting_path, output_and_data_stack_for_html, output_profile_name,
-};
-use suzaku::options::htmlreport::{self, HTML_REPORTER};
-use suzaku::options::profile::set_default_profile;
-use suzaku::options::{level_tuning::LevelTuning, update::Update};
-use suzaku::{detections::configs, timeline::timelines::Timeline};
-use suzaku::{detections::utils::write_color_buffer, filter};
-use suzaku::{options, yaml};
 use indicatif::ProgressBar;
 use indicatif::{ProgressDrawTarget, ProgressStyle};
 use itertools::Itertools;
@@ -47,12 +28,26 @@ use std::ptr::null_mut;
 use std::sync::Arc;
 use std::time::Duration;
 use std::u128;
-use std::{
-    env,
-    fs,
-    path::PathBuf,
-    vec,
+use std::{env, fs, path::PathBuf, vec};
+use suzaku::afterfact::{self, AfterfactInfo, AfterfactWriter};
+use suzaku::debug::checkpoint_process_timer::CHECKPOINT;
+use suzaku::detections::configs::{
+    Action, ConfigReader, EventKeyAliasConfig, StoredStatic, TargetEventTime, TargetIds,
+    CURRENT_EXE_PATH, STORED_EKEY_ALIAS, STORED_STATIC,
 };
+use suzaku::detections::detection::{self, EvtxRecordInfo};
+use suzaku::detections::message::{AlertMessage, DetectInfo, ERROR_LOG_STACK};
+use suzaku::detections::rule::{get_detection_keys, RuleNode};
+use suzaku::detections::utils;
+use suzaku::detections::utils::{
+    check_setting_path, output_and_data_stack_for_html, output_profile_name,
+};
+use suzaku::options::htmlreport::{self, HTML_REPORTER};
+use suzaku::options::profile::set_default_profile;
+use suzaku::options::{level_tuning::LevelTuning, update::Update};
+use suzaku::{detections::configs, timeline::timelines::Timeline};
+use suzaku::{detections::utils::write_color_buffer, filter};
+use suzaku::{options, yaml};
 use termcolor::{BufferWriter, Color, ColorChoice};
 use tokio::runtime::Runtime;
 use tokio::spawn;
@@ -794,8 +789,7 @@ impl App {
         let total_size_output = format!("Total file size: {}", total_file_size.to_string_as(false));
         println!("{total_size_output}");
         let mut status_append_output = None;
-        if !(stored_static.output_option.as_ref().unwrap().no_wizard)
-        {
+        if !(stored_static.output_option.as_ref().unwrap().no_wizard) {
             CHECKPOINT
                 .lock()
                 .as_mut()
@@ -1147,36 +1141,34 @@ impl App {
 
         println!();
 
-            println!("Loading detection rules. Please wait.");
+        println!("Loading detection rules. Please wait.");
 
         println!();
 
-
-           let  rule_files = detection::Detection::parse_rule_files(
-                &level,
-                &target_level,
-                &stored_static.output_option.as_ref().unwrap().rules,
-                &filter::exclude_ids(stored_static),
-                stored_static,
-            );
-            CHECKPOINT
-                .lock()
-                .as_mut()
-                .unwrap()
-                .rap_checkpoint("Rule Parse Processing Time");
-            CHECKPOINT
-                .lock()
-                .as_mut()
-                .unwrap()
-                .set_checkpoint(Local::now());
-            if rule_files.is_empty() {
-                AlertMessage::alert(
+        let rule_files = detection::Detection::parse_rule_files(
+            &level,
+            &target_level,
+            &stored_static.output_option.as_ref().unwrap().rules,
+            &filter::exclude_ids(stored_static),
+            stored_static,
+        );
+        CHECKPOINT
+            .lock()
+            .as_mut()
+            .unwrap()
+            .rap_checkpoint("Rule Parse Processing Time");
+        CHECKPOINT
+            .lock()
+            .as_mut()
+            .unwrap()
+            .set_checkpoint(Local::now());
+        if rule_files.is_empty() {
+            AlertMessage::alert(
                         "No rules were loaded. Please download the latest rules with the update-rules command.\r\n",
                     )
                     .ok();
-                return;
-            }
-
+            return;
+        }
 
         let template = if stored_static.common_options.no_color {
             "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}"
@@ -1220,14 +1212,14 @@ impl App {
                 println!("suzaku is only supported for .tar.gz files.");
                 return;
             }
-                let (detection_tmp, cnt_tmp, tl_tmp, recover_cnt_tmp, mut detect_infos) =
-                    self.analysis_json_file(
-                        (evtx_file, time_filter, stored_static),
-                        detection,
-                        tl.to_owned(),
-                        &mut afterfact_writer,
-                        &mut afterfact_info,
-                    );
+            let (detection_tmp, cnt_tmp, tl_tmp, recover_cnt_tmp, mut detect_infos) = self
+                .analysis_json_file(
+                    (evtx_file, time_filter, stored_static),
+                    detection,
+                    tl.to_owned(),
+                    &mut afterfact_writer,
+                    &mut afterfact_info,
+                );
             detection = detection_tmp;
             tl = tl_tmp;
             afterfact_info.record_cnt += cnt_tmp as u128;
@@ -1251,38 +1243,38 @@ impl App {
             .unwrap()
             .set_checkpoint(Local::now());
 
-            println!();
-            let mut log_records = detection.add_aggcondition_msges(&self.rt, stored_static);
-            if stored_static.is_low_memory {
-                let empty_ids = HashSet::new();
-                afterfact::emit_csv(
-                    &log_records,
-                    &empty_ids,
-                    stored_static,
-                    &mut afterfact_writer,
-                    &mut afterfact_info,
-                );
-            } else {
-                all_detect_infos.append(&mut log_records);
-            }
-            afterfact_info.tl_starttime = tl.stats.start_time;
-            afterfact_info.tl_endtime = tl.stats.end_time;
+        println!();
+        let mut log_records = detection.add_aggcondition_msges(&self.rt, stored_static);
+        if stored_static.is_low_memory {
+            let empty_ids = HashSet::new();
+            afterfact::emit_csv(
+                &log_records,
+                &empty_ids,
+                stored_static,
+                &mut afterfact_writer,
+                &mut afterfact_info,
+            );
+        } else {
+            all_detect_infos.append(&mut log_records);
+        }
+        afterfact_info.tl_starttime = tl.stats.start_time;
+        afterfact_info.tl_endtime = tl.stats.end_time;
 
-            // output afterfact
-            if stored_static.is_low_memory {
-                afterfact::output_additional_afterfact(
-                    stored_static,
-                    &mut afterfact_writer,
-                    &afterfact_info,
-                );
-            } else {
-                afterfact::output_afterfact(
-                    &mut all_detect_infos,
-                    &mut afterfact_writer,
-                    stored_static,
-                    &mut afterfact_info,
-                );
-            }
+        // output afterfact
+        if stored_static.is_low_memory {
+            afterfact::output_additional_afterfact(
+                stored_static,
+                &mut afterfact_writer,
+                &afterfact_info,
+            );
+        } else {
+            afterfact::output_afterfact(
+                &mut all_detect_infos,
+                &mut afterfact_writer,
+                stored_static,
+                &mut afterfact_info,
+            );
+        }
 
         CHECKPOINT
             .lock()
@@ -1299,11 +1291,7 @@ impl App {
     // JSON形式のイベントログファイルを1ファイル分解析する。
     fn analysis_json_file(
         &self,
-        (filepath, time_filter, stored_static): (
-            PathBuf,
-            &TargetEventTime,
-            &StoredStatic,
-        ),
+        (filepath, time_filter, stored_static): (PathBuf, &TargetEventTime, &StoredStatic),
         mut detection: detection::Detection,
         mut tl: Timeline,
         afterfact_writer: &mut AfterfactWriter,
@@ -1396,7 +1384,6 @@ impl App {
                         data["Event"]["EventData"]["Hostname"].clone();
                 }
 
-
                 // channelがnullである場合はフィルタリングする。
                 if !self._is_valid_channel(
                     &data,
@@ -1456,23 +1443,21 @@ impl App {
                 self.rule_keys.to_owned(),
             ));
 
-                // ruleファイルの検知
-                let (detection_tmp, mut log_records) =
-                    detection.start(&self.rt, records_per_detect);
-                if stored_static.is_low_memory {
-                    let empty_ids = HashSet::new();
-                    afterfact::emit_csv(
-                        &log_records,
-                        &empty_ids,
-                        stored_static,
-                        afterfact_writer,
-                        afterfact_info,
-                    );
-                } else {
-                    detect_infos.append(&mut log_records);
-                }
-                detection = detection_tmp;
-
+            // ruleファイルの検知
+            let (detection_tmp, mut log_records) = detection.start(&self.rt, records_per_detect);
+            if stored_static.is_low_memory {
+                let empty_ids = HashSet::new();
+                afterfact::emit_csv(
+                    &log_records,
+                    &empty_ids,
+                    stored_static,
+                    afterfact_writer,
+                    afterfact_info,
+                );
+            } else {
+                detect_infos.append(&mut log_records);
+            }
+            detection = detection_tmp;
         }
         tl.total_record_cnt += record_cnt;
         (detection, record_cnt, tl, recover_records_cnt, detect_infos)
@@ -1622,9 +1607,9 @@ impl App {
 
     fn check_is_valid_args_num(&self, action: Option<&Action>) -> bool {
         match action.as_ref().unwrap() {
-            Action::CsvTimeline(_)
-            | Action::JsonTimeline(_)
-            | Action::SetDefaultProfile(_) => std::env::args().len() != 2,
+            Action::CsvTimeline(_) | Action::JsonTimeline(_) | Action::SetDefaultProfile(_) => {
+                std::env::args().len() != 2
+            }
             _ => true,
         }
     }
@@ -1640,6 +1625,7 @@ mod tests {
     use crate::App;
     use chrono::Local;
     use hashbrown::HashSet;
+    use itertools::Itertools;
     use suzaku::{
         afterfact::{self, AfterfactInfo},
         detections::{
@@ -1655,7 +1641,6 @@ mod tests {
         options::htmlreport::HTML_REPORTER,
         timeline::timelines::Timeline,
     };
-    use itertools::Itertools;
     use yaml_rust::YamlLoader;
 
     fn create_dummy_stored_static() -> StoredStatic {

@@ -1,4 +1,4 @@
-use crate::detections::field_data_map::{create_field_data_map, FieldDataMap};
+use crate::detections::field_data_map::FieldDataMap;
 use crate::detections::message::AlertMessage;
 use crate::detections::utils;
 use crate::options::geoip_search::GeoIPSearch;
@@ -9,7 +9,6 @@ use chrono::{DateTime, Days, Duration, Local, Months, Utc};
 use clap::{ArgAction, ArgGroup, Args, ColorChoice, Command, CommandFactory, Parser, Subcommand};
 use compact_str::CompactString;
 use hashbrown::{HashMap, HashSet};
-use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env::current_exe;
@@ -19,7 +18,7 @@ use std::{fs, process};
 use terminal_size::{terminal_size, Width};
 use yaml_rust::{Yaml, YamlLoader};
 
-use super::message::{create_output_filter_config, LEVEL_ABBR_MAP};
+use super::message::LEVEL_ABBR_MAP;
 use super::utils::check_setting_path;
 
 lazy_static! {
@@ -262,7 +261,7 @@ impl StoredStatic {
         } else {
             TargetIds::default()
         };
-        let include_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
+        let _include_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
         {
             Some(Action::CsvTimeline(opt)) => opt
                 .output_options
@@ -284,7 +283,7 @@ impl StoredStatic {
                 .collect(),
             _ => HashSet::default(),
         };
-        let exclude_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
+        let _exclude_computer: HashSet<CompactString> = match &input_config.as_ref().unwrap().action
         {
             Some(Action::CsvTimeline(opt)) => opt
                 .output_options
@@ -305,11 +304,6 @@ impl StoredStatic {
                 .map(CompactString::from)
                 .collect(),
             _ => HashSet::default(),
-        };
-        let no_field_data_mapping_flag = match &input_config.as_ref().unwrap().action {
-            Some(Action::CsvTimeline(opt)) => opt.output_options.no_field,
-            Some(Action::JsonTimeline(opt)) => opt.output_options.no_field,
-            _ => false,
         };
         let field_data_map = None;
 
@@ -505,7 +499,6 @@ pub enum Action {
     #[clap(display_order = 382)]
     /// List the output profiles
     ListProfiles(CommonOptions),
-
 }
 
 impl Action {
@@ -1775,38 +1768,6 @@ impl EventInfoConfig {
     }
 }
 
-fn load_eventcode_info(path: &str) -> EventInfoConfig {
-    let mut infodata = EventInfo::new();
-    let mut config = EventInfoConfig::new();
-    let read_result = match utils::read_csv(path) {
-        Ok(v) => v,
-        Err(e) => {
-            AlertMessage::alert(&e).ok();
-            return config;
-        }
-    };
-
-    // channel_eid_info.txtが読み込めなかったらエラーで終了とする。
-    read_result.iter().for_each(|line| {
-        if line.len() != 3 {
-            return;
-        }
-
-        let empty = &"".to_string();
-        let channel = line.first().unwrap_or(empty);
-        let eventcode = line.get(1).unwrap_or(empty);
-        let event_title = line.get(2).unwrap_or(empty);
-        infodata = EventInfo {
-            evttitle: event_title.to_string(),
-        };
-        config.eventinfo.insert(
-            (channel.to_lowercase(), eventcode.to_owned()),
-            infodata.to_owned(),
-        );
-    });
-    config
-}
-
 fn create_control_chat_replace_map() -> HashMap<char, CompactString> {
     let mut ret = HashMap::new();
     let replace_char = '\0'..='\x1F';
@@ -1835,7 +1796,6 @@ mod tests {
     use chrono::{DateTime, Utc};
     use compact_str::CompactString;
     use hashbrown::{HashMap, HashSet};
-
 
     #[test]
     fn target_event_time_filter() {
@@ -2052,5 +2012,4 @@ mod tests {
         let actual_diff = now - actual.start_time.unwrap();
         assert!(actual_diff.num_days() == 365 || actual_diff.num_days() == 366);
     }
-
 }

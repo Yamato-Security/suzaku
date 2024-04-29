@@ -1122,10 +1122,7 @@ mod tests {
         // include_computerで合致しない場合フィルタリングされる
         assert!(utils::is_filtered_by_computer_name(
             Some(&event_record["Event"]["System"]["Computer"]),
-            (
-                &HashSet::from_iter(vec!["Suzaku".into()]),
-                &HashSet::new()
-            ),
+            (&HashSet::from_iter(vec!["Suzaku".into()]), &HashSet::new()),
         ));
 
         // include_computerで合致する場合フィルタリングされない

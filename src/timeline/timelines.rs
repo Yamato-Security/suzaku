@@ -1,5 +1,5 @@
-use compact_str::CompactString;
 use super::metrics::EventMetrics;
+use compact_str::CompactString;
 use hashbrown::HashMap;
 
 #[derive(Debug, Clone)]
