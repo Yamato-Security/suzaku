@@ -2,12 +2,18 @@ use crate::cmd::{Cli, Commands};
 use clap::Parser;
 use std::fs;
 
+mod cloudtrail;
 mod cmd;
+mod rules;
+mod scan;
 
 fn main() {
-    let logo = fs::read_to_string("art/logo.txt").expect("Failed to read logo file");
+    let logo = fs::read_to_string("art/logo.txt").unwrap();
     println!("\x1b[38;2;255;175;0m{}\x1b[0m", logo);
     println!();
+
+    let rules = rules::load_rules_from_dir("rules");
+    println!("Loaded {} rules", rules.len());
 
     let cli = Cli::parse();
     match &cli.cmd {
