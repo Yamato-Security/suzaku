@@ -6,7 +6,6 @@ use std::fs;
 mod cloudtrail;
 mod cmd;
 mod rules;
-mod scan;
 
 fn main() {
     let logo = fs::read_to_string("art/logo.txt").unwrap();
