@@ -1,0 +1,217 @@
+name: suzaku Release Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_ver:
+        required: true
+        default: "0.0.x"
+        description: "Version of the release"
+      branch_or_tag:
+        required: true
+        default: "main"
+        description: "Branch or Tag to checkout"
+jobs:
+  upload:
+    runs-on: ${{ matrix.info.os }}
+    strategy:
+      matrix:
+        info:
+          - {
+            os: "windows-latest",
+            target: "x86_64-pc-windows-msvc",
+          }
+          - {
+            os: "windows-2022",
+            target: "i686-pc-windows-msvc",
+          }
+          - {
+            os: "windows-2019",
+            target: "aarch64-pc-windows-msvc",
+          }
+          - {
+            os: "ubuntu-latest",
+            target: "x86_64-unknown-linux-gnu",
+          }
+          - {
+            os: "ubuntu-24.04",
+            target: "x86_64-unknown-linux-musl",
+          }
+          - {
+            os: "ubuntu-22.04",
+            target: "aarch64-unknown-linux-gnu",
+          }
+          - {
+            os: "macos-latest",
+            target: "aarch64-apple-darwin",
+          }
+          - {
+            os: "macos-13",
+            target: "x86_64-apple-darwin",
+          }
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch_or_tag }}
+          submodules: 'true'
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.info.target }}
+
+      - name: Install gcc-aarch64-linux-gnu
+        if: matrix.info.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc-aarch64-linux-gnu
+          cat << EOF >> ./.cargo/config.toml
+          
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+
+      - name: Install x86_64-unknown-linux-musl
+        if: matrix.info.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install musl-tools
+
+      - name: Build Suzaku binary
+        run: |
+          cargo build --release --target ${{ matrix.info.target }}
+
+      - name: Package and Zip - Windows
+        if: contains(matrix.info.os, 'windows') == true
+        shell: pwsh
+        run: |
+          mkdir -p release-binaries
+          Copy-Item -Path ./target/release/suzaku.exe -Destination release-binaries/
+          Copy-Item -Recurse -Path ./rules -Destination release-binaries/
+          Copy-Item -Recurse -Path ./art -Destination release-binaries/
+          switch ("${{ matrix.info.os }}") {
+              "windows-latest" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x64.exe }
+              "windows-2022" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe }
+              "windows-2019" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-aarch64.exe }
+          }
+
+      - name: Package and Zip - Unix
+        if: contains(matrix.info.os, 'windows') == false
+        run: |
+          mkdir -p release-binaries
+          cp ./target/release/suzaku release-binaries/
+          cp -r ./rules release-binaries/rules
+          cp -r ./art release-binaries/art
+          case ${{ matrix.info.os }} in
+            'ubuntu-latest')
+                mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-x64-gnu ;;
+            'ubuntu-24.04')
+                cp ./target/x86_64-unknown-linux-musl/release/suzaku release-binaries/
+                mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-x64-musl ;;
+            'ubuntu-22.04')
+                mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-gnu ;;
+            'ubuntu-20.04')
+                mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-musl ;;
+            'macos-latest')
+                mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-mac-aarch64 ;;
+            'macos-13')
+                mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-mac-x64 ;;
+          esac
+
+      - name: Set Artifact Name
+        id: set_artifact_name
+        shell: bash
+        run: |
+          case "${{ matrix.info.os }}" in
+            'windows-latest')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-win-x64" >> $GITHUB_OUTPUT ;;
+            'windows-2022')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-win-x86" >> $GITHUB_OUTPUT ;;
+            'windows-2019')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-win-aarch64" >> $GITHUB_OUTPUT ;;
+            'ubuntu-latest')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-x64-gnu" >> $GITHUB_OUTPUT ;;
+            'ubuntu-24.04')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-x64-musl" >> $GITHUB_OUTPUT ;;
+            'ubuntu-22.04')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-gnu" >> $GITHUB_OUTPUT ;;
+            'ubuntu-20.04')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-musl" >> $GITHUB_OUTPUT ;;
+            'macos-latest')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-mac-aarch64" >> $GITHUB_OUTPUT ;;
+            'macos-13')
+              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-mac-x64" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.set_artifact_name.outputs.artifact_name }}
+          path: release-binaries/*
+          include-hidden-files: true
+
+      - name: Setup node
+        if: matrix.info.os == 'macos-latest'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Create PDF
+        if: matrix.info.os == 'macos-latest'
+        run: |
+          npm i -g md-to-pdf
+          md-to-pdf ./*.md --md-file-encoding utf-8
+          mv ./README.pdf ./README-${{ github.event.inputs.release_ver }}-English.pdf
+          mv ./README-Japanese.pdf ./README-${{ github.event.inputs.release_ver }}-Japanese.pdf
+
+      - name: Upload Document Artifacts
+        if: matrix.info.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: suzaku-documents
+          path: |
+            ./*.pdf
+
+  upload-all-platforms:
+    needs: upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-packages
+          pattern: suzaku-*
+          merge-multiple: true
+
+      - name: Upload Artifacts(all-platforms)
+        uses: actions/upload-artifact@v4
+        with:
+          name: suzaku-${{ github.event.inputs.release_ver }}-all-platforms
+          path: all-packages/*
+          include-hidden-files: true
+
+  all-packages-zip:
+    needs: upload-all-platforms
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-packages
+          pattern: suzaku-*
+      - run: |
+          ls -lR all-packages
+          cd all-packages
+          for dir in */; do
+            cd "$dir"
+            zip -r "../${dir%/}.zip" *
+            cd ..
+          done
+      - name: Upload Zip Artifacts(all-packages)
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-packages
+          path: all-packages/*.zip
