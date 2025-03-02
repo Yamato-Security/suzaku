@@ -36,9 +36,9 @@ where
         let pb_msg = format!("{} ({})", path, 0);
         pb.set_message(pb_msg);
         let log_contents = if path.ends_with("json") {
-            fs::read_to_string(path)?
+            fs::read_to_string(&path)?
         } else if path.ends_with("gz") {
-            read_gz_file(&PathBuf::from(path))?
+            read_gz_file(&PathBuf::from(&path))?
         } else {
             pb.inc(1);
             continue;
@@ -53,7 +53,7 @@ where
             }
             Value::Object(json_map) => {
                 let json_array = json_map.get("Records").unwrap();
-                for json_value in json_array {
+                for json_value in json_array.as_array().unwrap() {
                     let event: Event = event_from_json(json_value.to_string().as_str())?;
                     process_event(event);
                 }
