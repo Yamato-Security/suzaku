@@ -1,3 +1,4 @@
+use crate::cloudtrail::{load_json_from_dir, load_json_from_file};
 use crate::cmd::{Cli, Commands};
 use clap::Parser;
 use std::fs;
@@ -22,11 +23,20 @@ fn main() {
             file,
             output,
         } => {
-            if let Some(dir) = directory {
-                println!("Directory: {}", dir);
+            let mut events = Vec::new();
+            if let Some(d) = directory {
+                events = load_json_from_dir(d).unwrap();
+            } else if let Some(f) = file {
+                events = load_json_from_file(f).unwrap();
             }
-            if let Some(file) = file {
-                println!("File: {}", file);
+
+            for event in events {
+                for rule in &rules {
+                    if rule.is_match(&event) {
+                        println!("Matched rule: {:?}", rule.title);
+                        println!("Matched event: {:?}", event);
+                    }
+                }
             }
             println!("Output: {:?}", output);
         }
