@@ -1,4 +1,4 @@
-use crate::cloudtrail::{load_json_from_dir, load_json_from_file};
+use crate::cloudtrail::{load_json_from_file, process_events_from_dir};
 use crate::cmd::{Cli, Commands};
 use clap::Parser;
 use std::fs;
@@ -23,20 +23,19 @@ fn main() {
             file,
             output,
         } => {
-            let mut events = Vec::new();
-            if let Some(d) = directory {
-                events = load_json_from_dir(d).unwrap();
-            } else if let Some(f) = file {
-                events = load_json_from_file(f).unwrap();
-            }
-
-            for event in events {
+            let scan_by_all_rules = |event| {
                 for rule in &rules {
                     if rule.is_match(&event) {
                         println!("Matched rule: {:?}", rule.title);
-                        //println!("Matched event: {:?}", event);
+                        println!("Matched event: {:?}", event);
                     }
                 }
+            };
+            if let Some(d) = directory {
+                process_events_from_dir(d, scan_by_all_rules).unwrap();
+            } else if let Some(f) = file {
+                let events = load_json_from_file(f).unwrap();
+                events.into_iter().for_each(scan_by_all_rules);
             }
             println!("Output: {:?}", output);
         }
