@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::{fs, io};
+use serde_json::Value;
 
 pub fn process_events_from_dir<F>(
     directory: &PathBuf,
@@ -42,10 +43,24 @@ where
             pb.inc(1);
             continue;
         };
-        let json_array: Vec<serde_json::Value> = serde_json::from_str(&log_contents)?;
-        for json_value in json_array {
-            let event: Event = event_from_json(json_value.to_string().as_str())?;
-            process_event(event);
+        let json_value: Value = serde_json::from_str(&log_contents)?;
+        match json_value {
+            Value::Array(json_array) => {
+                for json_value in json_array {
+                    let event: Event = event_from_json(json_value.to_string().as_str())?;
+                    process_event(event);
+                }
+            }
+            Value::Object(json_map) => {
+                let json_array = json_map.get("Records").unwrap();
+                for json_value in json_array {
+                    let event: Event = event_from_json(json_value.to_string().as_str())?;
+                    process_event(event);
+                }
+            }
+            _ => {
+                eprintln!("Unexpected JSON structure in file: {}", path);
+            }
         }
         pb.inc(1);
     }
