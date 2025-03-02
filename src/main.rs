@@ -1,10 +1,13 @@
 use crate::cloudtrail::{load_json_from_file, process_events_from_dir};
 use crate::cmd::{Cli, Commands};
+use crate::result::s;
 use clap::Parser;
+use csv::Writer;
 use std::fs;
 
 mod cloudtrail;
 mod cmd;
+mod result;
 mod rules;
 
 fn main() {
@@ -22,11 +25,28 @@ fn main() {
             file,
             output,
         } => {
+            let mut wtr = Writer::from_path(output).unwrap();
+            let csv_header = vec![
+                "eventTime",
+                "Rule Title",
+                "Level",
+                "awsRegion",
+                "eventName",
+                "eventSource",
+            ];
+            wtr.write_record(csv_header).unwrap();
             let scan_by_all_rules = |event| {
                 for rule in &rules {
                     if rule.is_match(&event) {
-                        println!("Matched rule: {:?}", rule.title);
-                        println!("Matched event: {:?}", event);
+                        let record = vec![
+                            s(format!("{:?}", event.get("eventTime").unwrap())),
+                            rule.title.to_string(),
+                            format!("{:?}", rule.level.as_ref().unwrap()),
+                            s(format!("{:?}", event.get("awsRegion").unwrap())),
+                            s(format!("{:?}", event.get("eventName").unwrap())),
+                            s(format!("{:?}", event.get("eventSource").unwrap())),
+                        ];
+                        wtr.write_record(&record).unwrap();
                     }
                 }
             };
@@ -36,7 +56,6 @@ fn main() {
                 let events = load_json_from_file(f).unwrap();
                 events.into_iter().for_each(scan_by_all_rules);
             }
-            println!("Output: {:?}", output);
         }
     }
 }

@@ -10,6 +10,6 @@ include = ["src/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
 [dependencies]
 clap = {version = "4.5.31", features = ["derive", "env"]}
 sigma-rust = "0.5.1"
-indicatif = "0.17.11"
 serde_json = "1.0.139"
 flate2 = "1.1.0"
+csv = "1.3.*"
