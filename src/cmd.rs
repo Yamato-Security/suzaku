@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -33,6 +34,6 @@ pub enum Commands {
         file: Option<String>,
 
         #[arg(short, long, value_name = "FILE", help = "Output JSON")]
-        output: Option<String>,
+        output: PathBuf,
     },
 }

@@ -28,9 +28,7 @@ fn main() {
             if let Some(file) = file {
                 println!("File: {}", file);
             }
-            if let Some(output) = output {
-                println!("Output: {}", output);
-            }
+            println!("Output: {:?}", output);
         }
     }
 }
