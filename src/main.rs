@@ -1,14 +1,14 @@
-use crate::scan::{load_json_from_file, process_events_from_dir};
 use crate::cmd::{Cli, Commands};
 use crate::result::s;
+use crate::scan::{load_json_from_file, process_events_from_dir, read_gz_file};
 use clap::Parser;
 use csv::Writer;
 use std::fs;
 
-mod scan;
 mod cmd;
 mod result;
 mod rules;
+mod scan;
 
 fn main() {
     let logo = fs::read_to_string("art/logo.txt").unwrap();
@@ -55,8 +55,15 @@ fn main() {
             if let Some(d) = directory {
                 process_events_from_dir(d, scan_by_all_rules).unwrap();
             } else if let Some(f) = file {
-                let events = load_json_from_file(f).unwrap();
-                events.into_iter().for_each(scan_by_all_rules);
+                if f.ends_with(".json") {
+                    let log_contents = fs::read_to_string(f).unwrap();
+                    let events = load_json_from_file(&log_contents).unwrap();
+                    events.into_iter().for_each(scan_by_all_rules);
+                } else if f.ends_with(".gz") {
+                    let log_contents = read_gz_file(f).unwrap();
+                    let events = load_json_from_file(&log_contents).unwrap();
+                    events.into_iter().for_each(scan_by_all_rules);
+                }
             }
         }
     }

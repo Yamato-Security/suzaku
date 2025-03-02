@@ -23,7 +23,7 @@ pub enum Commands {
             value_name = "DIR",
             help = "Directory of multiple log files"
         )]
-        directory: Option<String>,
+        directory: Option<PathBuf>,
 
         #[arg(
             short,
@@ -31,7 +31,7 @@ pub enum Commands {
             value_name = "FILE",
             help = "The log file to scan(json/gz)"
         )]
-        file: Option<String>,
+        file: Option<PathBuf>,
 
         #[arg(short, long, value_name = "FILE", help = "Output JSON")]
         output: PathBuf,
