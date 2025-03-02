@@ -34,7 +34,7 @@ fn main() {
                 for rule in &rules {
                     if rule.is_match(&event) {
                         println!("Matched rule: {:?}", rule.title);
-                        println!("Matched event: {:?}", event);
+                        //println!("Matched event: {:?}", event);
                     }
                 }
             }

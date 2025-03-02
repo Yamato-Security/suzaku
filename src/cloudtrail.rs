@@ -54,6 +54,6 @@ mod tests {
         let result = load_json_from_dir(test_dir);
         assert!(result.is_ok());
         let events = result.unwrap();
-        assert_eq!(events.len(), 1);
+        assert_eq!(events.len(), 4);
     }
 }
