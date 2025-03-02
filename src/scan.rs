@@ -1,6 +1,7 @@
 use colored::Colorize;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use serde_json::Value;
 use sigma_rust::Event;
 use sigma_rust::event_from_json;
 use std::error::Error;
@@ -8,7 +9,6 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::{fs, io};
-use serde_json::Value;
 
 pub fn process_events_from_dir<F>(
     directory: &PathBuf,
@@ -52,10 +52,11 @@ where
                 }
             }
             Value::Object(json_map) => {
-                let json_array = json_map.get("Records").unwrap();
-                for json_value in json_array.as_array().unwrap() {
-                    let event: Event = event_from_json(json_value.to_string().as_str())?;
-                    process_event(event);
+                if let Some(json_array) = json_map.get("Records") {
+                    for json_value in json_array.as_array().unwrap() {
+                        let event: Event = event_from_json(json_value.to_string().as_str())?;
+                        process_event(event);
+                    }
                 }
             }
             _ => {
@@ -95,7 +96,6 @@ pub fn read_gz_file(file_path: &PathBuf) -> io::Result<String> {
 }
 pub fn load_json_from_file(log_contents: &str) -> Result<Vec<Event>, Box<dyn Error>> {
     let json_array: Vec<serde_json::Value> = serde_json::from_str(log_contents)?;
-
     let mut events = Vec::new();
     for json_value in json_array {
         let event: Event = event_from_json(json_value.to_string().as_str())?;
