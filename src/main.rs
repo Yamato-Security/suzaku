@@ -33,6 +33,7 @@ fn main() {
                 "awsRegion",
                 "eventName",
                 "eventSource",
+                "eventID",
             ];
             wtr.write_record(csv_header).unwrap();
             let scan_by_all_rules = |event| {
@@ -45,6 +46,7 @@ fn main() {
                             s(format!("{:?}", event.get("awsRegion").unwrap())),
                             s(format!("{:?}", event.get("eventName").unwrap())),
                             s(format!("{:?}", event.get("eventSource").unwrap())),
+                            s(format!("{:?}", event.get("eventID").unwrap())),
                         ];
                         wtr.write_record(&record).unwrap();
                     }
