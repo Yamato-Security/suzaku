@@ -1,4 +1,4 @@
-name: suzaku Release Automation
+name: Suzaku Release Automation
 
 on:
   workflow_dispatch:
