@@ -1,11 +1,11 @@
-use crate::cloudtrail::{load_json_from_file, process_events_from_dir};
+use crate::scan::{load_json_from_file, process_events_from_dir};
 use crate::cmd::{Cli, Commands};
 use crate::result::s;
 use clap::Parser;
 use csv::Writer;
 use std::fs;
 
-mod cloudtrail;
+mod scan;
 mod cmd;
 mod result;
 mod rules;
@@ -15,9 +15,6 @@ fn main() {
     println!("\x1b[38;2;255;175;0m{}\x1b[0m", logo);
     println!();
 
-    let rules = rules::load_rules_from_dir("rules");
-    println!("Loaded {} rules", rules.len());
-
     let cli = Cli::parse();
     match &cli.cmd {
         Commands::AwsDetect {
@@ -25,6 +22,9 @@ fn main() {
             file,
             output,
         } => {
+            let rules = rules::load_rules_from_dir("rules");
+            println!("Loaded {} rules", rules.len());
+
             let mut wtr = Writer::from_path(output).unwrap();
             let csv_header = vec![
                 "eventTime",

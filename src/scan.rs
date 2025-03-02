@@ -39,7 +39,7 @@ where
         }
         pb.inc(1);
     }
-    pb.finish_with_message("Done.");
+    pb.finish_with_message("Scanning finished.");
     Ok(())
 }
 
