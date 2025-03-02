@@ -64,6 +64,7 @@ fn main() {
                     let events = load_json_from_file(&log_contents).unwrap();
                     events.into_iter().for_each(scan_by_all_rules);
                 }
+                println!("Scanning finished.");
             }
         }
     }
