@@ -102,7 +102,7 @@ jobs:
         if: contains(matrix.info.os, 'windows') == false
         run: |
           mkdir -p release-binaries
-          cargo build --release --target ${{ matrix.info.target }}
+          ls -la ./target/release/
           cp ./target/release/suzaku release-binaries/
           cp -r ./rules release-binaries/rules
           cp -r ./art release-binaries/art
