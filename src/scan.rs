@@ -1,3 +1,4 @@
+use bytesize::ByteSize;
 use colored::Colorize;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
@@ -33,7 +34,9 @@ where
             .with_tab_width(55);
     pb.set_style(pb_style);
     for path in file_paths {
-        let pb_msg = format!("{} ({})", path, 0);
+        let size = fs::metadata(&path).unwrap().len();
+        let size = ByteSize::b(size).to_string_as(false);
+        let pb_msg = format!("{} ({})", path, size);
         pb.set_message(pb_msg);
         let log_contents = if path.ends_with("json") {
             fs::read_to_string(&path)?
