@@ -23,7 +23,7 @@ fn main() {
             output,
         } => {
             let rules = rules::load_rules_from_dir("rules");
-            println!("Loaded {} rules", rules.len());
+            println!("Total detection rules: {:?}", rules.len());
 
             let mut wtr = Writer::from_path(output).unwrap();
             let csv_header = vec![
