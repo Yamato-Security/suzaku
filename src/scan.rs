@@ -21,7 +21,7 @@ where
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).to_string_as(false);
     println!("Total log files(json/gz): {}", count);
-    println!("Total file size: {}", size);
+    println!("Total file size: {}\n", size);
 
     let template = format!(
         "[{{elapsed_precise}}] {{human_pos}} / {{human_len}} {} [{}] {{percent}}%\r\n\r\n{{msg}}",
