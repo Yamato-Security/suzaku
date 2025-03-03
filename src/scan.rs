@@ -7,7 +7,7 @@ use sigma_rust::Event;
 use sigma_rust::event_from_json;
 use std::error::Error;
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::{fs, io};
 
@@ -101,7 +101,7 @@ fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>, u64
 
 pub fn read_gz_file(file_path: &PathBuf) -> io::Result<String> {
     let file = File::open(file_path)?;
-    let mut decoder = GzDecoder::new(file);
+    let mut decoder = GzDecoder::new(BufReader::new(file));
     let mut contents = String::new();
     decoder.read_to_string(&mut contents)?;
     Ok(contents)
