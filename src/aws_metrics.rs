@@ -15,7 +15,7 @@ pub fn aws_metrics(
     output: &Option<PathBuf>,
 ) {
     let mut wtr = get_writer(output);
-    let csv_header = vec!["Total", "%", "eventName"];
+    let csv_header = vec!["Total", "%", field];
     if output.is_some() {
         wtr.write_record(&csv_header).unwrap();
     }
