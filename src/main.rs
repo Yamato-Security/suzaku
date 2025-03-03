@@ -1,9 +1,11 @@
 use crate::cmd::{Cli, Commands};
 use crate::result::s;
 use crate::scan::{load_json_from_file, process_events_from_dir, read_gz_file};
+use chrono::Local;
 use clap::Parser;
 use csv::Writer;
 use std::fs;
+use std::time::Instant;
 
 mod cmd;
 mod result;
@@ -22,6 +24,9 @@ fn main() {
             file,
             output,
         } => {
+            let start = Instant::now();
+            println!("Start time: {}\n", Local::now().format("%Y/%m/%d %H:%M"));
+
             let rules = rules::load_rules_from_dir("rules");
             println!("Total detection rules: {:?}", rules.len());
 
@@ -66,6 +71,12 @@ fn main() {
                 }
                 println!("Scanning finished.");
             }
+
+            let duration = start.elapsed();
+            let hours = duration.as_secs() / 3600;
+            let minutes = (duration.as_secs() % 3600) / 60;
+            let seconds = duration.as_secs() % 60;
+            println!("Elapsed time: {:02}:{:02}:{:02}\n", hours, minutes, seconds);
         }
     }
 }
