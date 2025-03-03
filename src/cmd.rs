@@ -59,10 +59,10 @@ pub enum Commands {
             short = 'F',
             default_value = "eventName",
             long,
-            value_name = "FIELD",
+            value_name = "FIELD_NAME",
             help = "The field to generate metrics for"
         )]
-        field: String,
+        field_name: String,
 
         #[arg(short, long, value_name = "FILE", help = "Output CSV")]
         output: Option<PathBuf>,
