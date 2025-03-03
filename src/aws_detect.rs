@@ -1,19 +1,14 @@
 use crate::rules;
 use crate::scan::{load_json_from_file, process_events_from_dir, read_gz_file};
-use csv::Writer;
+use crate::util::{get_writer, s};
+use std::fs;
 use std::path::PathBuf;
-use std::{fs, io};
 
 pub fn aws_detect(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &Option<PathBuf>) {
     let rules = rules::load_rules_from_dir("rules");
     println!("Total detection rules: {:?}", rules.len());
 
-    let mut wtr: Writer<Box<dyn io::Write>> = if let Some(output) = output {
-        Writer::from_writer(Box::new(fs::File::create(output).unwrap()))
-    } else {
-        Writer::from_writer(Box::new(io::stdout()))
-    };
-
+    let mut wtr = get_writer(output);
     let csv_header = vec![
         "eventTime",
         "Rule Title",
@@ -55,8 +50,4 @@ pub fn aws_detect(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &
         events.into_iter().for_each(scan_by_all_rules);
         println!("Scanning finished.");
     }
-}
-
-fn s(input: String) -> String {
-    input.replace(r#"Value(String(""#, "").replace(r#""))"#, "")
 }

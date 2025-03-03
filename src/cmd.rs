@@ -36,4 +36,26 @@ pub enum Commands {
         #[arg(short, long, value_name = "FILE", help = "Output CSV")]
         output: Option<PathBuf>,
     },
+
+    #[command(about = "Generates metrics from AWS CloudTrail logs.")]
+    AwsCloudTrailMetrics {
+        #[arg(
+            short,
+            long,
+            value_name = "DIR",
+            help = "Directory of multiple log files"
+        )]
+        directory: Option<PathBuf>,
+
+        #[arg(
+            short,
+            long,
+            value_name = "FILE",
+            help = "The log file to scan(json/gz)"
+        )]
+        file: Option<PathBuf>,
+
+        #[arg(short, long, value_name = "FILE", help = "Output CSV")]
+        output: Option<PathBuf>,
+    },
 }
