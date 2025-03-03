@@ -38,13 +38,14 @@ fn main() {
         AwsCloudTrailMetrics {
             directory,
             file,
+            field,
             output,
         } => {
             if directory.is_none() && file.is_none() || directory.is_some() && file.is_some() {
                 println!("Please specify either a directory or a file.");
                 return;
             }
-            aws_metrics(directory, file, output);
+            aws_metrics(directory, file, field, output);
         }
     }
 

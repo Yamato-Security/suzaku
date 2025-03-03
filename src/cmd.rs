@@ -55,6 +55,15 @@ pub enum Commands {
         )]
         file: Option<PathBuf>,
 
+        #[arg(
+            short = 'F',
+            default_value = "eventName",
+            long,
+            value_name = "FIELD",
+            help = "The field to generate metrics for"
+        )]
+        field: String,
+
         #[arg(short, long, value_name = "FILE", help = "Output CSV")]
         output: Option<PathBuf>,
     },

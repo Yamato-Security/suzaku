@@ -8,7 +8,12 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
-pub fn aws_metrics(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &Option<PathBuf>) {
+pub fn aws_metrics(
+    directory: &Option<PathBuf>,
+    file: &Option<PathBuf>,
+    field: &str,
+    output: &Option<PathBuf>,
+) {
     let mut wtr = get_writer(output);
     let csv_header = vec!["Total", "%", "eventName"];
     if output.is_some() {
@@ -17,9 +22,12 @@ pub fn aws_metrics(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: 
 
     let mut count_map = HashMap::new();
     let stats_func = |event: Event| {
-        let event_name = s(format!("{:?}", event.get("eventName").unwrap()));
-        let count = count_map.entry(event_name).or_insert(0);
-        *count += 1;
+        let value = event.get(field);
+        if let Some(value) = value {
+            let event_name = s(format!("{:?}", value));
+            let count = count_map.entry(event_name).or_insert(0);
+            *count += 1;
+        }
     };
 
     if let Some(d) = directory {
