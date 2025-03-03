@@ -114,11 +114,26 @@ pub fn read_gz_file(file_path: &PathBuf) -> io::Result<String> {
     Ok(contents)
 }
 pub fn load_json_from_file(log_contents: &str) -> Result<Vec<Event>, Box<dyn Error>> {
-    let json_array: Vec<serde_json::Value> = serde_json::from_str(log_contents)?;
     let mut events = Vec::new();
-    for json_value in json_array {
-        let event: Event = event_from_json(json_value.to_string().as_str())?;
-        events.push(event);
+    let json_value: Value = serde_json::from_str(log_contents)?;
+    match json_value {
+        Value::Array(json_array) => {
+            for json_value in json_array {
+                let event: Event = event_from_json(json_value.to_string().as_str())?;
+                events.push(event);
+            }
+        }
+        Value::Object(json_map) => {
+            if let Some(json_array) = json_map.get("Records") {
+                for json_value in json_array.as_array().unwrap() {
+                    let event: Event = event_from_json(json_value.to_string().as_str())?;
+                    events.push(event);
+                }
+            }
+        }
+        _ => {
+            eprintln!("Unexpected JSON structure in file:");
+        }
     }
     Ok(events)
 }
@@ -135,5 +150,15 @@ mod tests {
         assert!(result.is_ok());
         let event = result.unwrap();
         assert_eq!(event.len(), 1);
+    }
+
+    #[test]
+    fn test_load_event_from_file_record() {
+        let test_file = "test_files/json/test.json";
+        let log_contents = fs::read_to_string(test_file).unwrap();
+        let result = load_json_from_file(&log_contents);
+        assert!(result.is_ok());
+        let event = result.unwrap();
+        assert_eq!(event.len(), 29);
     }
 }

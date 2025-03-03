@@ -39,15 +39,18 @@ pub fn aws_detect(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &
     if let Some(d) = directory {
         process_events_from_dir(d, output.is_some(), scan_by_all_rules).unwrap();
     } else if let Some(f) = file {
-        let log_contents = if f.ends_with(".json") {
+        let path = f.display().to_string();
+        let log_contents = if path.ends_with(".json") {
             fs::read_to_string(f).unwrap_or_default()
-        } else if f.ends_with(".gz") {
+        } else if path.ends_with(".gz") {
             read_gz_file(f).unwrap_or_default()
         } else {
             "".to_string()
         };
-        let events = load_json_from_file(&log_contents).unwrap();
-        events.into_iter().for_each(scan_by_all_rules);
-        println!("Scanning finished.");
+        let events = load_json_from_file(&log_contents);
+        if let Ok(events) = events {
+            events.into_iter().for_each(scan_by_all_rules);
+        }
     }
+    wtr.flush().ok();
 }

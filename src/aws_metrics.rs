@@ -26,17 +26,19 @@ pub fn aws_metrics(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: 
         process_events_from_dir(d, true, stats_func).unwrap();
         print_count_map_desc(csv_header, &count_map, wtr, output.is_none());
     } else if let Some(f) = file {
-        let log_contents = if f.ends_with(".json") {
+        let path = f.display().to_string();
+        let log_contents = if path.ends_with(".json") {
             fs::read_to_string(f).unwrap_or_default()
-        } else if f.ends_with(".gz") {
+        } else if path.ends_with(".gz") {
             read_gz_file(f).unwrap_or_default()
         } else {
             "".to_string()
         };
-        let events = load_json_from_file(&log_contents).unwrap();
-        events.into_iter().for_each(stats_func);
-        println!("Scanning finished.");
-        print_count_map_desc(csv_header, &count_map, wtr, output.is_none());
+        let events = load_json_from_file(&log_contents);
+        if let Ok(events) = events {
+            events.into_iter().for_each(stats_func);
+            print_count_map_desc(csv_header, &count_map, wtr, output.is_none());
+        }
     }
 }
 
@@ -57,6 +59,11 @@ fn print_count_map_desc(
     total_vec.sort_by(|a, b| b.1.cmp(a.1));
     let total: i32 = total_map.values().sum();
 
+    if total == 0 {
+        println!("No events found.");
+        return;
+    }
+
     for (event_name, count) in total_vec {
         let count = count.to_string();
         let rate = (count.parse::<f64>().unwrap() / total as f64) * 100.0;
@@ -68,6 +75,7 @@ fn print_count_map_desc(
             wrt.write_record(record).unwrap();
         }
     }
+    wrt.flush().ok();
     if show_table {
         println!("{}", table);
     }
