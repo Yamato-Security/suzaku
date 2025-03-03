@@ -18,8 +18,10 @@ pub fn process_events_from_dir<F>(
 where
     F: FnMut(Event),
 {
-    let (count, file_paths) = count_files_recursive(directory)?;
-    println!("JSON/gz files: {}\n", count);
+    let (count, file_paths, total_size) = count_files_recursive(directory)?;
+    let size = ByteSize::b(total_size).to_string_as(false);
+    println!("Total log files(json/gz): {}\n", count);
+    println!("Total file size: {}\n", size);
 
     let template = format!(
         "[{{elapsed_precise}}] {{human_pos}} / {{human_len}} {} [{}] {{percent}}%\r\n\r\n{{msg}}",
@@ -72,9 +74,10 @@ where
     Ok(())
 }
 
-fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>), Box<dyn Error>> {
+fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>, u64), Box<dyn Error>> {
     let mut count = 0;
     let mut paths = Vec::new();
+    let mut total_size = 0;
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
         let path = entry.path();
@@ -82,16 +85,18 @@ fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>), Bo
             if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
                 if ext == "json" || ext == "gz" {
                     count += 1;
+                    total_size += fs::metadata(&path)?.len();
                     paths.push(path.to_str().unwrap().to_string());
                 }
             }
         } else if path.is_dir() {
-            let (sub_count, sub_paths) = count_files_recursive(&path)?;
+            let (sub_count, sub_paths, sub_size) = count_files_recursive(&path)?;
             count += sub_count;
+            total_size += sub_size;
             paths.extend(sub_paths);
         }
     }
-    Ok((count, paths))
+    Ok((count, paths, total_size))
 }
 
 pub fn read_gz_file(file_path: &PathBuf) -> io::Result<String> {
