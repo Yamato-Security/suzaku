@@ -13,6 +13,7 @@ use std::{fs, io};
 
 pub fn process_events_from_dir<F>(
     directory: &PathBuf,
+    show_progress: bool,
     mut process_event: F,
 ) -> Result<(), Box<dyn Error>>
 where
@@ -36,10 +37,12 @@ where
             .with_tab_width(55);
     pb.set_style(pb_style);
     for path in file_paths {
-        let size = fs::metadata(&path).unwrap().len();
-        let size = ByteSize::b(size).to_string_as(false);
-        let pb_msg = format!("{} ({})", path, size);
-        pb.set_message(pb_msg);
+        if show_progress {
+            let size = fs::metadata(&path).unwrap().len();
+            let size = ByteSize::b(size).to_string_as(false);
+            let pb_msg = format!("{} ({})", path, size);
+            pb.set_message(pb_msg);
+        }
         let log_contents = if path.ends_with("json") {
             fs::read_to_string(&path)?
         } else if path.ends_with("gz") {
@@ -68,9 +71,13 @@ where
                 eprintln!("Unexpected JSON structure in file: {}", path);
             }
         }
-        pb.inc(1);
+        if show_progress {
+            pb.inc(1);
+        }
     }
-    pb.finish_with_message("Scanning finished.");
+    if show_progress {
+        pb.finish_with_message("Scanning finished.");
+    }
     Ok(())
 }
 

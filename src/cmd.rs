@@ -33,7 +33,7 @@ pub enum Commands {
         )]
         file: Option<PathBuf>,
 
-        #[arg(short, long, value_name = "FILE", help = "Output JSON")]
-        output: PathBuf,
+        #[arg(short, long, value_name = "FILE", help = "Output CSV")]
+        output: Option<PathBuf>,
     },
 }

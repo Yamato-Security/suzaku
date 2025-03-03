@@ -4,8 +4,8 @@ use crate::scan::{load_json_from_file, process_events_from_dir, read_gz_file};
 use chrono::Local;
 use clap::Parser;
 use csv::Writer;
-use std::fs;
 use std::time::Instant;
+use std::{fs, io};
 
 mod cmd;
 mod result;
@@ -30,7 +30,11 @@ fn main() {
             let rules = rules::load_rules_from_dir("rules");
             println!("Total detection rules: {:?}", rules.len());
 
-            let mut wtr = Writer::from_path(output).unwrap();
+            let mut wtr: Writer<Box<dyn io::Write>> = if let Some(output) = output {
+                Writer::from_writer(Box::new(fs::File::create(output).unwrap()))
+            } else {
+                Writer::from_writer(Box::new(io::stdout()))
+            };
             let csv_header = vec![
                 "eventTime",
                 "Rule Title",
@@ -58,7 +62,7 @@ fn main() {
                 }
             };
             if let Some(d) = directory {
-                process_events_from_dir(d, scan_by_all_rules).unwrap();
+                process_events_from_dir(d, output.is_some(), scan_by_all_rules).unwrap();
             } else if let Some(f) = file {
                 if f.ends_with(".json") {
                     let log_contents = fs::read_to_string(f).unwrap();
