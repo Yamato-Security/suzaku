@@ -13,9 +13,12 @@ mod rules;
 mod scan;
 
 fn main() {
-    let logo = fs::read_to_string("art/logo.txt").unwrap();
+    let logo = fs::read_to_string("art/logo.txt").unwrap_or_default();
     println!("\x1b[38;2;0;255;0m{}\x1b[0m", logo);
     println!();
+
+    let start = Instant::now();
+    println!("Start time: {}\n", Local::now().format("%Y/%m/%d %H:%M"));
 
     let cli = Cli::parse();
     match &cli.cmd {
@@ -24,9 +27,6 @@ fn main() {
             file,
             output,
         } => {
-            let start = Instant::now();
-            println!("Start time: {}\n", Local::now().format("%Y/%m/%d %H:%M"));
-
             let rules = rules::load_rules_from_dir("rules");
             println!("Total detection rules: {:?}", rules.len());
 
@@ -64,23 +64,23 @@ fn main() {
             if let Some(d) = directory {
                 process_events_from_dir(d, output.is_some(), scan_by_all_rules).unwrap();
             } else if let Some(f) = file {
-                if f.ends_with(".json") {
-                    let log_contents = fs::read_to_string(f).unwrap();
-                    let events = load_json_from_file(&log_contents).unwrap();
-                    events.into_iter().for_each(scan_by_all_rules);
+                let log_contents = if f.ends_with(".json") {
+                    fs::read_to_string(f).unwrap_or_default()
                 } else if f.ends_with(".gz") {
-                    let log_contents = read_gz_file(f).unwrap();
-                    let events = load_json_from_file(&log_contents).unwrap();
-                    events.into_iter().for_each(scan_by_all_rules);
-                }
+                    read_gz_file(f).unwrap_or_default()
+                } else {
+                    "".to_string()
+                };
+                let events = load_json_from_file(&log_contents).unwrap();
+                events.into_iter().for_each(scan_by_all_rules);
                 println!("Scanning finished.");
             }
-
-            let duration = start.elapsed();
-            let hours = duration.as_secs() / 3600;
-            let minutes = (duration.as_secs() % 3600) / 60;
-            let seconds = duration.as_secs() % 60;
-            println!("Elapsed time: {:02}:{:02}:{:02}\n", hours, minutes, seconds);
         }
     }
+
+    let duration = start.elapsed();
+    let hours = duration.as_secs() / 3600;
+    let minutes = (duration.as_secs() % 3600) / 60;
+    let seconds = duration.as_secs() % 60;
+    println!("Elapsed time: {:02}:{:02}:{:02}\n", hours, minutes, seconds);
 }
