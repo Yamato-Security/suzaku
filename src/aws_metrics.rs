@@ -11,7 +11,9 @@ use std::path::PathBuf;
 pub fn aws_metrics(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &Option<PathBuf>) {
     let mut wtr = get_writer(output);
     let csv_header = vec!["Total", "%", "eventName"];
-    wtr.write_record(&csv_header).unwrap();
+    if output.is_some() {
+        wtr.write_record(&csv_header).unwrap();
+    }
 
     let mut count_map = HashMap::new();
     let stats_func = |event: Event| {
