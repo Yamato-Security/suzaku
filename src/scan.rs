@@ -75,9 +75,13 @@ fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>), Bo
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
         let path = entry.path();
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
-            count += 1;
-            paths.push(path.to_str().unwrap().to_string());
+        if path.is_file() {
+            if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                if ext == "json" || ext == "gz" {
+                    count += 1;
+                    paths.push(path.to_str().unwrap().to_string());
+                }
+            }
         } else if path.is_dir() {
             let (sub_count, sub_paths) = count_files_recursive(&path)?;
             count += sub_count;
