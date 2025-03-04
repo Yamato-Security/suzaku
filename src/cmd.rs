@@ -16,7 +16,7 @@ pub enum Commands {
     #[command(
         about = "Creates a AWS CloudTrail log DFIR timeline"
     )]
-    AwsDetect {
+    AwsCtTimeline {
         #[arg(
             short,
             long,
@@ -38,7 +38,7 @@ pub enum Commands {
     },
 
     #[command(about = "Generates metrics from AWS CloudTrail logs")]
-    AwsCloudTrailMetrics {
+    AwsCtMetrics {
         #[arg(
             short,
             long,
