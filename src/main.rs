@@ -1,7 +1,7 @@
 use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
 use crate::cmd::Cli;
-use crate::cmd::Commands::{AwsCloudTrailMetrics, AwsDetect};
+use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline};
 use chrono::Local;
 use clap::Parser;
 use std::fs;
@@ -24,7 +24,7 @@ fn main() {
 
     let cmd = &Cli::parse().cmd;
     match cmd {
-        AwsDetect {
+        AwsCtTimeline {
             directory,
             file,
             output,
@@ -35,7 +35,7 @@ fn main() {
             }
             aws_detect(directory, file, output);
         }
-        AwsCloudTrailMetrics {
+        AwsCtMetrics {
             directory,
             file,
             field_name,
