@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[command(name = "Suzaku")]
 #[command(version = "0.0.1")]
 #[command(author = "Yamato Security @SecurityYamato")]
-#[command(about = "CloudTrail Threat Detection")]
+#[command(about = "Cloud Log Threat Detection and Fast Forensics")]
 pub struct Cli {
     #[command(subcommand)]
     pub(crate) cmd: Commands,
@@ -14,14 +14,14 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(
-        about = "Scans AWS CloudTrail logs using Sigma rules to detect potential security threats."
+        about = "Creates a AWS CloudTrail log DFIR timeline"
     )]
     AwsDetect {
         #[arg(
             short,
             long,
             value_name = "DIR",
-            help = "Directory of multiple log files"
+            help = "Directory of multiple log files (json/gz)"
         )]
         directory: Option<PathBuf>,
 
@@ -29,7 +29,7 @@ pub enum Commands {
             short,
             long,
             value_name = "FILE",
-            help = "The log file to scan(json/gz)"
+            help = "The log file to scan (json/gz)"
         )]
         file: Option<PathBuf>,
 
@@ -37,13 +37,13 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
 
-    #[command(about = "Generates metrics from AWS CloudTrail logs.")]
+    #[command(about = "Generates metrics from AWS CloudTrail logs")]
     AwsCloudTrailMetrics {
         #[arg(
             short,
             long,
             value_name = "DIR",
-            help = "Directory of multiple log files"
+            help = "Directory of multiple log files (json/gz)"
         )]
         directory: Option<PathBuf>,
 
@@ -51,7 +51,7 @@ pub enum Commands {
             short,
             long,
             value_name = "FILE",
-            help = "The log file to scan(json/gz)"
+            help = "The log file to scan (json/gz)"
         )]
         file: Option<PathBuf>,
 
