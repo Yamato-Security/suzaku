@@ -13,9 +13,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(
-        about = "Creates a AWS CloudTrail log DFIR timeline"
-    )]
+    #[command(about = "Creates a AWS CloudTrail log DFIR timeline")]
     AwsCtTimeline {
         #[arg(
             short,
@@ -35,6 +33,10 @@ pub enum Commands {
 
         #[arg(short, long, value_name = "FILE", help = "Output CSV")]
         output: Option<PathBuf>,
+
+        /// Quiet mode: do not display the launch banner
+        #[arg(short, long)]
+        quiet: bool,
     },
 
     #[command(about = "Generates metrics from AWS CloudTrail logs")]
@@ -66,5 +68,9 @@ pub enum Commands {
 
         #[arg(short, long, value_name = "FILE", help = "Output CSV")]
         output: Option<PathBuf>,
+
+        /// Quiet mode: do not display the launch banner
+        #[arg(short, long)]
+        quiet: bool,
     },
 }
