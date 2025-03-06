@@ -20,7 +20,7 @@ fn main() {
         || args.len() == 2
             && (args.contains(&String::from("-h")) || args.contains(&String::from("--help")))
     {
-        display_logo(true);
+        display_logo(false);
         Cli::command().print_help().unwrap();
         return;
     }
