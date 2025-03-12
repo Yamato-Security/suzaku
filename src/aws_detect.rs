@@ -1,7 +1,6 @@
 use crate::rules;
-use crate::scan::{load_json_from_file, process_events_from_dir, read_gz_file};
+use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::util::{get_writer, s};
-use std::fs;
 use std::path::PathBuf;
 
 pub fn aws_detect(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &Option<PathBuf>) {
@@ -39,14 +38,7 @@ pub fn aws_detect(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &
     if let Some(d) = directory {
         process_events_from_dir(d, output.is_some(), scan_by_all_rules).unwrap();
     } else if let Some(f) = file {
-        let path = f.display().to_string();
-        let log_contents = if path.ends_with(".json") {
-            fs::read_to_string(f).unwrap_or_default()
-        } else if path.ends_with(".gz") {
-            read_gz_file(f).unwrap_or_default()
-        } else {
-            "".to_string()
-        };
+        let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
             events.into_iter().for_each(scan_by_all_rules);

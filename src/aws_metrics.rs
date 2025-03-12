@@ -1,10 +1,9 @@
-use crate::scan::{load_json_from_file, process_events_from_dir, read_gz_file};
+use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::util::{get_writer, s};
 use comfy_table::{Cell, CellAlignment, Table};
 use csv::Writer;
 use sigma_rust::Event;
 use std::collections::HashMap;
-use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -34,14 +33,7 @@ pub fn aws_metrics(
         process_events_from_dir(d, true, stats_func).unwrap();
         print_count_map_desc(csv_header, &count_map, wtr, output.is_none());
     } else if let Some(f) = file {
-        let path = f.display().to_string();
-        let log_contents = if path.ends_with(".json") {
-            fs::read_to_string(f).unwrap_or_default()
-        } else if path.ends_with(".gz") {
-            read_gz_file(f).unwrap_or_default()
-        } else {
-            "".to_string()
-        };
+        let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
             events.into_iter().for_each(stats_func);

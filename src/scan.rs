@@ -138,6 +138,17 @@ pub fn load_json_from_file(log_contents: &str) -> Result<Vec<Event>, Box<dyn Err
     Ok(events)
 }
 
+pub fn get_content(f: &PathBuf) -> String {
+    let path = f.display().to_string();
+    if path.ends_with(".json") {
+        fs::read_to_string(f).unwrap_or_default()
+    } else if path.ends_with(".gz") {
+        read_gz_file(f).unwrap_or_default()
+    } else {
+        "".to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
