@@ -1,0 +1,7 @@
+Timestamp,awsLog.eventTime
+RuleTitle,sigmaRule.title
+Level,sigmaRule.level
+AWS-Region,awsLog.awsRegion
+EventName,awsLog.eventName
+EventSource,awsLog.eventSource
+EventID,awsLog.eventID
