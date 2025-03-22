@@ -6,7 +6,12 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-pub fn aws_detect(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &Option<PathBuf>) {
+pub fn aws_detect(
+    directory: &Option<PathBuf>,
+    file: &Option<PathBuf>,
+    output: &Option<PathBuf>,
+    no_color: bool,
+) {
     let profile = load_profile("config/aws_ct_timeline_default_profile.txt");
     let rules = rules::load_rules_from_dir("rules");
     println!("Total detection rules: {:?}", rules.len());
@@ -28,7 +33,7 @@ pub fn aws_detect(directory: &Option<PathBuf>, file: &Option<PathBuf>, output: &
     };
 
     if let Some(d) = directory {
-        process_events_from_dir(d, output.is_some(), scan_by_all_rules).unwrap();
+        process_events_from_dir(scan_by_all_rules, d, output.is_some(), no_color).unwrap();
     } else if let Some(f) = file {
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);

@@ -35,7 +35,7 @@ fn main() {
             display_logo(common_opt.quiet, common_opt.no_color);
             let dir = &input_opt.directory;
             let file = &input_opt.filepath;
-            aws_detect(dir, file, output);
+            aws_detect(dir, file, output, common_opt.no_color);
         }
         AwsCtMetrics {
             input_opt,
@@ -47,7 +47,7 @@ fn main() {
             let dir = &input_opt.directory;
             let file = &input_opt.filepath;
             let field_name = field_name.as_ref();
-            aws_metrics(dir, file, field_name, output);
+            aws_metrics(dir, file, field_name, output, common_opt.no_color);
         }
     }
 

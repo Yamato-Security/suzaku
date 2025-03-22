@@ -12,9 +12,10 @@ use std::path::PathBuf;
 use std::{fs, io};
 
 pub fn process_events_from_dir<F>(
+    mut process_event: F,
     directory: &PathBuf,
     show_progress: bool,
-    mut process_event: F,
+    no_color: bool,
 ) -> Result<(), Box<dyn Error>>
 where
     F: FnMut(Event),
@@ -24,11 +25,15 @@ where
     println!("Total log files: {}", count);
     println!("Total file size: {}\n", size);
 
-    let template = format!(
-        "[{{elapsed_precise}}] {{human_pos}} / {{human_len}} {} [{}] {{percent}}%\r\n\r\n{{msg}}",
-        "{spinner}".truecolor(0, 255, 0),
-        "{bar:40}".truecolor(0, 255, 0)
-    );
+    let template = if no_color {
+        "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}".to_string()
+    } else {
+        format!(
+            "[{{elapsed_precise}}] {{human_pos}} / {{human_len}} {} [{}] {{percent}}%\r\n\r\n{{msg}}",
+            "{spinner}".truecolor(0, 255, 0),
+            "{bar:40}".truecolor(0, 255, 0)
+        )
+    };
     let pb_style = ProgressStyle::with_template(&template)
         .unwrap()
         .progress_chars("=> ");
