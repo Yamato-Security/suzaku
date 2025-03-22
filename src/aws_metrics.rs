@@ -12,6 +12,7 @@ pub fn aws_metrics(
     file: &Option<PathBuf>,
     field: &str,
     output: &Option<PathBuf>,
+    no_color: bool,
 ) {
     let mut wtr = get_writer(output);
     let csv_header = vec!["Total", "%", field];
@@ -30,7 +31,7 @@ pub fn aws_metrics(
     };
 
     if let Some(d) = directory {
-        process_events_from_dir(d, true, stats_func).unwrap();
+        process_events_from_dir(stats_func, d, true, no_color).unwrap();
         print_count_map_desc(csv_header, &count_map, wtr, output.is_none());
     } else if let Some(f) = file {
         let log_contents = get_content(f);
