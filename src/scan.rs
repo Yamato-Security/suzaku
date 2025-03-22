@@ -26,7 +26,8 @@ where
     println!("Total file size: {}\n", size);
 
     let template = if no_color {
-        "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}".to_string()
+        "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}"
+            .to_string()
     } else {
         format!(
             "[{{elapsed_precise}}] {{human_pos}} / {{human_len}} {} [{}] {{percent}}%\r\n\r\n{{msg}}",
