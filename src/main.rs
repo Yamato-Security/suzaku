@@ -2,6 +2,7 @@ use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
 use crate::cmd::Cli;
 use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline};
+use crate::util::check_path_exists;
 use chrono::Local;
 use clap::{CommandFactory, Parser};
 use std::time::Instant;
@@ -35,6 +36,9 @@ fn main() {
             display_logo(common_opt.quiet, common_opt.no_color);
             let dir = &input_opt.directory;
             let file = &input_opt.filepath;
+            if !check_path_exists(file.clone(), dir.clone()) {
+                return;
+            }
             aws_detect(dir, file, output, common_opt.no_color);
         }
         AwsCtMetrics {
@@ -47,6 +51,9 @@ fn main() {
             let dir = &input_opt.directory;
             let file = &input_opt.filepath;
             let field_name = field_name.as_ref();
+            if !check_path_exists(file.clone(), dir.clone()) {
+                return;
+            }
             aws_metrics(dir, file, field_name, output, common_opt.no_color);
         }
     }

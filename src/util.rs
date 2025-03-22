@@ -15,3 +15,20 @@ pub fn get_writer(output: &Option<PathBuf>) -> Writer<Box<dyn Write>> {
 pub fn s(input: String) -> String {
     input.replace(r#"Value(String(""#, "").replace(r#""))"#, "")
 }
+
+pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) -> bool {
+    if let Some(file) = filepath {
+        if !file.exists() {
+            println!("File {:?} does not exist.", file);
+            return false;
+        }
+    }
+
+    if let Some(dir) = dirpath {
+        if !dir.exists() {
+            println!("Directory {:?} does not exist.", dir);
+            return false;
+        }
+    }
+    true
+}
