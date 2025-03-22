@@ -66,6 +66,7 @@ pub enum Commands {
 
         /// The field to generate metrics for
         #[arg(
+            help_heading = Some("Output"),
             short = 'F',
             default_value = "eventName",
             long,
