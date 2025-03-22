@@ -20,7 +20,7 @@ fn main() {
         || args.len() == 2
             && (args.contains(&String::from("-h")) || args.contains(&String::from("--help")))
     {
-        display_logo(false);
+        display_logo(false, false);
         Cli::command().print_help().unwrap();
         return;
     }
@@ -28,31 +28,26 @@ fn main() {
     let cmd = &Cli::parse().cmd;
     match cmd {
         AwsCtTimeline {
-            directory,
-            file,
+            input_opt,
             output,
-            quiet,
+            common_opt,
         } => {
-            display_logo(*quiet);
-            if directory.is_none() && file.is_none() || directory.is_some() && file.is_some() {
-                println!("Please specify either a directory or a file.");
-                return;
-            }
-            aws_detect(directory, file, output);
+            display_logo(common_opt.quiet, common_opt.no_color);
+            let dir = &input_opt.directory;
+            let file = &input_opt.filepath;
+            aws_detect(dir, file, output);
         }
         AwsCtMetrics {
-            directory,
-            file,
-            field_name,
+            input_opt,
             output,
-            quiet,
+            field_name,
+            common_opt,
         } => {
-            display_logo(*quiet);
-            if directory.is_none() && file.is_none() || directory.is_some() && file.is_some() {
-                println!("Please specify either a directory or a file.");
-                return;
-            }
-            aws_metrics(directory, file, field_name, output);
+            display_logo(common_opt.quiet, common_opt.no_color);
+            let dir = &input_opt.directory;
+            let file = &input_opt.filepath;
+            let field_name = field_name.as_ref();
+            aws_metrics(dir, file, field_name, output);
         }
     }
 
@@ -63,10 +58,14 @@ fn main() {
     println!("Elapsed time: {:02}:{:02}:{:02}\n", hours, minutes, seconds);
 }
 
-fn display_logo(quiet: bool) {
+fn display_logo(quiet: bool, no_color: bool) {
     if !quiet {
         let logo = fs::read_to_string("art/logo.txt").unwrap_or_default();
-        println!("\x1b[38;2;0;255;0m{}\x1b[0m", logo);
+        if no_color {
+            println!("{}", logo);
+        } else {
+            println!("\x1b[38;2;0;255;0m{}\x1b[0m", logo);
+        }
         println!();
     }
     println!("Start time: {}\n", Local::now().format("%Y/%m/%d %H:%M"));
