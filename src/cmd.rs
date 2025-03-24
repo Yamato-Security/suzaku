@@ -54,6 +54,10 @@ pub enum Commands {
 
         #[clap(flatten)]
         common_opt: CommonOptions,
+
+        /// Disable event frequency timeline (terminal needs to support Unicode)
+        #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline")]
+        no_frequency: bool,
     },
 
     #[command(
