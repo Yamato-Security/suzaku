@@ -14,11 +14,11 @@ pub struct Cli {
 #[derive(Copy, Args, Clone, Debug, Default)]
 pub struct CommonOptions {
     /// Disable color output
-    #[arg(help_heading = Some("Display Settings"), short = 'K', long = "no-color", global = true)]
+    #[arg(help_heading = Some("Display Settings"), short = 'K', long = "no-color", global = true, display_order = 1)]
     pub no_color: bool,
 
     /// Quiet mode: do not display the launch banner
-    #[arg(help_heading = Some("Display Settings"), short, long, global = true)]
+    #[arg(help_heading = Some("Display Settings"), short, long, global = true,  display_order = 10)]
     pub quiet: bool,
 
     /// Show the help menu
@@ -54,6 +54,10 @@ pub enum Commands {
 
         #[clap(flatten)]
         common_opt: CommonOptions,
+
+        /// Disable event frequency timeline (terminal needs to support Unicode)
+        #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 2)]
+        no_frequency: bool,
     },
 
     #[command(
