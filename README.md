@@ -26,3 +26,4 @@ It is currently under development and we will first support AWS and then Azure l
 
 * The [Sigma](https://github.com/SigmaHQ/sigma) project
 * [Traildiscover.cloud](https://traildiscover.cloud/)
+* [sigma-rust](https://github.com/jopohl/sigma-rust)
