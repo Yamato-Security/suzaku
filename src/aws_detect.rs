@@ -1,6 +1,6 @@
 use crate::rules;
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, s};
+use crate::util::{get_writer, s, write_color_buffer};
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
@@ -13,7 +13,7 @@ use std::fs::File;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use termcolor::{BufferWriter, ColorChoice, ColorSpec, WriteColor};
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use terminal_size::{Width, terminal_size};
 
 pub fn aws_detect(
@@ -67,7 +67,7 @@ pub fn aws_detect(
         }
     }
     wtr.flush().ok();
-
+    println!();
     let terminal_width = match terminal_size() {
         Some((Width(w), _)) => w as usize,
         None => 100,
@@ -161,12 +161,9 @@ fn print_timeline_hist(timestamps: &[i64], length: usize, side_margin_size: usiz
     wtr.set_color(ColorSpec::new().set_fg(None)).ok();
 
     if timestamps.len() < 5 {
-        writeln!(
-            wtr,
-            "Detection Frequency Timeline could not be displayed as there needs to be more than 5 events.",
-        )
-            .ok();
-        buf_wtr.print(&wtr).ok();
+        let msg = "Detection Frequency Timeline could not be displayed as there needs to be more than 5 events.";
+        write_color_buffer(&buf_wtr, Some(Color::Rgb(255, 0, 0)), msg, false).ok();
+        write_color_buffer(&buf_wtr, None, "\n", true).ok();
         return;
     }
 
