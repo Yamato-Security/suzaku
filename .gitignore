@@ -8,7 +8,6 @@ test_*
 /logs
 *.csv
 *.jsonl
-suzaku*
 *.html
 *.htm
 *.css
