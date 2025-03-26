@@ -90,6 +90,7 @@ jobs:
         run: |
           mkdir -p release-binaries
           Copy-Item -Path ./target/release/suzaku.exe -Destination release-binaries/
+          Copy-Item -Recurse -Path ./config -Destination release-binaries/
           Copy-Item -Recurse -Path ./rules -Destination release-binaries/
           Copy-Item -Recurse -Path ./art -Destination release-binaries/
           switch ("${{ matrix.info.os }}") {
@@ -102,6 +103,7 @@ jobs:
         if: contains(matrix.info.os, 'windows') == false
         run: |
           mkdir -p release-binaries
+          cp -r ./config release-binaries/config
           cp -r ./rules release-binaries/rules
           cp -r ./art release-binaries/art
           case ${{ matrix.info.os }} in
