@@ -192,14 +192,17 @@ fn print_summary(sum: &DetectionSummary) {
         if let Some(dates) = sum.dates_with_hits.get(level) {
             if let Some((date, &max_hits)) = dates.iter().max_by_key(|&(_, &count)| count) {
                 print!(
-                    "{}: {} ({}), ",
+                    "{}: {} ({})",
                     level,
                     date,
                     max_hits.to_formatted_string(&Locale::en)
                 );
             }
         } else {
-            print!("{}: n/a ,", level);
+            print!("{}: n/a", level);
+        }
+        if level != "informational" {
+            print!(", ");
         }
     }
     println!();
