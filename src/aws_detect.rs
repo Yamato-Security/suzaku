@@ -199,7 +199,7 @@ fn print_summary(sum: &DetectionSummary) {
                 );
             }
         } else {
-            print!("{}: n/a ", level);
+            print!("{}: n/a ,", level);
         }
     }
     println!();
