@@ -6,6 +6,7 @@ use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Table, TableComponent};
 use krapslog::{build_sparkline, build_time_markers};
+use num_format::{Locale, ToFormattedString};
 use sigma_rust::{Event, Rule};
 use std::cmp::min;
 use std::collections::{HashMap, HashSet};
@@ -16,12 +17,23 @@ use std::path::PathBuf;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use terminal_size::{Width, terminal_size};
 
+#[derive(Debug, Default)]
+struct DetectionSummary {
+    total_events: usize,
+    event_with_hits: usize,
+    dates_with_hits: HashMap<String, HashMap<String, usize>>,
+    level_with_hits: HashMap<String, HashMap<String, usize>>,
+    first_event_time: Option<DateTime<Utc>>,
+    last_event_time: Option<DateTime<Utc>>,
+}
+
 pub fn aws_detect(
     directory: &Option<PathBuf>,
     file: &Option<PathBuf>,
     output: &Option<PathBuf>,
     no_color: bool,
     no_frequency: bool,
+    no_summary: bool,
 ) {
     let profile = load_profile("config/aws_ct_timeline_default_profile.txt");
     let rules = rules::load_rules_from_dir("rules");
@@ -30,12 +42,18 @@ pub fn aws_detect(
     let mut wtr = get_writer(output);
     let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
     wtr.write_record(&csv_header).unwrap();
-
+    let mut summary = DetectionSummary::default();
     let mut timestamps = vec![];
     let mut author_titles: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut current_hits = 0;
     let scan_by_all_rules = |event| {
+        summary.total_events += 1;
         for rule in &rules {
             if rule.is_match(&event) {
+                if current_hits == summary.event_with_hits {
+                    summary.event_with_hits += 1;
+                    current_hits = summary.event_with_hits;
+                }
                 let record: Vec<String> = profile
                     .iter()
                     .map(|(_k, v)| get_value_from_event(v, &event, rule))
@@ -47,11 +65,44 @@ pub fn aws_detect(
                         .or_default()
                         .insert(rule.title.clone());
                 }
+
+                if let Some(level) = &rule.level {
+                    let level = format!("{:?}", level).to_lowercase();
+                    summary
+                        .level_with_hits
+                        .entry(level)
+                        .or_default()
+                        .entry(rule.title.clone())
+                        .and_modify(|e| *e += 1)
+                        .or_insert(1);
+                }
+
                 if let Some(event_time) = event.get("eventTime") {
                     let event_time_str = s(format!("{:?}", event_time));
                     if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
                         let unix_time = event_time.timestamp();
                         timestamps.push(unix_time);
+                        if summary.first_event_time.is_none()
+                            || event_time < summary.first_event_time.unwrap()
+                        {
+                            summary.first_event_time = Some(event_time);
+                        }
+                        if summary.last_event_time.is_none()
+                            || event_time > summary.last_event_time.unwrap()
+                        {
+                            summary.last_event_time = Some(event_time);
+                        }
+                        if let Some(level) = &rule.level {
+                            let level = format!("{:?}", level).to_lowercase();
+                            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                            summary
+                                .dates_with_hits
+                                .entry(level)
+                                .or_default()
+                                .entry(date)
+                                .and_modify(|e| *e += 1)
+                                .or_insert(1);
+                        }
                     }
                 }
             }
@@ -92,6 +143,67 @@ pub fn aws_detect(
         authors_count.insert(author.clone(), count);
     }
     print_detected_rule_authors(&authors_count, table_column_num);
+
+    if !no_summary {
+        print_summary(&summary);
+    }
+}
+
+fn print_summary(sum: &DetectionSummary) {
+    println!("Results Summary:");
+    print!(
+        "Events with hits / Total events: {} / {}",
+        sum.event_with_hits.to_formatted_string(&Locale::en),
+        sum.total_events.to_formatted_string(&Locale::en)
+    );
+    println!(
+        " (Data reduction: {} events ({:.2}%))",
+        (sum.total_events - sum.event_with_hits).to_formatted_string(&Locale::en),
+        (sum.total_events - sum.event_with_hits) * 100 / sum.total_events
+    );
+    println!();
+    let levels = ["critical", "high", "medium", "low", "informational"];
+    for &level in &levels {
+        if let Some(hits) = sum.level_with_hits.get(level) {
+            let uniq_hits = hits.keys().len();
+            let total_hits: usize = hits.values().sum();
+            println!(
+                "Total | Unique {} detections: {} ({:.2}%) | {} ({:.2}%)",
+                level,
+                total_hits.to_formatted_string(&Locale::en),
+                total_hits * 100 / sum.event_with_hits,
+                uniq_hits,
+                uniq_hits * 100 / sum.event_with_hits
+            );
+        } else {
+            println!("Total | Unique {} detections: 0(0%) | 0(0%)", level);
+        }
+    }
+    println!();
+    if let Some(first_event_time) = sum.first_event_time {
+        println!("First event time: {}", first_event_time);
+    }
+    if let Some(last_event_time) = sum.last_event_time {
+        println!("Last event time: {}", last_event_time);
+    }
+    println!();
+    println!("Dates with most total detections:");
+    for &level in &levels {
+        if let Some(dates) = sum.dates_with_hits.get(level) {
+            if let Some((date, &max_hits)) = dates.iter().max_by_key(|&(_, &count)| count) {
+                print!(
+                    "{}: {} ({}), ",
+                    level,
+                    date,
+                    max_hits.to_formatted_string(&Locale::en)
+                );
+            }
+        } else {
+            print!("{}: n/a ", level);
+        }
+    }
+    println!();
+    println!();
 }
 
 fn print_detected_rule_authors(

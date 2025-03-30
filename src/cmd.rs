@@ -56,8 +56,12 @@ pub enum Commands {
         common_opt: CommonOptions,
 
         /// Disable event frequency timeline (terminal needs to support Unicode)
-        #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 2)]
+        #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
         no_frequency: bool,
+
+        /// Do not display Results Summary for faster speed
+        #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
+        no_summary: bool,
     },
 
     #[command(

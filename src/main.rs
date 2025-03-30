@@ -33,6 +33,7 @@ fn main() {
             output,
             common_opt,
             no_frequency,
+            no_summary,
         } => {
             display_logo(common_opt.quiet, common_opt.no_color);
             let dir = &input_opt.directory;
@@ -40,7 +41,14 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            aws_detect(dir, file, output, common_opt.no_color, *no_frequency);
+            aws_detect(
+                dir,
+                file,
+                output,
+                common_opt.no_color,
+                *no_frequency,
+                *no_summary,
+            );
         }
         AwsCtMetrics {
             input_opt,
