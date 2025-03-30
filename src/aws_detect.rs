@@ -176,7 +176,7 @@ fn print_summary(sum: &DetectionSummary) {
                 uniq_hits * 100 / sum.event_with_hits
             );
         } else {
-            println!("Total | Unique {} detections: 0(0%) | 0(0%)", level);
+            println!("Total | Unique {} detections: 0 (0%) | 0 (0%)", level);
         }
     }
     println!();
