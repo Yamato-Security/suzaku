@@ -195,7 +195,7 @@ fn print_summary_header(sum: &DetectionSummary) {
         &format!(
             "Data reduction: {} events ({:.2}%)",
             (sum.total_events - sum.event_with_hits).to_formatted_string(&Locale::en),
-            (sum.total_events - sum.event_with_hits) * 100 / sum.total_events
+            (sum.total_events - sum.event_with_hits) as f64 * 100.0 / sum.total_events as f64
         ),
         false,
     );
