@@ -72,13 +72,12 @@ fn main() {
     let hours = duration.as_secs() / 3600;
     let minutes = (duration.as_secs() % 3600) / 60;
     let seconds = duration.as_secs() % 60;
-    stdout(Some(Color::Rgb(0, 255, 0)), "Elapsed time: ", false).ok();
+    stdout(Some(Color::Rgb(0, 255, 0)), "Elapsed time: ", false);
     stdout(
         None,
         &format!("{:02}:{:02}:{:02}\n", hours, minutes, seconds),
         true,
-    )
-    .ok();
+    );
 }
 
 fn display_logo(quiet: bool, no_color: bool) {
@@ -87,16 +86,15 @@ fn display_logo(quiet: bool, no_color: bool) {
         if no_color {
             println!("{}", logo);
         } else {
-            println!("\x1b[38;2;0;255;0m{}\x1b[0m", logo);
+            stdout(Some(Color::Rgb(0, 255, 0)), &logo, false);
         }
         println!();
     }
-    stdout(Some(Color::Rgb(0, 255, 0)), "Start time: ", false).ok();
+    stdout(Some(Color::Rgb(0, 255, 0)), "Start time: ", false);
     stdout(
         None,
         Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
         true,
-    )
-    .ok();
+    );
     println!();
 }

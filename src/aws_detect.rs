@@ -43,9 +43,8 @@ pub fn aws_detect(
         Some(Color::Rgb(0, 255, 0)),
         "Total detection rules: ",
         false,
-    )
-    .ok();
-    stdout(None, rules.len().to_string().as_str(), true).ok();
+    );
+    stdout(None, rules.len().to_string().as_str(), true);
 
     let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
     let mut wtr = get_writer(output);
@@ -174,25 +173,23 @@ fn print_summary(sum: &DetectionSummary) {
 }
 
 fn print_summary_header(sum: &DetectionSummary) {
-    stdout(Some(Color::Rgb(0, 255, 0)), "Results Summary:", true).ok();
-    stdout(None, "", false).ok();
-    stdout(Some(Color::Rgb(255, 255, 0)), "Events with hits", false).ok();
-    stdout(None, " / ", false).ok();
-    stdout(Some(Color::Rgb(0, 255, 255)), "Total events: ", false).ok();
+    stdout(Some(Color::Rgb(0, 255, 0)), "Results Summary:", true);
+    stdout(None, "", false);
+    stdout(Some(Color::Rgb(255, 255, 0)), "Events with hits", false);
+    stdout(None, " / ", false);
+    stdout(Some(Color::Rgb(0, 255, 255)), "Total events: ", false);
     stdout(
         Some(Color::Rgb(255, 255, 0)),
         &sum.event_with_hits.to_formatted_string(&Locale::en),
         false,
-    )
-    .ok();
-    stdout(None, " / ", false).ok();
+    );
+    stdout(None, " / ", false);
     stdout(
         Some(Color::Rgb(0, 255, 255)),
         &sum.total_events.to_formatted_string(&Locale::en),
         false,
-    )
-    .ok();
-    stdout(None, " (", false).ok();
+    );
+    stdout(None, " (", false);
     stdout(
         Some(Color::Rgb(0, 255, 0)),
         &format!(
@@ -201,9 +198,8 @@ fn print_summary_header(sum: &DetectionSummary) {
             (sum.total_events - sum.event_with_hits) * 100 / sum.total_events
         ),
         false,
-    )
-    .ok();
-    stdout(None, ")", false).ok();
+    );
+    stdout(None, ")", false);
     println!();
 }
 
@@ -220,10 +216,10 @@ fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color
                 uniq_hits,
                 uniq_hits * 100 / sum.event_with_hits
             );
-            stdout(*color, &msg, true).ok();
+            stdout(*color, &msg, true);
         } else {
             let msg = format!("Total | Unique {} detections: 0 (0%) | 0 (0%)", level);
-            stdout(*color, &msg, true).ok();
+            stdout(*color, &msg, true);
         }
     }
     println!();
@@ -231,12 +227,12 @@ fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color
 
 fn print_summary_event_times(sum: &DetectionSummary) {
     if let Some(first_event_time) = sum.first_event_time {
-        stdout(Some(Color::Rgb(0, 255, 0)), "First event time: ", false).ok();
-        stdout(None, &first_event_time.to_string(), true).ok();
+        stdout(Some(Color::Rgb(0, 255, 0)), "First event time: ", false);
+        stdout(None, &first_event_time.to_string(), true);
     }
     if let Some(last_event_time) = sum.last_event_time {
-        stdout(Some(Color::Rgb(0, 255, 0)), "Last event time: ", false).ok();
-        stdout(None, &last_event_time.to_string(), true).ok();
+        stdout(Some(Color::Rgb(0, 255, 0)), "Last event time: ", false);
+        stdout(None, &last_event_time.to_string(), true);
     }
     println!();
 }
@@ -246,9 +242,8 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Opt
         Some(Color::Rgb(0, 255, 0)),
         "Dates with most total detections:",
         true,
-    )
-    .ok();
-    stdout(None, "", false).ok();
+    );
+    stdout(None, "", false);
     for (level, color) in levels {
         if let Some(dates) = sum.dates_with_hits.get(*level) {
             if let Some((date, &max_hits)) = dates.iter().max_by_key(|&(_, &count)| count) {
@@ -258,13 +253,13 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Opt
                     date,
                     max_hits.to_formatted_string(&Locale::en)
                 );
-                stdout(*color, &msg, false).ok();
+                stdout(*color, &msg, false);
             }
         } else {
-            stdout(*color, &format!("{}: n/a", level), false).ok();
+            stdout(*color, &format!("{}: n/a", level), false);
         }
         if *level != "informational" {
-            stdout(None, ", ", false).ok();
+            stdout(None, ", ", false);
         }
     }
     println!();
@@ -338,7 +333,11 @@ fn rgb(color: &Option<Color>) -> comfy_table::Color {
             b: 0,
         },
         Some(Color::Rgb(0, 255, 0)) => comfy_table::Color::Rgb { r: 0, g: 255, b: 0 },
-        _ => comfy_table::Color::Rgb { r: 255, g: 255, b: 255 },
+        _ => comfy_table::Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 255,
+        },
     }
 }
 
@@ -394,8 +393,8 @@ fn print_detected_rule_authors(
             .set_style(TableComponent::TopBorderIntersections, tbch)
             .set_style(TableComponent::BottomBorderIntersections, hlch);
     }
-    stdout(Some(Color::Rgb(0, 255, 0)), "Rule Authors:", true).ok();
-    stdout(None, &format!("{tb}"), true).ok();
+    stdout(Some(Color::Rgb(0, 255, 0)), "Rule Authors:", true);
+    stdout(None, &format!("{tb}"), true);
     println!();
 }
 
@@ -405,8 +404,8 @@ fn print_timeline_hist(timestamps: &[i64], length: usize, side_margin_size: usiz
     }
     if timestamps.len() < 5 {
         let msg = "Detection Frequency Timeline could not be displayed as there needs to be more than 5 events.";
-        stdout(Some(Color::Rgb(255, 0, 0)), msg, false).ok();
-        stdout(None, "\n", true).ok();
+        stdout(Some(Color::Rgb(255, 0, 0)), msg, false);
+        stdout(None, "\n", true);
         return;
     }
 

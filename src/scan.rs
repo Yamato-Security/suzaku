@@ -25,10 +25,10 @@ where
 {
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).to_string_as(false);
-    stdout(Some(Color::Rgb(0, 255, 0)), "Total log files: ", false).ok();
-    stdout(None, count.to_string().as_str(), true).ok();
-    stdout(Some(Color::Rgb(0, 255, 0)), "Total file size: ", false).ok();
-    stdout(None, size.to_string().as_str(), true).ok();
+    stdout(Some(Color::Rgb(0, 255, 0)), "Total log files: ", false);
+    stdout(None, count.to_string().as_str(), true);
+    stdout(Some(Color::Rgb(0, 255, 0)), "Total file size: ", false);
+    stdout(None, size.to_string().as_str(), true);
     println!();
 
     let template = if no_color {

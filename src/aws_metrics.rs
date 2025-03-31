@@ -62,7 +62,7 @@ fn print_count_map_desc(
     let total: i32 = total_map.values().sum();
 
     if total == 0 {
-        stdout(Some(Color::Rgb(255, 0, 0)), "No events found.", true).ok();
+        stdout(Some(Color::Rgb(255, 0, 0)), "No events found.", true);
         return;
     }
 

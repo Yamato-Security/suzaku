@@ -34,7 +34,7 @@ pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) ->
     true
 }
 
-pub fn stdout(color: Option<Color>, msg: &str, newline: bool) -> io::Result<()> {
+pub fn stdout(color: Option<Color>, msg: &str, newline: bool) {
     let wtr = BufferWriter::stdout(ColorChoice::Always);
     let mut buf = wtr.buffer();
     buf.set_color(ColorSpec::new().set_fg(color)).ok();
@@ -43,5 +43,5 @@ pub fn stdout(color: Option<Color>, msg: &str, newline: bool) -> io::Result<()> 
     } else {
         write!(buf, "{msg}").ok();
     }
-    wtr.print(&buf)
+    wtr.print(&buf).ok();
 }
