@@ -208,7 +208,7 @@ fn print_summary_header(sum: &DetectionSummary) {
 }
 
 fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
-    for (level, color) in &levels {
+    for (level, color) in levels {
         if let Some(hits) = sum.level_with_hits.get(*level) {
             let uniq_hits = hits.keys().len();
             let total_hits: usize = hits.values().sum();
@@ -249,7 +249,7 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Opt
     )
     .ok();
     stdout(None, "", false).ok();
-    for (level, color) in &levels {
+    for (level, color) in levels {
         if let Some(dates) = sum.dates_with_hits.get(*level) {
             if let Some((date, &max_hits)) = dates.iter().max_by_key(|&(_, &count)| count) {
                 let msg = format!(
@@ -272,7 +272,7 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Opt
 
 fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
     let mut table_data = vec![];
-    for (level, color) in &levels {
+    for (level, color) in levels {
         if let Some(hits) = sum.level_with_hits.get(*level) {
             let mut hits_vec: Vec<(&String, &usize)> = hits.iter().collect();
             hits_vec.sort_by(|a, b| b.1.cmp(a.1));
