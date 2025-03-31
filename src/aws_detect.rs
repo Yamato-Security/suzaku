@@ -177,11 +177,11 @@ fn print_summary(sum: &DetectionSummary) {
         false,
     )
     .ok();
-    stdout(None, "(", false).ok();
+    stdout(None, " (", false).ok();
     stdout(
         Some(Color::Rgb(0, 255, 0)),
         &format!(
-            "(Data reduction: {} events ({:.2}%))",
+            "Data reduction: {} events ({:.2}%)",
             (sum.total_events - sum.event_with_hits).to_formatted_string(&Locale::en),
             (sum.total_events - sum.event_with_hits) * 100 / sum.total_events
         ),
