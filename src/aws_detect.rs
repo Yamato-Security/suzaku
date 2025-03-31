@@ -227,23 +227,18 @@ fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color
 
 fn print_summary_event_times(sum: &DetectionSummary) {
     if let Some(first_event_time) = sum.first_event_time {
-        stdout(Some(Color::Rgb(0, 255, 0)), "First event time: ", false);
+        stdout(None, "First event time: ", false);
         stdout(None, &first_event_time.to_string(), true);
     }
     if let Some(last_event_time) = sum.last_event_time {
-        stdout(Some(Color::Rgb(0, 255, 0)), "Last event time: ", false);
+        stdout(None, "Last event time: ", false);
         stdout(None, &last_event_time.to_string(), true);
     }
     println!();
 }
 
 fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
-    stdout(
-        Some(Color::Rgb(0, 255, 0)),
-        "Dates with most total detections:",
-        true,
-    );
-    stdout(None, "", false);
+    stdout(None, "Dates with most total detections:", true);
     for (level, color) in levels {
         if let Some(dates) = sum.dates_with_hits.get(*level) {
             if let Some((date, &max_hits)) = dates.iter().max_by_key(|&(_, &count)| count) {
