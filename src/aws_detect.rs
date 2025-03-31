@@ -159,6 +159,21 @@ pub fn aws_detect(
 }
 
 fn print_summary(sum: &DetectionSummary) {
+    let levels = vec![
+        ("critical", Some(Color::Rgb(255, 0, 0))),
+        ("high", Some(Color::Rgb(255, 175, 0))),
+        ("medium", Some(Color::Rgb(255, 255, 0))),
+        ("low", Some(Color::Rgb(0, 255, 0))),
+        ("informational", None),
+    ];
+    print_summary_header(sum);
+    print_summary_levels(sum, &levels);
+    print_summary_event_times(sum);
+    print_summary_dates_with_hits(sum, &levels);
+    print_summary_table(sum, &levels);
+}
+
+fn print_summary_header(sum: &DetectionSummary) {
     stdout(Some(Color::Rgb(0, 255, 0)), "Results Summary:", true).ok();
     stdout(None, "", false).ok();
     stdout(Some(Color::Rgb(255, 255, 0)), "Events with hits", false).ok();
@@ -190,14 +205,9 @@ fn print_summary(sum: &DetectionSummary) {
     .ok();
     stdout(None, ")", false).ok();
     println!();
-    let levels = vec![
-        ("critical", Some(Color::Rgb(255, 0, 0))),
-        ("high", Some(Color::Rgb(255, 175, 0))),
-        ("medium", Some(Color::Rgb(255, 255, 0))),
-        ("low", Some(Color::Rgb(0, 255, 0))),
-        ("informational", None),
-    ];
-    let mut table_data = vec![];
+}
+
+fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
     for (level, color) in &levels {
         if let Some(hits) = sum.level_with_hits.get(*level) {
             let uniq_hits = hits.keys().len();
@@ -211,27 +221,15 @@ fn print_summary(sum: &DetectionSummary) {
                 uniq_hits * 100 / sum.event_with_hits
             );
             stdout(*color, &msg, true).ok();
-            let mut hits_vec: Vec<(&String, &usize)> = hits.iter().collect();
-            hits_vec.sort_by(|a, b| b.1.cmp(a.1));
-            let top_hits: Vec<(&String, &usize)> = hits_vec.into_iter().take(5).collect();
-            let mut msgs: Vec<String> = top_hits
-                .into_iter()
-                .map(|(rule, count)| {
-                    format!("{} ({})", rule, count.to_formatted_string(&Locale::en))
-                })
-                .collect();
-            while msgs.len() < 5 {
-                msgs.push("n/a".to_string());
-            }
-            table_data.push((*level, (*color, msgs)));
         } else {
             let msg = format!("Total | Unique {} detections: 0 (0%) | 0 (0%)", level);
             stdout(*color, &msg, true).ok();
-            let data = vec!["n/a".to_string(); 5];
-            table_data.push((*level, (*color, data)));
         }
     }
     println!();
+}
+
+fn print_summary_event_times(sum: &DetectionSummary) {
     if let Some(first_event_time) = sum.first_event_time {
         stdout(Some(Color::Rgb(0, 255, 0)), "First event time: ", false).ok();
         stdout(None, &first_event_time.to_string(), true).ok();
@@ -241,6 +239,9 @@ fn print_summary(sum: &DetectionSummary) {
         stdout(None, &last_event_time.to_string(), true).ok();
     }
     println!();
+}
+
+fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
     stdout(
         Some(Color::Rgb(0, 255, 0)),
         "Dates with most total detections:",
@@ -267,6 +268,30 @@ fn print_summary(sum: &DetectionSummary) {
         }
     }
     println!();
+}
+
+fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
+    let mut table_data = vec![];
+    for (level, color) in &levels {
+        if let Some(hits) = sum.level_with_hits.get(*level) {
+            let mut hits_vec: Vec<(&String, &usize)> = hits.iter().collect();
+            hits_vec.sort_by(|a, b| b.1.cmp(a.1));
+            let top_hits: Vec<(&String, &usize)> = hits_vec.into_iter().take(5).collect();
+            let mut msgs: Vec<String> = top_hits
+                .into_iter()
+                .map(|(rule, count)| {
+                    format!("{} ({})", rule, count.to_formatted_string(&Locale::en))
+                })
+                .collect();
+            while msgs.len() < 5 {
+                msgs.push("n/a".to_string());
+            }
+            table_data.push((*level, (*color, msgs)));
+        } else {
+            let data = vec!["n/a".to_string(); 5];
+            table_data.push((*level, (*color, data)));
+        }
+    }
     let mut tb = Table::new();
     tb.load_preset(UTF8_FULL)
         .apply_modifier(UTF8_ROUND_CORNERS)
