@@ -2,7 +2,7 @@ use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
 use crate::cmd::Cli;
 use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline};
-use crate::util::{check_path_exists, stdout};
+use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
 use std::time::Instant;
@@ -72,8 +72,8 @@ fn main() {
     let hours = duration.as_secs() / 3600;
     let minutes = (duration.as_secs() % 3600) / 60;
     let seconds = duration.as_secs() % 60;
-    stdout(Some(Color::Rgb(0, 255, 0)), "Elapsed time: ", false);
-    stdout(
+    p(Some(Color::Rgb(0, 255, 0)), "Elapsed time: ", false);
+    p(
         None,
         &format!("{:02}:{:02}:{:02}\n", hours, minutes, seconds),
         true,
@@ -86,12 +86,12 @@ fn display_logo(quiet: bool, no_color: bool) {
         if no_color {
             println!("{}", logo);
         } else {
-            stdout(Some(Color::Rgb(0, 255, 0)), &logo, true);
+            p(Some(Color::Rgb(0, 255, 0)), &logo, true);
         }
         println!();
     }
-    stdout(Some(Color::Rgb(0, 255, 0)), "Start time: ", false);
-    stdout(
+    p(Some(Color::Rgb(0, 255, 0)), "Start time: ", false);
+    p(
         None,
         Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
         true,

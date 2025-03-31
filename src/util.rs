@@ -34,7 +34,7 @@ pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) ->
     true
 }
 
-pub fn stdout(color: Option<Color>, msg: &str, newline: bool) {
+pub fn p(color: Option<Color>, msg: &str, newline: bool) {
     let wtr = BufferWriter::stdout(ColorChoice::Always);
     let mut buf = wtr.buffer();
     buf.set_color(ColorSpec::new().set_fg(color)).ok();

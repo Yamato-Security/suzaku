@@ -1,6 +1,6 @@
 use crate::rules;
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, s, stdout};
+use crate::util::{get_writer, p, s};
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
@@ -39,12 +39,12 @@ pub fn aws_detect(
 ) {
     let profile = load_profile("config/aws_ct_timeline_default_profile.txt");
     let rules = rules::load_rules_from_dir("rules");
-    stdout(
+    p(
         Some(Color::Rgb(0, 255, 0)),
         "Total detection rules: ",
         false,
     );
-    stdout(None, rules.len().to_string().as_str(), true);
+    p(None, rules.len().to_string().as_str(), true);
 
     let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
     let mut wtr = get_writer(output);
@@ -173,24 +173,24 @@ fn print_summary(sum: &DetectionSummary) {
 }
 
 fn print_summary_header(sum: &DetectionSummary) {
-    stdout(Some(Color::Rgb(0, 255, 0)), "Results Summary:", true);
-    stdout(None, "", false);
-    stdout(Some(Color::Rgb(255, 255, 0)), "Events with hits", false);
-    stdout(None, " / ", false);
-    stdout(Some(Color::Rgb(0, 255, 255)), "Total events: ", false);
-    stdout(
+    p(Some(Color::Rgb(0, 255, 0)), "Results Summary:", true);
+    p(None, "", false);
+    p(Some(Color::Rgb(255, 255, 0)), "Events with hits", false);
+    p(None, " / ", false);
+    p(Some(Color::Rgb(0, 255, 255)), "Total events: ", false);
+    p(
         Some(Color::Rgb(255, 255, 0)),
         &sum.event_with_hits.to_formatted_string(&Locale::en),
         false,
     );
-    stdout(None, " / ", false);
-    stdout(
+    p(None, " / ", false);
+    p(
         Some(Color::Rgb(0, 255, 255)),
         &sum.total_events.to_formatted_string(&Locale::en),
         false,
     );
-    stdout(None, " (", false);
-    stdout(
+    p(None, " (", false);
+    p(
         Some(Color::Rgb(0, 255, 0)),
         &format!(
             "Data reduction: {} events ({:.2}%)",
@@ -199,7 +199,7 @@ fn print_summary_header(sum: &DetectionSummary) {
         ),
         false,
     );
-    stdout(None, ")", false);
+    p(None, ")", false);
     println!();
 }
 
@@ -216,10 +216,10 @@ fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color
                 uniq_hits,
                 uniq_hits * 100 / sum.event_with_hits
             );
-            stdout(*color, &msg, true);
+            p(*color, &msg, true);
         } else {
             let msg = format!("Total | Unique {} detections: 0 (0%) | 0 (0%)", level);
-            stdout(*color, &msg, true);
+            p(*color, &msg, true);
         }
     }
     println!();
@@ -227,18 +227,18 @@ fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color
 
 fn print_summary_event_times(sum: &DetectionSummary) {
     if let Some(first_event_time) = sum.first_event_time {
-        stdout(None, "First event time: ", false);
-        stdout(None, &first_event_time.to_string(), true);
+        p(None, "First event time: ", false);
+        p(None, &first_event_time.to_string(), true);
     }
     if let Some(last_event_time) = sum.last_event_time {
-        stdout(None, "Last event time: ", false);
-        stdout(None, &last_event_time.to_string(), true);
+        p(None, "Last event time: ", false);
+        p(None, &last_event_time.to_string(), true);
     }
     println!();
 }
 
 fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
-    stdout(None, "Dates with most total detections:", true);
+    p(None, "Dates with most total detections:", true);
     for (level, color) in levels {
         if let Some(dates) = sum.dates_with_hits.get(*level) {
             if let Some((date, &max_hits)) = dates.iter().max_by_key(|&(_, &count)| count) {
@@ -248,13 +248,13 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Opt
                     date,
                     max_hits.to_formatted_string(&Locale::en)
                 );
-                stdout(*color, &msg, false);
+                p(*color, &msg, false);
             }
         } else {
-            stdout(*color, &format!("{}: n/a", level), false);
+            p(*color, &format!("{}: n/a", level), false);
         }
         if *level != "informational" {
-            stdout(None, ", ", false);
+            p(None, ", ", false);
         }
     }
     println!();
@@ -388,8 +388,8 @@ fn print_detected_rule_authors(
             .set_style(TableComponent::TopBorderIntersections, tbch)
             .set_style(TableComponent::BottomBorderIntersections, hlch);
     }
-    stdout(Some(Color::Rgb(0, 255, 0)), "Rule Authors:", true);
-    stdout(None, &format!("{tb}"), true);
+    p(Some(Color::Rgb(0, 255, 0)), "Rule Authors:", true);
+    p(None, &format!("{tb}"), true);
     println!();
 }
 
@@ -399,8 +399,8 @@ fn print_timeline_hist(timestamps: &[i64], length: usize, side_margin_size: usiz
     }
     if timestamps.len() < 5 {
         let msg = "Detection Frequency Timeline could not be displayed as there needs to be more than 5 events.";
-        stdout(Some(Color::Rgb(255, 0, 0)), msg, false);
-        stdout(None, "\n", true);
+        p(Some(Color::Rgb(255, 0, 0)), msg, false);
+        p(None, "\n", true);
         return;
     }
 

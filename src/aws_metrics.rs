@@ -1,5 +1,5 @@
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, s, stdout};
+use crate::util::{get_writer, p, s};
 use comfy_table::{Cell, CellAlignment, Table};
 use csv::Writer;
 use sigma_rust::Event;
@@ -62,7 +62,7 @@ fn print_count_map_desc(
     let total: i32 = total_map.values().sum();
 
     if total == 0 {
-        stdout(Some(Color::Rgb(255, 0, 0)), "No events found.", true);
+        p(Some(Color::Rgb(255, 0, 0)), "No events found.", true);
         return;
     }
 
