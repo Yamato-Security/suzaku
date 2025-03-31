@@ -19,6 +19,8 @@ use terminal_size::{Width, terminal_size};
 
 #[derive(Debug, Default)]
 struct DetectionSummary {
+    author_titles: HashMap<String, HashSet<String>>,
+    timestamps: Vec<i64>,
     total_events: usize,
     event_with_hits: usize,
     dates_with_hits: HashMap<String, HashMap<String, usize>>,
@@ -39,12 +41,10 @@ pub fn aws_detect(
     let rules = rules::load_rules_from_dir("rules");
     println!("Total detection rules: {:?}", rules.len());
 
-    let mut wtr = get_writer(output);
     let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
+    let mut wtr = get_writer(output);
     wtr.write_record(&csv_header).unwrap();
     let mut summary = DetectionSummary::default();
-    let mut timestamps = vec![];
-    let mut author_titles: HashMap<String, HashSet<String>> = HashMap::new();
     let mut current_hits = 0;
     let scan_by_all_rules = |event| {
         summary.total_events += 1;
@@ -60,7 +60,8 @@ pub fn aws_detect(
                     .collect();
                 wtr.write_record(&record).unwrap();
                 if let Some(author) = &rule.author {
-                    author_titles
+                    summary
+                        .author_titles
                         .entry(author.clone())
                         .or_default()
                         .insert(rule.title.clone());
@@ -81,7 +82,7 @@ pub fn aws_detect(
                     let event_time_str = s(format!("{:?}", event_time));
                     if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
                         let unix_time = event_time.timestamp();
-                        timestamps.push(unix_time);
+                        summary.timestamps.push(unix_time);
                         if summary.first_event_time.is_none()
                             || event_time < summary.first_event_time.unwrap()
                         {
@@ -124,7 +125,7 @@ pub fn aws_detect(
         None => 100,
     };
     if !no_frequency {
-        print_timeline_hist(&timestamps, terminal_width, 3);
+        print_timeline_hist(&summary.timestamps, terminal_width, 3);
     }
     let table_column_num = if terminal_width <= 105 {
         2
@@ -137,11 +138,13 @@ pub fn aws_detect(
     } else {
         6
     };
-    let mut authors_count: HashMap<String, i128> = HashMap::new();
-    for (author, rules) in author_titles.iter() {
-        let count = rules.len() as i128;
-        authors_count.insert(author.clone(), count);
-    }
+
+    let authors_count: HashMap<String, i128> = summary
+        .author_titles
+        .iter()
+        .map(|(author, rules)| (author.clone(), rules.len() as i128))
+        .collect();
+
     print_detected_rule_authors(&authors_count, table_column_num);
 
     if !no_summary {

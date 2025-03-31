@@ -83,6 +83,7 @@ where
     }
     if show_progress {
         pb.finish_with_message("Scanning finished.");
+        println!();
     }
     Ok(())
 }
