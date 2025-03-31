@@ -338,7 +338,7 @@ fn rgb(color: &Option<Color>) -> comfy_table::Color {
             b: 0,
         },
         Some(Color::Rgb(0, 255, 0)) => comfy_table::Color::Rgb { r: 0, g: 255, b: 0 },
-        _ => comfy_table::Color::Rgb { r: 0, g: 0, b: 0 },
+        _ => comfy_table::Color::Rgb { r: 255, g: 255, b: 255 },
     }
 }
 
