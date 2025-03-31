@@ -45,14 +45,14 @@ pub fn aws_detect(
     let mut wtr = get_writer(output);
     wtr.write_record(&csv_header).unwrap();
     let mut summary = DetectionSummary::default();
-    let mut current_hits = 0;
     let scan_by_all_rules = |event| {
         summary.total_events += 1;
+        let mut counted = false;
         for rule in &rules {
             if rule.is_match(&event) {
-                if current_hits == summary.event_with_hits {
+                if !counted {
                     summary.event_with_hits += 1;
-                    current_hits = summary.event_with_hits;
+                    counted = true;
                 }
                 let record: Vec<String> = profile
                     .iter()
