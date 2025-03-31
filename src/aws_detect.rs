@@ -4,7 +4,7 @@ use crate::util::{get_writer, s, stdout};
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
-use comfy_table::{Table, TableComponent};
+use comfy_table::{Cell, Table, TableComponent};
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use sigma_rust::{Event, Rule};
@@ -197,6 +197,7 @@ fn print_summary(sum: &DetectionSummary) {
         ("low", Some(Color::Rgb(0, 255, 0))),
         ("informational", None),
     ];
+    let mut table_data = vec![];
     for (level, color) in &levels {
         if let Some(hits) = sum.level_with_hits.get(*level) {
             let uniq_hits = hits.keys().len();
@@ -210,9 +211,24 @@ fn print_summary(sum: &DetectionSummary) {
                 uniq_hits * 100 / sum.event_with_hits
             );
             stdout(*color, &msg, true).ok();
+            let mut hits_vec: Vec<(&String, &usize)> = hits.iter().collect();
+            hits_vec.sort_by(|a, b| b.1.cmp(a.1));
+            let top_hits: Vec<(&String, &usize)> = hits_vec.into_iter().take(5).collect();
+            let mut msgs: Vec<String> = top_hits
+                .into_iter()
+                .map(|(rule, count)| {
+                    format!("{} ({})", rule, count.to_formatted_string(&Locale::en))
+                })
+                .collect();
+            while msgs.len() < 5 {
+                msgs.push("n/a".to_string());
+            }
+            table_data.push((*level, (*color, msgs)));
         } else {
             let msg = format!("Total | Unique {} detections: 0 (0%) | 0 (0%)", level);
             stdout(*color, &msg, true).ok();
+            let data = vec!["n/a".to_string(); 5];
+            table_data.push((*level, (*color, data)));
         }
     }
     println!();
@@ -251,7 +267,54 @@ fn print_summary(sum: &DetectionSummary) {
         }
     }
     println!();
+    let mut tb = Table::new();
+    tb.load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS)
+        .set_style(TableComponent::VerticalLines, ' ');
+    let hlch = tb.style(TableComponent::HorizontalLines).unwrap();
+    let tbch = tb.style(TableComponent::TopBorder).unwrap();
+    for chunk in table_data.chunks(2) {
+        let heads = chunk
+            .iter()
+            .map(|(level, (color, _))| Cell::new(format!("Top {} alerts:", level)).fg(rgb(color)))
+            .collect::<Vec<_>>();
+        let columns = chunk
+            .iter()
+            .map(|(_, (color, msgs))| {
+                let msg = msgs
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                Cell::new(msg).fg(rgb(color))
+            })
+            .collect::<Vec<_>>();
+        tb.add_row(heads)
+            .set_style(TableComponent::MiddleIntersections, hlch)
+            .set_style(TableComponent::TopBorderIntersections, tbch)
+            .set_style(TableComponent::BottomBorderIntersections, hlch);
+        tb.add_row(columns);
+    }
+    println!("{tb}");
     println!();
+}
+
+fn rgb(color: &Option<Color>) -> comfy_table::Color {
+    match color {
+        Some(Color::Rgb(255, 0, 0)) => comfy_table::Color::Rgb { r: 255, g: 0, b: 0 },
+        Some(Color::Rgb(255, 175, 0)) => comfy_table::Color::Rgb {
+            r: 255,
+            g: 175,
+            b: 0,
+        },
+        Some(Color::Rgb(255, 255, 0)) => comfy_table::Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 0,
+        },
+        Some(Color::Rgb(0, 255, 0)) => comfy_table::Color::Rgb { r: 0, g: 255, b: 0 },
+        _ => comfy_table::Color::Rgb { r: 0, g: 0, b: 0 },
+    }
 }
 
 fn print_detected_rule_authors(
