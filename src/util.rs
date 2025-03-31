@@ -2,7 +2,7 @@ use csv::Writer;
 use std::io::Write;
 use std::path::PathBuf;
 use std::{fs, io};
-use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 pub fn get_writer(output: &Option<PathBuf>) -> Writer<Box<dyn Write>> {
     let wtr: Writer<Box<dyn io::Write>> = if let Some(output) = output {
@@ -34,18 +34,14 @@ pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) ->
     true
 }
 
-pub fn write_color_buffer(
-    wtr: &BufferWriter,
-    color: Option<Color>,
-    output_str: &str,
-    newline_flag: bool,
-) -> io::Result<()> {
+pub fn stdout(color: Option<Color>, msg: &str, newline: bool) -> io::Result<()> {
+    let wtr = BufferWriter::stdout(ColorChoice::Always);
     let mut buf = wtr.buffer();
     buf.set_color(ColorSpec::new().set_fg(color)).ok();
-    if newline_flag {
-        writeln!(buf, "{output_str}").ok();
+    if newline {
+        writeln!(buf, "{msg}").ok();
     } else {
-        write!(buf, "{output_str}").ok();
+        write!(buf, "{msg}").ok();
     }
     wtr.print(&buf)
 }

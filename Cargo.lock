@@ -893,6 +893,7 @@ dependencies = [
  "clap",
  "colored",
  "comfy-table",
+ "console",
  "csv",
  "flate2",
  "indicatif",

@@ -1,11 +1,12 @@
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, s};
+use crate::util::{get_writer, s, stdout};
 use comfy_table::{Cell, CellAlignment, Table};
 use csv::Writer;
 use sigma_rust::Event;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
+use termcolor::Color;
 
 pub fn aws_metrics(
     directory: &Option<PathBuf>,
@@ -61,7 +62,7 @@ fn print_count_map_desc(
     let total: i32 = total_map.values().sum();
 
     if total == 0 {
-        println!("No events found.");
+        stdout(Some(Color::Rgb(255, 0, 0)), "No events found.", true).ok();
         return;
     }
 

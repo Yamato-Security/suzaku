@@ -1,5 +1,7 @@
+use crate::util::stdout;
 use bytesize::ByteSize;
 use colored::Colorize;
+use console::style;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use serde_json::Value;
@@ -10,6 +12,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::{fs, io};
+use termcolor::Color;
 
 pub fn process_events_from_dir<F>(
     mut process_event: F,
@@ -22,8 +25,11 @@ where
 {
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).to_string_as(false);
-    println!("Total log files: {}", count);
-    println!("Total file size: {}\n", size);
+    stdout(Some(Color::Rgb(0, 255, 0)), "Total log files: ", false).ok();
+    stdout(None, count.to_string().as_str(), true).ok();
+    stdout(Some(Color::Rgb(0, 255, 0)), "Total file size: ", false).ok();
+    stdout(None, size.to_string().as_str(), true).ok();
+    println!();
 
     let template = if no_color {
         "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}"
@@ -82,8 +88,8 @@ where
         }
     }
     if show_progress {
-        pb.finish_with_message("Scanning finished.");
-        println!();
+        let msg = style("Scanning finished.\n").color256(214).to_string();
+        pb.finish_with_message(msg);
     }
     Ok(())
 }
