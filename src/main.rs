@@ -86,7 +86,7 @@ fn display_logo(quiet: bool, no_color: bool) {
         if no_color {
             println!("{}", logo);
         } else {
-            stdout(Some(Color::Rgb(0, 255, 0)), &logo, false);
+            stdout(Some(Color::Rgb(0, 255, 0)), &logo, true);
         }
         println!();
     }
