@@ -2,11 +2,12 @@ use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
 use crate::cmd::Cli;
 use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline};
-use crate::util::check_path_exists;
+use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
 use std::time::Instant;
 use std::{env, fs};
+use termcolor::Color;
 
 mod aws_detect;
 mod aws_metrics;
@@ -33,6 +34,7 @@ fn main() {
             output,
             common_opt,
             no_frequency,
+            no_summary,
         } => {
             display_logo(common_opt.quiet, common_opt.no_color);
             let dir = &input_opt.directory;
@@ -40,7 +42,14 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            aws_detect(dir, file, output, common_opt.no_color, *no_frequency);
+            aws_detect(
+                dir,
+                file,
+                output,
+                common_opt.no_color,
+                *no_frequency,
+                *no_summary,
+            );
         }
         AwsCtMetrics {
             input_opt,
@@ -63,7 +72,12 @@ fn main() {
     let hours = duration.as_secs() / 3600;
     let minutes = (duration.as_secs() % 3600) / 60;
     let seconds = duration.as_secs() % 60;
-    println!("Elapsed time: {:02}:{:02}:{:02}\n", hours, minutes, seconds);
+    p(Some(Color::Rgb(0, 255, 0)), "Elapsed time: ", false);
+    p(
+        None,
+        &format!("{:02}:{:02}:{:02}\n", hours, minutes, seconds),
+        true,
+    );
 }
 
 fn display_logo(quiet: bool, no_color: bool) {
@@ -72,9 +86,15 @@ fn display_logo(quiet: bool, no_color: bool) {
         if no_color {
             println!("{}", logo);
         } else {
-            println!("\x1b[38;2;0;255;0m{}\x1b[0m", logo);
+            p(Some(Color::Rgb(0, 255, 0)), &logo, true);
         }
         println!();
     }
-    println!("Start time: {}\n", Local::now().format("%Y/%m/%d %H:%M"));
+    p(Some(Color::Rgb(0, 255, 0)), "Start time: ", false);
+    p(
+        None,
+        Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
+        true,
+    );
+    println!();
 }
