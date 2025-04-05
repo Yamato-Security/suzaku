@@ -1,19 +1,21 @@
 use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
 use crate::cmd::Cli;
-use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline};
+use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline, UpdateRules};
 use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
 use std::time::Instant;
 use std::{env, fs};
 use termcolor::Color;
+use update::start_update_rules;
 
 mod aws_detect;
 mod aws_metrics;
 mod cmd;
 mod rules;
 mod scan;
+mod update;
 mod util;
 
 fn main() {
@@ -65,6 +67,9 @@ fn main() {
                 return;
             }
             aws_metrics(dir, file, field_name, output, common_opt.no_color);
+        }
+        UpdateRules {} => {
+            start_update_rules();
         }
     }
 

@@ -89,4 +89,7 @@ pub enum Commands {
         #[clap(flatten)]
         common_opt: CommonOptions,
     },
+
+    #[command(about = "Update rules", disable_help_flag = true)]
+    UpdateRules {},
 }
