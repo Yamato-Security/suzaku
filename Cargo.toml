@@ -26,3 +26,6 @@ console = "0.*"
 git2="*"
 ureq="*"
 hashbrown="*"
+
+[target.'cfg(unix)'.dependencies] #Mac and Linux
+openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.
