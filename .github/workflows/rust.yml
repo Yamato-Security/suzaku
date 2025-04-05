@@ -62,6 +62,9 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y musl-tools libssl-dev pkg-config
+      - name: Install cross
+        if: matrix.info.os == 'ubuntu-latest' && matrix.info.cross == true
+        run: cargo install cross --git https://github.com/cross-rs/cross
       - name: Build tests
         if: ${{ steps.skip_check.outputs.should_skip != 'true' }}
         uses: ClementTsang/cargo-action@v0.0.3
