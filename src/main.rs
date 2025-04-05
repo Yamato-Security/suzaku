@@ -68,7 +68,8 @@ fn main() {
             }
             aws_metrics(dir, file, field_name, output, common_opt.no_color);
         }
-        UpdateRules {} => {
+        UpdateRules { common_opt } => {
+            display_logo(common_opt.quiet, common_opt.no_color);
             start_update_rules();
         }
     }
