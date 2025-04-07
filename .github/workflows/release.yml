@@ -97,9 +97,7 @@ jobs:
         shell: pwsh
         run: |
           mkdir -p release-binaries
-          dir ./target/
-          dir ./target/${{ matrix.info.target }}/release/
-          Copy-Item -Path ./target/release/suzaku.exe -Destination release-binaries/
+          Copy-Item -Path ./target/${{ matrix.info.target }}/release/suzaku.exe -Destination release-binaries/
           Copy-Item -Recurse -Path ./config -Destination release-binaries/
           Copy-Item -Recurse -Path ./art -Destination release-binaries/
           Remove-Item -Path ./suzaku-rules/.gitignore -Force
