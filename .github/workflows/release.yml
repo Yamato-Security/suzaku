@@ -26,10 +26,6 @@ jobs:
             target: "i686-pc-windows-msvc",
           }
           - {
-            os: "windows-2019",
-            target: "aarch64-pc-windows-msvc",
-          }
-          - {
             os: "ubuntu-latest",
             target: "x86_64-unknown-linux-gnu",
           }
@@ -108,7 +104,6 @@ jobs:
           switch ("${{ matrix.info.os }}") {
               "windows-latest" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x64.exe }
               "windows-2022" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe }
-              "windows-2019" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-aarch64.exe }
           }
 
       - name: Package and Zip - Unix
