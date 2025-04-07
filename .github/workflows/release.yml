@@ -112,7 +112,7 @@ jobs:
                   mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe 
               }
               "windows-2019" { 
-                  mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe 
+                  mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-aarch64.exe 
               }
           }
 
