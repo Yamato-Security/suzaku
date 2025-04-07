@@ -93,7 +93,6 @@ jobs:
         shell: pwsh
         run: |
           mkdir -p release-binaries
-          Copy-Item -Path ./target/release/suzaku.exe -Destination release-binaries/
           Copy-Item -Recurse -Path ./config -Destination release-binaries/
           Copy-Item -Recurse -Path ./art -Destination release-binaries/
           Remove-Item -Path ./suzaku-rules/.gitignore -Force
@@ -102,8 +101,14 @@ jobs:
           Remove-Item -Path ./suzaku-rules/doc -Recurse -Force
           Copy-Item -Recurse -Path ./suzaku-rules/ -Destination release-binaries/rules -Force
           switch ("${{ matrix.info.os }}") {
-              "windows-latest" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x64.exe }
-              "windows-2022" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe }
+              "windows-latest" { 
+                  Copy-Item -Path ./target/release/suzaku.exe -Destination release-binaries/
+                  mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x64.exe 
+              }
+              "windows-2022" { 
+                  Copy-Item -Path ./target/release/suzaku.exe -Destination release-binaries/
+                  mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe 
+              }
           }
 
       - name: Package and Zip - Unix
