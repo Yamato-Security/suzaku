@@ -17,18 +17,18 @@ jobs:
     strategy:
       matrix:
         info:
-#          - {
-#            os: "windows-latest",
-#            target: "x86_64-pc-windows-msvc",
-#          }
-#          - {
-#            os: "windows-2022",
-#            target: "i686-pc-windows-msvc",
-#          }
-#          - {
-#            os: "windows-2019",
-#            target: "aarch64-pc-windows-msvc",
-#          }
+          - {
+            os: "windows-latest",
+            target: "x86_64-pc-windows-msvc",
+          }
+          - {
+            os: "windows-2022",
+            target: "i686-pc-windows-msvc",
+          }
+          - {
+            os: "windows-2019",
+            target: "aarch64-pc-windows-msvc",
+          }
           - {
             os: "ubuntu-latest",
             target: "x86_64-unknown-linux-gnu",
@@ -56,6 +56,14 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch_or_tag }}
           submodules: 'true'
+
+      - name: Clone hayabusa rule repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: Yamato-Security/suzaku-rules
+          fetch-depth: 0
+          path: suzaku-rules
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -91,8 +99,12 @@ jobs:
           mkdir -p release-binaries
           Copy-Item -Path ./target/release/suzaku.exe -Destination release-binaries/
           Copy-Item -Recurse -Path ./config -Destination release-binaries/
-          Copy-Item -Recurse -Path ./rules -Destination release-binaries/
           Copy-Item -Recurse -Path ./art -Destination release-binaries/
+          Remove-Item -Path ./suzaku-rules/.gitignore -Force
+          Remove-Item -Path ./suzaku-rules/*.md -Force
+          Remove-Item -Path ./suzaku-rules/.github -Recurse -Force
+          Remove-Item -Path ./suzaku-rules/doc -Recurse -Force
+          Copy-Item -Recurse -Path ./suzaku-rules/ -Destination release-binaries/rules -Force
           switch ("${{ matrix.info.os }}") {
               "windows-latest" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x64.exe }
               "windows-2022" { mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe }
@@ -104,8 +116,12 @@ jobs:
         run: |
           mkdir -p release-binaries
           cp -r ./config release-binaries/config
-          cp -r ./rules release-binaries/rules
           cp -r ./art release-binaries/art
+          rm -f ./suzaku-rules/.gitignore
+          rm -f ./suzaku-rules/*.md
+          rm -rf ./suzaku-rules/.github
+          rm -rf ./suzaku-rules/doc
+          cp -r ./suzaku-rules/. release-binaries/rules
           case ${{ matrix.info.os }} in
             'ubuntu-latest')
                 cp ./target/x86_64-unknown-linux-gnu/release/suzaku release-binaries/
