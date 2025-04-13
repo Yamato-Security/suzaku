@@ -37,7 +37,7 @@ pub fn aws_detect(
     no_frequency: bool,
     no_summary: bool,
 ) {
-    let profile = load_profile("config/aws_ct_timeline_default_profile.txt");
+    let profile = load_profile("config/default_profile.yaml");
     let rules = rules::load_rules_from_dir("rules");
     p(
         Some(Color::Rgb(0, 255, 0)),
@@ -442,24 +442,26 @@ fn load_profile(file_path: &str) -> Vec<(String, String)> {
 
     for line in reader.lines() {
         let line = line.expect("Unable to read line");
-        let parts: Vec<&str> = line.split(',').collect();
+        let parts: Vec<&str> = line.split(':').collect();
         if parts.len() == 2 {
-            profile.push((String::from(parts[0]), String::from(parts[1])));
+            let key = parts[0].trim();
+            let val = parts[1].trim().trim_matches('\'');
+            profile.push((key.to_string(), val.to_string()));
         }
     }
     profile
 }
 
 fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
-    if key.starts_with("awsLog.") {
-        let key = key.replace("awsLog.", "");
-        if let Some(value) = event.get(key.as_str()) {
+    if key.starts_with(".") {
+        let key = key.strip_prefix(".").unwrap();
+        if let Some(value) = event.get(key) {
             s(format!("{:?}", value))
         } else {
             "".to_string()
         }
-    } else if key.starts_with("sigmaRule.") {
-        let key = key.replace("sigmaRule.", "");
+    } else if key.starts_with("sigma.") {
+        let key = key.replace("sigma.", "");
         if key == "title" {
             rule.title.to_string()
         } else if key == "level" {
