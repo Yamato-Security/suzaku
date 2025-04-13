@@ -442,7 +442,7 @@ fn load_profile(file_path: &str) -> Vec<(String, String)> {
 
     for line in reader.lines() {
         let line = line.expect("Unable to read line");
-        let parts: Vec<&str> = line.split(':').collect();
+        let parts: Vec<&str> = line.splitn(2, ':').collect();
         if parts.len() == 2 {
             let key = parts[0].trim();
             let val = parts[1].trim().trim_matches('\'');
