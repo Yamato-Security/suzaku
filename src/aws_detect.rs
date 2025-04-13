@@ -30,6 +30,7 @@ struct DetectionSummary {
 }
 
 pub fn aws_detect(
+    rules: &PathBuf,
     directory: &Option<PathBuf>,
     file: &Option<PathBuf>,
     output: &Option<PathBuf>,
@@ -38,7 +39,7 @@ pub fn aws_detect(
     no_summary: bool,
 ) {
     let profile = load_profile("config/aws_ct_timeline_default_profile.txt");
-    let rules = rules::load_rules_from_dir("rules");
+    let rules = rules::load_rules_from_dir(rules);
     p(
         Some(Color::Rgb(0, 255, 0)),
         "Total detection rules: ",

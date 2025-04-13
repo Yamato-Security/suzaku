@@ -4,7 +4,7 @@ use git2::{ErrorCode, Repository};
 use hashbrown::{HashMap, HashSet};
 use serde_json::Value;
 use std::fs::{self, create_dir};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use termcolor::Color;
 
@@ -87,7 +87,8 @@ pub fn update_rules() -> Result<String, git2::Error> {
     let mut prev_modified_rules: HashSet<String> = HashSet::default();
     let suzaku_repo = Repository::open(Path::new("."));
     let rule_path = "./rules";
-    let suzaku_rule_repo = Repository::open(Path::new(rule_path));
+    let rule_path = Path::new(rule_path);
+    let suzaku_rule_repo = Repository::open(rule_path);
     if suzaku_repo.is_err() && suzaku_rule_repo.is_err() {
         p(
             None,
@@ -95,12 +96,12 @@ pub fn update_rules() -> Result<String, git2::Error> {
             true,
         );
         // execution git clone of suzaku-rules repository when failed open suzaku repository.
-        result = clone_rules(Path::new(rule_path));
+        result = clone_rules(rule_path);
     } else if suzaku_rule_repo.is_ok() {
         // case of exist suzaku-rules repository
         _repo_main_reset_hard(suzaku_rule_repo.as_ref().unwrap())?;
         // case of failed fetching origin/main, git clone is not executed so network error has occurred possibly.
-        prev_modified_rules = get_updated_rules(rule_path);
+        prev_modified_rules = get_updated_rules(&rule_path.to_path_buf());
         result = pull_repository(&suzaku_rule_repo.unwrap());
     } else {
         // case of no exist suzaku-rules repository in rules.
@@ -130,7 +131,7 @@ pub fn update_rules() -> Result<String, git2::Error> {
         }
     }
     if result.is_ok() {
-        let updated_modified_rules = get_updated_rules("./rules");
+        let updated_modified_rules = get_updated_rules(&rule_path.to_path_buf());
         result = print_diff_modified_rule_dates(prev_modified_rules, updated_modified_rules);
     }
     result
@@ -218,7 +219,7 @@ fn clone_rules(rules_path: &Path) -> Result<String, git2::Error> {
 }
 
 /// Create rules folder files Hashset. Format is "[rule title in yaml]|[filepath]|[filemodified date]|[rule type in yaml]"
-fn get_updated_rules(rule_folder_path: &str) -> HashSet<String> {
+fn get_updated_rules(rule_folder_path: &PathBuf) -> HashSet<String> {
     let rulefile_loader = load_rules_from_dir(rule_folder_path);
 
     HashSet::from_iter(rulefile_loader.into_iter().map(|yaml| {

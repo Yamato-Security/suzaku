@@ -45,6 +45,10 @@ pub enum Commands {
         disable_help_flag = true
     )]
     AwsCtTimeline {
+        /// Specify a custom rule directory or file (default: ./rules)
+        #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE")]
+        rules: PathBuf,
+
         #[clap(flatten)]
         input_opt: InputOption,
 
