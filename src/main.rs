@@ -32,6 +32,7 @@ fn main() {
     let cmd = &Cli::parse().cmd;
     match cmd {
         AwsCtTimeline {
+            rules,
             input_opt,
             output,
             common_opt,
@@ -44,7 +45,16 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
+            if !rules.exists() {
+                p(
+                    Some(Color::Red),
+                    &format!("Rule file or directory does not exist: {:?}", rules),
+                    true,
+                );
+                return;
+            }
             aws_detect(
+                rules,
                 dir,
                 file,
                 output,

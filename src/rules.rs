@@ -1,14 +1,23 @@
 use sigma_rust::Rule;
 use sigma_rust::rule_from_yaml;
 use std::fs;
+use std::path::PathBuf;
 
-pub fn load_rules_from_dir(directory: &str) -> Vec<Rule> {
+pub fn load_rules_from_dir(path: &PathBuf) -> Vec<Rule> {
     let mut rules = Vec::new();
-    load_rules_recursive(directory, &mut rules);
+    if path.is_file() {
+        if let Ok(contents) = fs::read_to_string(path) {
+            if let Ok(rule) = rule_from_yaml(&contents) {
+                rules.push(rule);
+            }
+        }
+        return rules;
+    }
+    load_rules_recursive(path, &mut rules);
     rules
 }
 
-fn load_rules_recursive(directory: &str, rules: &mut Vec<Rule>) {
+fn load_rules_recursive(directory: &PathBuf, rules: &mut Vec<Rule>) {
     if let Ok(entries) = fs::read_dir(directory) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -19,7 +28,7 @@ fn load_rules_recursive(directory: &str, rules: &mut Vec<Rule>) {
                     }
                 }
             } else if path.is_dir() {
-                load_rules_recursive(path.to_str().unwrap(), rules);
+                load_rules_recursive(&path, rules);
             }
         }
     }
