@@ -63,26 +63,35 @@ where
             pb.inc(1);
             continue;
         };
-        let json_value: Value = serde_json::from_str(&log_contents)?;
+        let json_value: Result<Value, _> = serde_json::from_str(&log_contents);
         match json_value {
-            Value::Array(json_array) => {
-                for json_value in json_array {
-                    let event: Event = event_from_json(json_value.to_string().as_str())?;
-                    process_event(event);
-                }
-            }
-            Value::Object(json_map) => {
-                if let Some(json_array) = json_map.get("Records") {
-                    for json_value in json_array.as_array().unwrap() {
-                        let event: Event = event_from_json(json_value.to_string().as_str())?;
-                        process_event(event);
+            Ok(json_value) => {
+                match json_value {
+                    Value::Array(json_array) => {
+                        for json_value in json_array {
+                            let event: Event = event_from_json(json_value.to_string().as_str())?;
+                            process_event(event);
+                        }
+                    }
+                    Value::Object(json_map) => {
+                        if let Some(json_array) = json_map.get("Records") {
+                            for json_value in json_array.as_array().unwrap() {
+                                let event: Event =
+                                    event_from_json(json_value.to_string().as_str())?;
+                                process_event(event);
+                            }
+                        }
+                    }
+                    _ => {
+                        // TODO: Handle unexpected JSON structure
                     }
                 }
             }
-            _ => {
-                eprintln!("Unexpected JSON structure in file: {}", path);
+            Err(_) => {
+                // TODO: Handle unexpected JSON structure
             }
         }
+
         if show_progress {
             pb.inc(1);
         }
