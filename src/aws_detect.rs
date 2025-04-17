@@ -11,7 +11,7 @@ use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use sigma_rust::{Event, Rule};
 use std::cmp::min;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::io::{BufWriter, Write};
@@ -78,7 +78,7 @@ fn write_record(
 
     // JSON出力
     if let Some(writer) = json_writer {
-        let mut json_record: HashMap<String, String> = HashMap::new();
+        let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
             let value = get_value_from_event(v, event, rule);
             json_record.insert(k.clone(), value.to_string());
@@ -92,7 +92,7 @@ fn write_record(
 
     // JSONL出力
     if let Some(writer) = jsonl_writer {
-        let mut json_record: HashMap<String, String> = HashMap::new();
+        let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
             let value = get_value_from_event(v, event, rule);
             json_record.insert(k.clone(), value.to_string());
