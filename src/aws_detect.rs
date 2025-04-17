@@ -588,7 +588,11 @@ fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
     if key.starts_with(".") {
         let key = key.strip_prefix(".").unwrap();
         if let Some(value) = event.get(key) {
-            s(format!("{:?}", value))
+            if key == "eventTime" {
+                s(format!("{:?}", value)).replace("T", " ").replace("Z", "")
+            } else {
+                s(format!("{:?}", value))
+            }
         } else {
             "".to_string()
         }
