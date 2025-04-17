@@ -127,7 +127,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                 if csv_path.extension().and_then(|ext| ext.to_str()) != Some("csv") {
                     csv_path.set_extension("csv");
                 }
-                csv_writer = Some(get_writer(&Some(output_path.clone())));
+                csv_writer = Some(get_writer(&Some(csv_path)));
             }
             _ => {}
         }
