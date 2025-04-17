@@ -38,6 +38,32 @@ pub struct InputOption {
     pub filepath: Option<PathBuf>,
 }
 
+#[derive(Args, Clone, Debug, Default)]
+pub struct AwsCtTimelineOptions {
+    /// Specify a custom rule directory or file (default: ./rules)
+    #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE")]
+    pub rules: PathBuf,
+
+    #[clap(flatten)]
+    pub input_opt: InputOption,
+
+    /// Output CSV
+    #[arg(help_heading = Some("Output"), short, long, value_name = "FILE")]
+    pub output: Option<PathBuf>,
+
+    /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
+    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1")]
+    pub output_type: u8,
+
+    /// Disable event frequency timeline (terminal needs to support Unicode)
+    #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
+    pub no_frequency: bool,
+
+    /// Do not display result Summary for faster speed
+    #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
+    pub no_summary: bool,
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(
@@ -45,27 +71,11 @@ pub enum Commands {
         disable_help_flag = true
     )]
     AwsCtTimeline {
-        /// Specify a custom rule directory or file (default: ./rules)
-        #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE")]
-        rules: PathBuf,
-
         #[clap(flatten)]
-        input_opt: InputOption,
-
-        /// Output CSV
-        #[arg(help_heading = Some("Output"), short, long, value_name = "FILE")]
-        output: Option<PathBuf>,
+        options: AwsCtTimelineOptions,
 
         #[clap(flatten)]
         common_opt: CommonOptions,
-
-        /// Disable event frequency timeline (terminal needs to support Unicode)
-        #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
-        no_frequency: bool,
-
-        /// Do not display Results Summary for faster speed
-        #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
-        no_summary: bool,
     },
 
     #[command(

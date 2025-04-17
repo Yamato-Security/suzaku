@@ -32,36 +32,25 @@ fn main() {
     let cmd = &Cli::parse().cmd;
     match cmd {
         AwsCtTimeline {
-            rules,
-            input_opt,
-            output,
+            options,
             common_opt,
-            no_frequency,
-            no_summary,
         } => {
             display_logo(common_opt.quiet, common_opt.no_color);
-            let dir = &input_opt.directory;
-            let file = &input_opt.filepath;
+
+            let dir = &options.input_opt.directory;
+            let file = &options.input_opt.filepath;
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            if !rules.exists() {
+            if !options.rules.exists() {
                 p(
                     Some(Color::Red),
-                    &format!("Rule file or directory does not exist: {:?}", rules),
+                    &format!("Rule file or directory does not exist: {:?}", options.rules),
                     true,
                 );
                 return;
             }
-            aws_detect(
-                rules,
-                dir,
-                file,
-                output,
-                common_opt.no_color,
-                *no_frequency,
-                *no_summary,
-            );
+            aws_detect(options, common_opt);
         }
         AwsCtMetrics {
             input_opt,
