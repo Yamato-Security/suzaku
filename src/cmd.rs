@@ -52,8 +52,12 @@ pub struct AwsCtTimelineOptions {
     pub output: Option<PathBuf>,
 
     /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
-    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1")]
+    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", requires = "output", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1")]
     pub output_type: u8,
+
+    /// Overwrite files when saving
+    #[arg(help_heading = Some("Output"), short='C', long = "clobber", requires = "output")]
+    pub clobber: bool,
 
     /// Disable event frequency timeline (terminal needs to support Unicode)
     #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]

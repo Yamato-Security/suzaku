@@ -42,6 +42,19 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
+            if let Some(output) = &options.output {
+                if !options.clobber && output.exists() {
+                    p(
+                        None,
+                        &format!(
+                            "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
+                            output.display()
+                        ),
+                        true,
+                    );
+                    return;
+                }
+            }
             if !options.rules.exists() {
                 p(
                     Some(Color::Red),
