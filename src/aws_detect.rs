@@ -52,14 +52,18 @@ impl OutputType {
     }
 }
 
+struct Writers {
+    csv: Option<Writer<Box<dyn Write>>>,
+    json: Option<BufWriter<Box<dyn Write>>>,
+    jsonl: Option<BufWriter<Box<dyn Write>>>,
+    std: Option<BufferWriter>,
+}
 fn write_record(
     profile: &[(String, String)],
     event: &Event,
     rule: &Rule,
-    csv_writer: &mut Option<Writer<Box<dyn Write>>>,
-    json_writer: &mut Option<BufWriter<Box<dyn Write>>>,
-    jsonl_writer: &mut Option<BufWriter<Box<dyn Write>>>,
-    std_writer: &mut Option<Writer<Box<dyn Write>>>,
+    wrt: &mut Writers,
+    no_color: bool,
 ) {
     let record: Vec<String> = profile
         .iter()
@@ -67,17 +71,45 @@ fn write_record(
         .collect();
 
     // 標準出力
-    if let Some(writer) = std_writer {
-        writer.write_record(&record).unwrap();
+    if let Some(writer) = &mut wrt.std {
+        let level = &record[2];
+        let color = if level == "critical" {
+            Color::Rgb(255, 0, 0)
+        } else if level == "high" {
+            Color::Rgb(255, 175, 0)
+        } else if level == "medium" {
+            Color::Rgb(255, 255, 0)
+        } else if level == "low" {
+            Color::Rgb(0, 255, 0)
+        } else {
+            Color::Rgb(255, 255, 255)
+        };
+        let color = if no_color { None } else { Some(color) };
+        let mut buf = writer.buffer();
+        for (i, col) in record.iter().enumerate() {
+            buf.set_color(ColorSpec::new().set_fg(color)).ok();
+            write!(buf, "{}", col).ok();
+            if i != record.len() - 1 {
+                if no_color {
+                    buf.set_color(ColorSpec::new().set_fg(None)).ok();
+                } else {
+                    buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(255, 175, 0))))
+                        .ok();
+                }
+                write!(buf, " · ").ok();
+            }
+        }
+        write!(buf, "\n\n").ok();
+        writer.print(&buf).ok();
     }
 
     // CSV出力
-    if let Some(writer) = csv_writer {
+    if let Some(writer) = &mut wrt.csv {
         writer.write_record(&record).unwrap();
     }
 
     // JSON出力
-    if let Some(writer) = json_writer {
+    if let Some(writer) = &mut wrt.json {
         let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
             let value = get_value_from_event(v, event, rule);
@@ -91,7 +123,7 @@ fn write_record(
     }
 
     // JSONL出力
-    if let Some(writer) = jsonl_writer {
+    if let Some(writer) = &mut wrt.jsonl {
         let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
             let value = get_value_from_event(v, event, rule);
@@ -114,7 +146,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     );
     p(None, rules.len().to_string().as_str(), true);
 
-    let mut std_out = None;
+    let mut std_writer = None;
     let mut csv_writer = None;
     let mut json_writer = None;
     let mut jsonl_writer = None;
@@ -149,18 +181,32 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
             _ => {}
         }
     } else {
-        std_out = Some(get_writer(&None));
+        let disp_wtr = BufferWriter::stdout(ColorChoice::Always);
+        let mut disp_wtr_buf = disp_wtr.buffer();
+        disp_wtr_buf
+            .set_color(ColorSpec::new().set_fg(Some(Color::Rgb(0, 255, 0))))
+            .ok();
+        std_writer = Some(disp_wtr);
     }
 
-    if let Some(ref mut std_out) = std_out {
+    if let Some(ref mut std_out) = std_writer {
         let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
-        std_out.write_record(&csv_header).unwrap();
+        let mut buf = std_out.buffer();
+        buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(0, 255, 0))))
+            .ok();
+        writeln!(buf, "{}", csv_header.join(" · ")).ok();
     }
 
     if let Some(ref mut writer) = csv_writer {
         let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
         writer.write_record(&csv_header).unwrap();
     }
+    let mut wrt = Writers {
+        csv: csv_writer,
+        json: json_writer,
+        jsonl: jsonl_writer,
+        std: std_writer,
+    };
 
     let mut summary = DetectionSummary::default();
     let scan_by_all_rules = |event| {
@@ -172,15 +218,8 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                     summary.event_with_hits += 1;
                     counted = true;
                 }
-                write_record(
-                    &profile,
-                    &event,
-                    rule,
-                    &mut csv_writer,
-                    &mut json_writer,
-                    &mut jsonl_writer,
-                    &mut std_out,
-                );
+
+                write_record(&profile, &event, rule, &mut wrt, common_opt.no_color);
 
                 if let Some(author) = &rule.author {
                     summary
@@ -247,13 +286,13 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
             events.into_iter().for_each(scan_by_all_rules);
         }
     }
-    if let Some(ref mut writer) = csv_writer {
+    if let Some(ref mut writer) = wrt.csv {
         writer.flush().unwrap();
     }
-    if let Some(ref mut writer) = json_writer {
+    if let Some(ref mut writer) = wrt.json {
         writer.flush().unwrap();
     }
-    if let Some(ref mut writer) = jsonl_writer {
+    if let Some(ref mut writer) = wrt.jsonl {
         writer.flush().unwrap();
     }
     println!();
@@ -594,18 +633,18 @@ fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
                 s(format!("{:?}", value))
             }
         } else {
-            "".to_string()
+            "-".to_string()
         }
     } else if key.starts_with("sigma.") {
         let key = key.replace("sigma.", "");
         if key == "title" {
             rule.title.to_string()
         } else if key == "level" {
-            format!("{:?}", rule.level.as_ref().unwrap())
+            format!("{:?}", rule.level.as_ref().unwrap()).to_lowercase()
         } else {
-            "".to_string()
+            "-".to_string()
         }
     } else {
-        "".to_string()
+        "-".to_string()
     }
 }
