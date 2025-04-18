@@ -1,5 +1,6 @@
 use csv::Writer;
-use std::io::Write;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::{fs, io};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
@@ -11,6 +12,15 @@ pub fn get_writer(output: &Option<PathBuf>) -> Writer<Box<dyn Write>> {
         Writer::from_writer(Box::new(io::stdout()))
     };
     wtr
+}
+
+pub fn get_json_writer(output: &Option<PathBuf>) -> BufWriter<Box<dyn Write>> {
+    if let Some(output) = output {
+        let file = File::create(output).expect("Failed to create file");
+        BufWriter::new(Box::new(file))
+    } else {
+        BufWriter::new(Box::new(std::io::stdout()))
+    }
 }
 
 pub fn s(input: String) -> String {

@@ -24,7 +24,7 @@ where
     F: FnMut(Event),
 {
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
-    let size = ByteSize::b(total_size).to_string_as(false);
+    let size = ByteSize::b(total_size).display().to_string();
     p(Some(Color::Rgb(0, 255, 0)), "Total log files: ", false);
     p(None, count.to_string().as_str(), true);
     p(Some(Color::Rgb(0, 255, 0)), "Total file size: ", false);
@@ -51,7 +51,7 @@ where
     for path in file_paths {
         if show_progress {
             let size = fs::metadata(&path).unwrap().len();
-            let size = ByteSize::b(size).to_string_as(false);
+            let size = ByteSize::b(size).display().to_string();
             let pb_msg = format!("{} ({})", path, size);
             pb.set_message(pb_msg);
         }

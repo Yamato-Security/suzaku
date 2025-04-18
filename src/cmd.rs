@@ -2,8 +2,8 @@ use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "Suzaku")]
-#[command(version = "0.0.1")]
+#[command(name = "suzaku")]
+#[command(version = "0.1.0")]
 #[command(author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)")]
 #[command(about = "Cloud Log Threat Detection and Fast Forensics")]
 pub struct Cli {
@@ -33,39 +33,53 @@ pub struct InputOption {
     #[arg(help_heading = Some("Input"), short = 'd', long, value_name = "DIR", conflicts_with_all = ["filepath"])]
     pub directory: Option<PathBuf>,
 
-    /// File path to one .gz/json file
+    /// File path to one gz/json file
     #[arg(help_heading = Some("Input"), short = 'f', long = "file", value_name = "FILE", conflicts_with_all = ["directory"])]
     pub filepath: Option<PathBuf>,
+}
+
+#[derive(Args, Clone, Debug, Default)]
+pub struct AwsCtTimelineOptions {
+    /// Specify a custom rule directory or file (default: ./rules)
+    #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE")]
+    pub rules: PathBuf,
+
+    #[clap(flatten)]
+    pub input_opt: InputOption,
+
+    /// Save the results to a file
+    #[arg(help_heading = Some("Output"), short, long, value_name = "FILE")]
+    pub output: Option<PathBuf>,
+
+    /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
+    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", requires = "output", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1")]
+    pub output_type: u8,
+
+    /// Overwrite files when saving
+    #[arg(help_heading = Some("Output"), short='C', long = "clobber", requires = "output")]
+    pub clobber: bool,
+
+    /// Disable event frequency timeline (terminal needs to support Unicode)
+    #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
+    pub no_frequency: bool,
+
+    /// Do not display results summary
+    #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
+    pub no_summary: bool,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(
-        about = "Creates a AWS CloudTrail log DFIR timeline",
+        about = "Creates an AWS CloudTrail DFIR timeline",
         disable_help_flag = true
     )]
     AwsCtTimeline {
-        /// Specify a custom rule directory or file (default: ./rules)
-        #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE")]
-        rules: PathBuf,
-
         #[clap(flatten)]
-        input_opt: InputOption,
-
-        /// Output CSV
-        #[arg(help_heading = Some("Output"), short, long, value_name = "FILE")]
-        output: Option<PathBuf>,
+        options: AwsCtTimelineOptions,
 
         #[clap(flatten)]
         common_opt: CommonOptions,
-
-        /// Disable event frequency timeline (terminal needs to support Unicode)
-        #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
-        no_frequency: bool,
-
-        /// Do not display Results Summary for faster speed
-        #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
-        no_summary: bool,
     },
 
     #[command(

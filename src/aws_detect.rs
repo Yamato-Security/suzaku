@@ -1,19 +1,20 @@
+use crate::cmd::{AwsCtTimelineOptions, CommonOptions};
 use crate::rules;
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, p, s};
+use crate::util::{get_json_writer, get_writer, p, s};
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Cell, Table, TableComponent};
+use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use sigma_rust::{Event, Rule};
 use std::cmp::min;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
-use std::io::Write;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::io::{BufWriter, Write};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use terminal_size::{Width, terminal_size};
 
@@ -29,17 +30,83 @@ struct DetectionSummary {
     last_event_time: Option<DateTime<Utc>>,
 }
 
-pub fn aws_detect(
-    rules: &PathBuf,
-    directory: &Option<PathBuf>,
-    file: &Option<PathBuf>,
-    output: &Option<PathBuf>,
-    no_color: bool,
-    no_frequency: bool,
-    no_summary: bool,
+#[derive(Debug)]
+pub enum OutputType {
+    Csv,
+    Json,
+    Jsonl,
+    CsvAndJson,
+    CsvAndJsonl,
+}
+
+impl OutputType {
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            1 => Some(OutputType::Csv),
+            2 => Some(OutputType::Json),
+            3 => Some(OutputType::Jsonl),
+            4 => Some(OutputType::CsvAndJson),
+            5 => Some(OutputType::CsvAndJsonl),
+            _ => None,
+        }
+    }
+}
+
+fn write_record(
+    profile: &[(String, String)],
+    event: &Event,
+    rule: &Rule,
+    csv_writer: &mut Option<Writer<Box<dyn Write>>>,
+    json_writer: &mut Option<BufWriter<Box<dyn Write>>>,
+    jsonl_writer: &mut Option<BufWriter<Box<dyn Write>>>,
+    std_writer: &mut Option<Writer<Box<dyn Write>>>,
 ) {
+    let record: Vec<String> = profile
+        .iter()
+        .map(|(_k, v)| get_value_from_event(v, event, rule))
+        .collect();
+
+    // 標準出力
+    if let Some(writer) = std_writer {
+        writer.write_record(&record).unwrap();
+    }
+
+    // CSV出力
+    if let Some(writer) = csv_writer {
+        writer.write_record(&record).unwrap();
+    }
+
+    // JSON出力
+    if let Some(writer) = json_writer {
+        let mut json_record: BTreeMap<String, String> = BTreeMap::new();
+        for (k, v) in profile {
+            let value = get_value_from_event(v, event, rule);
+            json_record.insert(k.clone(), value.to_string());
+        }
+        let rec = serde_json::to_string_pretty(&json_record);
+        if let Ok(json_string) = rec {
+            writer.write_all(json_string.as_bytes()).unwrap();
+            writer.write_all(b"\n").unwrap();
+        }
+    }
+
+    // JSONL出力
+    if let Some(writer) = jsonl_writer {
+        let mut json_record: BTreeMap<String, String> = BTreeMap::new();
+        for (k, v) in profile {
+            let value = get_value_from_event(v, event, rule);
+            json_record.insert(k.clone(), value.to_string());
+        }
+        if let Ok(json_string) = serde_json::to_string(&json_record) {
+            writer.write_all(json_string.as_bytes()).unwrap();
+            writer.write_all(b"\n").unwrap();
+        }
+    }
+}
+
+pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     let profile = load_profile("config/default_profile.yaml");
-    let rules = rules::load_rules_from_dir(rules);
+    let rules = rules::load_rules_from_dir(&options.rules);
     p(
         Some(Color::Rgb(0, 255, 0)),
         "Total detection rules: ",
@@ -47,9 +114,54 @@ pub fn aws_detect(
     );
     p(None, rules.len().to_string().as_str(), true);
 
-    let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
-    let mut wtr = get_writer(output);
-    wtr.write_record(&csv_header).unwrap();
+    let mut std_out = None;
+    let mut csv_writer = None;
+    let mut json_writer = None;
+    let mut jsonl_writer = None;
+
+    if let Some(output_path) = &options.output {
+        let output_type = OutputType::from_u8(options.output_type).unwrap_or(OutputType::Csv);
+        match output_type {
+            OutputType::Csv | OutputType::CsvAndJson | OutputType::CsvAndJsonl => {
+                let mut csv_path = output_path.clone();
+                if csv_path.extension().and_then(|ext| ext.to_str()) != Some("csv") {
+                    csv_path.set_extension("csv");
+                }
+                csv_writer = Some(get_writer(&Some(csv_path)));
+            }
+            _ => {}
+        }
+        match output_type {
+            OutputType::Json | OutputType::CsvAndJson => {
+                let mut json_path = output_path.clone();
+                if json_path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+                    json_path.set_extension("json");
+                }
+                json_writer = Some(get_json_writer(&Some(json_path)));
+            }
+            OutputType::Jsonl | OutputType::CsvAndJsonl => {
+                let mut jsonl_path = output_path.clone();
+                if jsonl_path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
+                    jsonl_path.set_extension("jsonl");
+                }
+                jsonl_writer = Some(get_json_writer(&Some(jsonl_path)));
+            }
+            _ => {}
+        }
+    } else {
+        std_out = Some(get_writer(&None));
+    }
+
+    if let Some(ref mut std_out) = std_out {
+        let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
+        std_out.write_record(&csv_header).unwrap();
+    }
+
+    if let Some(ref mut writer) = csv_writer {
+        let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
+        writer.write_record(&csv_header).unwrap();
+    }
+
     let mut summary = DetectionSummary::default();
     let scan_by_all_rules = |event| {
         summary.total_events += 1;
@@ -60,11 +172,16 @@ pub fn aws_detect(
                     summary.event_with_hits += 1;
                     counted = true;
                 }
-                let record: Vec<String> = profile
-                    .iter()
-                    .map(|(_k, v)| get_value_from_event(v, &event, rule))
-                    .collect();
-                wtr.write_record(&record).unwrap();
+                write_record(
+                    &profile,
+                    &event,
+                    rule,
+                    &mut csv_writer,
+                    &mut json_writer,
+                    &mut jsonl_writer,
+                    &mut std_out,
+                );
+
                 if let Some(author) = &rule.author {
                     summary
                         .author_titles
@@ -116,21 +233,35 @@ pub fn aws_detect(
         }
     };
 
-    if let Some(d) = directory {
-        process_events_from_dir(scan_by_all_rules, d, output.is_some(), no_color).unwrap();
-    } else if let Some(f) = file {
+    if let Some(d) = &options.input_opt.directory {
+        process_events_from_dir(
+            scan_by_all_rules,
+            d,
+            options.output.is_some(),
+            common_opt.no_color,
+        )
+        .unwrap();
+    } else if let Some(f) = &options.input_opt.filepath {
         let log_contents = get_content(f);
         if let Ok(events) = load_json_from_file(&log_contents) {
             events.into_iter().for_each(scan_by_all_rules);
         }
     }
-    wtr.flush().ok();
+    if let Some(ref mut writer) = csv_writer {
+        writer.flush().unwrap();
+    }
+    if let Some(ref mut writer) = json_writer {
+        writer.flush().unwrap();
+    }
+    if let Some(ref mut writer) = jsonl_writer {
+        writer.flush().unwrap();
+    }
     println!();
     let terminal_width = match terminal_size() {
         Some((Width(w), _)) => w as usize,
         None => 100,
     };
-    if !no_frequency {
+    if !options.no_frequency {
         print_timeline_hist(&summary.timestamps, terminal_width, 3);
     }
     let table_column_num = if terminal_width <= 105 {
@@ -153,7 +284,7 @@ pub fn aws_detect(
 
     print_detected_rule_authors(&authors_count, table_column_num);
 
-    if !no_summary {
+    if !options.no_summary {
         print_summary(&summary);
     }
 }
@@ -457,7 +588,11 @@ fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
     if key.starts_with(".") {
         let key = key.strip_prefix(".").unwrap();
         if let Some(value) = event.get(key) {
-            s(format!("{:?}", value))
+            if key == "eventTime" {
+                s(format!("{:?}", value)).replace("T", " ").replace("Z", "")
+            } else {
+                s(format!("{:?}", value))
+            }
         } else {
             "".to_string()
         }
