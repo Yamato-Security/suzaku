@@ -90,8 +90,12 @@ fn write_record(
             buf.set_color(ColorSpec::new().set_fg(color)).ok();
             write!(buf, "{}", col).ok();
             if i != record.len() - 1 {
-                buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(255, 175, 0))))
-                    .ok();
+                if no_color {
+                    buf.set_color(ColorSpec::new().set_fg(None)).ok();
+                } else {
+                    buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(255, 175, 0))))
+                        .ok();
+                }
                 write!(buf, " · ").ok();
             }
         }
