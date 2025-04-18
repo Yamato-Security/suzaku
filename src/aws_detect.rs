@@ -59,7 +59,7 @@ fn write_record(
     csv_writer: &mut Option<Writer<Box<dyn Write>>>,
     json_writer: &mut Option<BufWriter<Box<dyn Write>>>,
     jsonl_writer: &mut Option<BufWriter<Box<dyn Write>>>,
-    std_writer: &mut Option<Writer<Box<dyn Write>>>,
+    std_writer: &mut Option<BufferWriter>,
 ) {
     let record: Vec<String> = profile
         .iter()
@@ -68,7 +68,35 @@ fn write_record(
 
     // 標準出力
     if let Some(writer) = std_writer {
-        writer.write_record(&record).unwrap();
+        let level = &record[2];
+        let color = if level == "critical" {
+            Color::Rgb(255, 0, 0)
+        } else if level == "high" {
+            Color::Rgb(255, 175, 0)
+        } else if level == "medium" {
+            Color::Rgb(255, 255, 0)
+        } else if level == "low" {
+            Color::Rgb(0, 255, 0)
+        } else {
+            Color::Rgb(255, 255, 255)
+        };
+        let mut buf = writer.buffer();
+        for (i, col) in record.iter().enumerate() {
+            if i == 0 || i == 1 || i == 2 {
+                buf.set_color(ColorSpec::new().set_fg(Some(color))).ok();
+            } else {
+                buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(255, 255, 255))))
+                    .ok();
+            }
+            write!(buf, "{}", col).ok();
+            if i != record.len() - 1 {
+                buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(255, 175, 0))))
+                    .ok();
+                write!(buf, " · ").ok();
+            }
+        }
+        write!(buf, "\n\n").ok();
+        writer.print(&buf).ok();
     }
 
     // CSV出力
@@ -149,12 +177,20 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
             _ => {}
         }
     } else {
-        std_out = Some(get_writer(&None));
+        let disp_wtr = BufferWriter::stdout(ColorChoice::Always);
+        let mut disp_wtr_buf = disp_wtr.buffer();
+        disp_wtr_buf
+            .set_color(ColorSpec::new().set_fg(Some(Color::Rgb(0, 255, 0))))
+            .ok();
+        std_out = Some(disp_wtr);
     }
 
     if let Some(ref mut std_out) = std_out {
         let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
-        std_out.write_record(&csv_header).unwrap();
+        let mut buf = std_out.buffer();
+        buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(0, 255, 0))))
+            .ok();
+        writeln!(buf, "{}", csv_header.join(" · ")).ok();
     }
 
     if let Some(ref mut writer) = csv_writer {
@@ -594,18 +630,18 @@ fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
                 s(format!("{:?}", value))
             }
         } else {
-            "".to_string()
+            "-".to_string()
         }
     } else if key.starts_with("sigma.") {
         let key = key.replace("sigma.", "");
         if key == "title" {
             rule.title.to_string()
         } else if key == "level" {
-            format!("{:?}", rule.level.as_ref().unwrap())
+            format!("{:?}", rule.level.as_ref().unwrap()).to_lowercase()
         } else {
-            "".to_string()
+            "-".to_string()
         }
     } else {
-        "".to_string()
+        "-".to_string()
     }
 }
