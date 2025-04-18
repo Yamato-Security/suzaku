@@ -33,7 +33,7 @@ pub struct InputOption {
     #[arg(help_heading = Some("Input"), short = 'd', long, value_name = "DIR", conflicts_with_all = ["filepath"])]
     pub directory: Option<PathBuf>,
 
-    /// File path to one .gz/json file
+    /// File path to one gz/json file
     #[arg(help_heading = Some("Input"), short = 'f', long = "file", value_name = "FILE", conflicts_with_all = ["directory"])]
     pub filepath: Option<PathBuf>,
 }
@@ -47,7 +47,7 @@ pub struct AwsCtTimelineOptions {
     #[clap(flatten)]
     pub input_opt: InputOption,
 
-    /// Output CSV
+    /// Save the results to a file
     #[arg(help_heading = Some("Output"), short, long, value_name = "FILE")]
     pub output: Option<PathBuf>,
 
@@ -63,7 +63,7 @@ pub struct AwsCtTimelineOptions {
     #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
     pub no_frequency: bool,
 
-    /// Do not display result Summary for faster speed
+    /// Do not display results summary
     #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
     pub no_summary: bool,
 }
@@ -71,7 +71,7 @@ pub struct AwsCtTimelineOptions {
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(
-        about = "Creates a AWS CloudTrail log DFIR timeline",
+        about = "Creates an AWS CloudTrail DFIR timeline",
         disable_help_flag = true
     )]
     AwsCtTimeline {
