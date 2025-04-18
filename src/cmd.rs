@@ -2,8 +2,8 @@ use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "Suzaku")]
-#[command(version = "0.0.1")]
+#[command(name = "suzaku")]
+#[command(version = "0.1.0")]
 #[command(author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)")]
 #[command(about = "Cloud Log Threat Detection and Fast Forensics")]
 pub struct Cli {
