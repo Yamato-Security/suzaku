@@ -83,15 +83,15 @@ Suzakuは、ノイズの中から攻撃を見つけるだけでなく、迅速�
 
 ## DFIRタイムライン
 
-![DFIR Timeline](screenshots/DFIR_Timeline.png)
+![Terminal Output](screenshots/TerminalOutput.png)
 
 ## 検知頻度のタイムライン
 
-![Detection Frequency Timeline](screenshots/Detection_Frequency_Timeline.png)
+![Detection Frequency Timeline](screenshots/DetectionFrequencyTimeline.png)
 
 ## 検知結果サマリ
 
-![Detection Result Summary](screenshots/Detection_Result_Summary.png)
+![Results Summary](screenshots/ResultsSummary.png)
 
 # 機能
 
