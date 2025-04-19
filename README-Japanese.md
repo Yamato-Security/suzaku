@@ -303,7 +303,7 @@ Input:
   -f, --file <FILE>      gz/jsonファイルのパス
 
 Output:
-  -F, --field-name <FIELD_NAME>  The field to generate metrics for [default: eventName]
+  -F, --field-name <FIELD_NAME>  メトリクスを作成するフィールド [デフォルト: eventName]
   -o, --output <FILE>            CSVに保存
 
 Display Settings:
@@ -338,7 +338,7 @@ Input:
 
 Output:
   -o, --output <FILE>              ファイルに結果を保存
-  -t, --output-type <OUTPUT_TYPE>  Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [default: 1]
+  -t, --output-type <OUTPUT_TYPE>  ファイルタイプ 1: CSV (デフォルト), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [デフォルト: 1]
   -C, --clobber                    結果ファイルを上書きする
 
 Display Settings:
