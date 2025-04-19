@@ -249,7 +249,7 @@ fn print_diff_modified_rule_dates(
             .or_insert(0b0) += 1;
         p(
             None,
-            &format!(" - {} (Modified: {} )", tmp[1], tmp[2]),
+            &format!(" - {} (Modified: {})", tmp[1], tmp[2]),
             true,
         );
     }
