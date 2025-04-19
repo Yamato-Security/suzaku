@@ -299,19 +299,19 @@ chmod +x ./suzaku
 Usage: suzaku aws-ct-metrics [OPTIONS] <--directory <DIR>|--file <FILE>>
 
 Input:
-  -d, --directory <DIR>  Directory of multiple gz/json files
-  -f, --file <FILE>      File path to one gz/json file
+  -d, --directory <DIR>  複数gz/jsonファイルのディレクトリパス
+  -f, --file <FILE>      gz/jsonファイルのパス
 
 Output:
   -F, --field-name <FIELD_NAME>  The field to generate metrics for [default: eventName]
-  -o, --output <FILE>            Output CSV
+  -o, --output <FILE>            CSVに保存
 
 Display Settings:
-  -K, --no-color  Disable color output
-  -q, --quiet     Quiet mode: do not display the launch banner
+  -K, --no-color  カラーで出力しない
+  -q, --quiet     Quietモード: 起動バナーを表示しない
 
 General Options:
-  -h, --help  Show the help menu
+  -h, --help  ヘルプメニューを表示する
   ```
 
 #### `aws-ct-metrics`コマンドの例
@@ -329,23 +329,23 @@ AWS CloudTrailのDFIRタイムラインを、`rules`フォルダ内のsigmaル�
 Usage: suzaku aws-ct-timeline [OPTIONS] <--directory <DIR>|--file <FILE>>
 
 General Options:
-  -r, --rules <DIR/FILE>  Specify a custom rule directory or file (default: ./rules)
-  -h, --help              Show the help menu
+  -r, --rules <DIR/FILE>  カスタムルールディレクトリのパス (デフォルト: ./rules)
+  -h, --help              ヘルプメニューを表示する
 
 Input:
-  -d, --directory <DIR>  Directory of multiple gz/json files
-  -f, --file <FILE>      File path to one gz/json file
+  -d, --directory <DIR>  複数gz/jsonファイルのディレクトリパス
+  -f, --file <FILE>      gz/jsonファイルのパス
 
 Output:
-  -o, --output <FILE>              Save the results to a file
+  -o, --output <FILE>              ファイルに結果を保存
   -t, --output-type <OUTPUT_TYPE>  Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [default: 1]
-  -C, --clobber                    Overwrite files when saving
+  -C, --clobber                    結果ファイルを上書きする
 
 Display Settings:
-  -K, --no-color               Disable color output
-  -N, --no-summary             Do not display results summary
-  -T, --no-frequency-timeline  Disable event frequency timeline (terminal needs to support Unicode)
-  -q, --quiet                  Quiet mode: do not display the launch banner
+  -K, --no-color               カラーで出力しない
+  -N, --no-summary             結果概要を出力しない
+  -T, --no-frequency-timeline  結果タイムライン頻度を出力しない (ターミナルがUnicodeをサポートしている必要がある)
+  -q, --quiet                  Quietモード: 起動バナーを表示しない
   ```
 
 #### `aws-ct-timeline`コマンドの例
