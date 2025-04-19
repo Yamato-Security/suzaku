@@ -14,8 +14,6 @@
 </p>
 
 
-## Main Goals
-
 # About Suzaku
 
 Suzaku (朱雀) means ["Vermilion Bird"](https://en.wikipedia.org/wiki/Vermilion_Bird) who is a god who flies above the clouds ruling over the southern heavens in [Chinese mythology](https://en.wikipedia.org/wiki/Four_Holy_Beasts).
@@ -27,7 +25,7 @@ After AWS, we plan on supporting Azure and GCP logs.
 
 With cloud logs, there are thousands of different API calls and more events then anyone could sift through manually.
 Suzaku is designed to not just find the attacks amongst the noise, but also to provide you with a DFIR timeline that contains only the events and data you need to perform a forensics investigation.
-We also plan on creating summaries, search capabilities, etc... in order to quickly discover what happened at a high level and not miss any events that an attacker performed after you discover them. 
+We also plan on creating summaries, search capabilities, etc... in order to quickly discover what happened at a high level as well as not miss any events that an attacker performed after you discover them. 
 
 # Companion Projects
 
