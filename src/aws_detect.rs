@@ -1,4 +1,6 @@
 use crate::cmd::{AwsCtTimelineOptions, CommonOptions};
+use crate::color::SuzakuColor;
+use crate::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::rules;
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::util::{get_json_writer, get_writer, p, s};
@@ -76,26 +78,27 @@ fn write_record(
     if let Some(writer) = &mut wrt.std {
         let level = &record[2];
         let color = if level == "critical" {
-            Color::Rgb(255, 0, 0)
+            Red
         } else if level == "high" {
-            Color::Rgb(255, 175, 0)
+            Orange
         } else if level == "medium" {
-            Color::Rgb(255, 255, 0)
+            Yellow
         } else if level == "low" {
-            Color::Rgb(0, 255, 0)
+            Green
         } else {
-            Color::Rgb(255, 255, 255)
+            White
         };
-        let color = if no_color { None } else { Some(color) };
+
         let mut buf = writer.buffer();
         for (i, col) in record.iter().enumerate() {
-            buf.set_color(ColorSpec::new().set_fg(color)).ok();
+            buf.set_color(ColorSpec::new().set_fg(color.rdg(no_color)))
+                .ok();
             write!(buf, "{}", col).ok();
             if i != record.len() - 1 {
                 if no_color {
                     buf.set_color(ColorSpec::new().set_fg(None)).ok();
                 } else {
-                    buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(255, 175, 0))))
+                    buf.set_color(ColorSpec::new().set_fg(Orange.rdg(no_color)))
                         .ok();
                 }
                 write!(buf, " · ").ok();
@@ -141,11 +144,8 @@ fn write_record(
 pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     let profile = load_profile("config/default_profile.yaml");
     let rules = rules::load_rules_from_dir(&options.rules);
-    p(
-        Some(Color::Rgb(0, 255, 0)),
-        "Total detection rules: ",
-        false,
-    );
+    let no_color = common_opt.no_color;
+    p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
 
     let mut std_writer = None;
@@ -189,17 +189,13 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     } else {
         let disp_wtr = BufferWriter::stdout(ColorChoice::Always);
         let mut disp_wtr_buf = disp_wtr.buffer();
-        disp_wtr_buf
-            .set_color(ColorSpec::new().set_fg(Some(Color::Rgb(0, 255, 0))))
-            .ok();
+        disp_wtr_buf.set_color(ColorSpec::new().set_fg(None)).ok();
         std_writer = Some(disp_wtr);
     }
 
     if let Some(ref mut std_out) = std_writer {
         let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
         let mut buf = std_out.buffer();
-        buf.set_color(ColorSpec::new().set_fg(Some(Color::Rgb(0, 255, 0))))
-            .ok();
         writeln!(buf, "{}", csv_header.join(" · ")).ok();
     }
 
@@ -327,14 +323,14 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         .map(|(author, rules)| (author.clone(), rules.len() as i128))
         .collect();
 
-    print_detected_rule_authors(&authors_count, table_column_num);
+    print_detected_rule_authors(&authors_count, table_column_num, no_color);
 
     if !options.no_summary {
-        print_summary(&summary);
+        print_summary(&summary, no_color);
     }
 
     if !output_pathes.is_empty() {
-        p(Some(Color::Rgb(0, 255, 0)), "Results saved: ", false);
+        p(Green.rdg(no_color), "Results saved: ", false);
         for (i, path) in output_pathes.iter().enumerate() {
             if let Ok(metadata) = path.metadata() {
                 let size = ByteSize::b(metadata.len()).display();
@@ -348,41 +344,45 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     }
 }
 
-fn print_summary(sum: &DetectionSummary) {
-    let levels = vec![
-        ("critical", Some(Color::Rgb(255, 0, 0))),
-        ("high", Some(Color::Rgb(255, 175, 0))),
-        ("medium", Some(Color::Rgb(255, 255, 0))),
-        ("low", Some(Color::Rgb(0, 255, 0))),
-        ("informational", None),
-    ];
-    print_summary_header(sum);
+fn print_summary(sum: &DetectionSummary, no_color: bool) {
+    let levels = if no_color {
+        vec![
+            ("critical", White),
+            ("high", White),
+            ("medium", White),
+            ("low", White),
+            ("informational", White),
+        ]
+    } else {
+        vec![
+            ("critical", Red),
+            ("high", Orange),
+            ("medium", Yellow),
+            ("low", Green),
+            ("informational", White),
+        ]
+    };
+    print_summary_header(sum, no_color);
     print_summary_levels(sum, &levels);
     print_summary_event_times(sum);
     print_summary_dates_with_hits(sum, &levels);
     print_summary_table(sum, &levels);
 }
 
-fn print_summary_header(sum: &DetectionSummary) {
-    p(Some(Color::Rgb(0, 255, 0)), "Results Summary:", true);
+fn print_summary_header(sum: &DetectionSummary, no_color: bool) {
+    p(Green.rdg(no_color), "Results Summary:", true);
     p(None, "", false);
-    p(Some(Color::Rgb(255, 255, 0)), "Events with hits", false);
+    p(Green.rdg(no_color), "Events with hits", false);
     p(None, " / ", false);
-    p(Some(Color::Rgb(0, 255, 255)), "Total events: ", false);
-    p(
-        Some(Color::Rgb(255, 255, 0)),
-        &sum.event_with_hits.to_formatted_string(&Locale::en),
-        false,
-    );
+    p(Green.rdg(no_color), "Total events: ", false);
+    let msg = sum.event_with_hits.to_formatted_string(&Locale::en);
+    p(Yellow.rdg(no_color), msg.as_str(), false);
     p(None, " / ", false);
-    p(
-        Some(Color::Rgb(0, 255, 255)),
-        &sum.total_events.to_formatted_string(&Locale::en),
-        false,
-    );
+    let msg = sum.total_events.to_formatted_string(&Locale::en);
+    p(Cyan.rdg(no_color), msg.as_str(), false);
     p(None, " (", false);
     p(
-        Some(Color::Rgb(0, 255, 0)),
+        Green.rdg(no_color),
         &format!(
             "Data reduction: {} events ({:.2}%)",
             (sum.total_events - sum.event_with_hits).to_formatted_string(&Locale::en),
@@ -394,7 +394,7 @@ fn print_summary_header(sum: &DetectionSummary) {
     println!();
 }
 
-fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
+fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)>) {
     for (level, color) in levels {
         if let Some(hits) = sum.level_with_hits.get(*level) {
             let uniq_hits = hits.keys().len();
@@ -407,10 +407,10 @@ fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color
                 uniq_hits,
                 uniq_hits * 100 / sum.event_with_hits
             );
-            p(*color, &msg, true);
+            p(color.rdg(false), &msg, true);
         } else {
             let msg = format!("Total | Unique {} detections: 0 (0%) | 0 (0%)", level);
-            p(*color, &msg, true);
+            p(color.rdg(false), &msg, true);
         }
     }
     println!();
@@ -428,7 +428,7 @@ fn print_summary_event_times(sum: &DetectionSummary) {
     println!();
 }
 
-fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
+fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)>) {
     p(None, "Dates with most total detections:", true);
     for (level, color) in levels {
         if let Some(dates) = sum.dates_with_hits.get(*level) {
@@ -439,10 +439,10 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Opt
                     date,
                     max_hits.to_formatted_string(&Locale::en)
                 );
-                p(*color, &msg, false);
+                p(color.rdg(false), &msg, false);
             }
         } else {
-            p(*color, &format!("{}: n/a", level), false);
+            p(color.rdg(false), &format!("{}: n/a", level), false);
         }
         if *level != "informational" {
             p(None, ", ", false);
@@ -451,7 +451,7 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Opt
     println!();
 }
 
-fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>)>) {
+fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)>) {
     let mut table_data = vec![];
     for (level, color) in levels {
         if let Some(hits) = sum.level_with_hits.get(*level) {
@@ -467,10 +467,10 @@ fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, Option<Color>
             while msgs.len() < 5 {
                 msgs.push("n/a".to_string());
             }
-            table_data.push((*level, (*color, msgs)));
+            table_data.push((*level, (color.rdg(false), msgs)));
         } else {
             let data = vec!["n/a".to_string(); 5];
-            table_data.push((*level, (*color, data)));
+            table_data.push((*level, (color.rdg(false), data)));
         }
     }
     let mut tb = Table::new();
@@ -530,6 +530,7 @@ fn rgb(color: &Option<Color>) -> comfy_table::Color {
 fn print_detected_rule_authors(
     rule_author_counter: &HashMap<String, i128>,
     table_column_num: usize,
+    no_color: bool,
 ) {
     let mut sorted_authors: Vec<(&String, &i128)> = rule_author_counter.iter().collect();
     sorted_authors.sort_by(|a, b| (-a.1).cmp(&(-b.1)));
@@ -579,7 +580,7 @@ fn print_detected_rule_authors(
             .set_style(TableComponent::TopBorderIntersections, tbch)
             .set_style(TableComponent::BottomBorderIntersections, hlch);
     }
-    p(Some(Color::Rgb(0, 255, 0)), "Rule Authors:", true);
+    p(Green.rdg(no_color), "Rule Authors:", true);
     p(None, &format!("{tb}"), true);
     println!();
 }
