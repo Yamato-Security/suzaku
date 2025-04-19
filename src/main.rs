@@ -115,11 +115,8 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
             true,
         );
     } else {
-        p(
-            None,
-            &format!("Version: {} ({})\n", VERSION, RELEASE_NAME),
-            true,
-        );
+        p(Some(Color::Rgb(0, 255, 0)), "Version: ", false);
+        p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
     }
     if time {
         if no_color {
