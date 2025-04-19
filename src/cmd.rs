@@ -77,7 +77,7 @@ pub struct AwsCtTimelineOptions {
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(
-        author = "Yamato Security (https://github.com/Yamato-Security/hayabusa - @SecurityYamato)",
+        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
         version = FULL_VERSION,
         help_template = "\nVersion: {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-timeline <INPUT> [OPTIONS]\n\n{all-args}",
         disable_help_flag = true
@@ -92,7 +92,7 @@ pub enum Commands {
     },
 
     #[command(
-        author = "Yamato Security (https://github.com/Yamato-Security/hayabusa - @SecurityYamato)",
+        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
         version = FULL_VERSION,
         help_template = "\nVersion {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-metrics <INPUT> [OPTIONS]\n\n{all-args}",
         disable_help_flag = true
