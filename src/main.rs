@@ -5,6 +5,9 @@ use crate::cmd::{Cli, RELEASE_NAME, VERSION};
 use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
+use libmimalloc_sys::mi_stats_print_out;
+use mimalloc::MiMalloc;
+use std::ptr::null_mut;
 use std::time::Instant;
 use std::{env, fs};
 use termcolor::Color;
@@ -17,6 +20,9 @@ mod rules;
 mod scan;
 mod update;
 mod util;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -96,6 +102,44 @@ fn main() {
         &format!("{:02}:{:02}:{:02}\n", hours, minutes, seconds),
         true,
     );
+    let debug = match cmd {
+        AwsCtTimeline { common_opt, .. } => common_opt.debug,
+        AwsCtMetrics { common_opt, .. } => common_opt.debug,
+        UpdateRules { common_opt } => common_opt.debug,
+    };
+
+    if matches!(cmd, AwsCtTimeline { .. }) {
+        p(
+            Some(Color::Rgb(0, 255, 0)),
+            "Please report any issues with Suzaku rules to: ",
+            false,
+        );
+        p(
+            None,
+            "https://github.com/Yamato-Security/suzaku-rules/issues",
+            true,
+        );
+        p(
+            Some(Color::Rgb(0, 255, 0)),
+            "Please report any false positives with Sigma rules to: ",
+            false,
+        );
+        p(None, "https://github.com/SigmaHQ/sigma/issues", true);
+        p(
+            Some(Color::Rgb(0, 255, 0)),
+            "Please submit new Sigma rules with pull requests to: ",
+            false,
+        );
+        p(None, "https://github.com/SigmaHQ/sigma/pulls", true);
+        println!()
+    }
+
+    if debug {
+        println!("Memory usage stats:");
+        unsafe {
+            mi_stats_print_out(None, null_mut());
+        }
+    }
 }
 
 fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
@@ -108,16 +152,6 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
         }
         println!();
     }
-    if help {
-        p(
-            None,
-            &format!("Version: {} ({})", VERSION, RELEASE_NAME),
-            true,
-        );
-    } else {
-        p(Some(Color::Rgb(0, 255, 0)), "Version: ", false);
-        p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
-    }
     if time {
         if no_color {
             p(None, "Start time: ", false);
@@ -129,6 +163,16 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
             Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
             true,
         );
-        println!()
     }
+    if help {
+        p(
+            None,
+            &format!("Version: {} ({})", VERSION, RELEASE_NAME),
+            true,
+        );
+    } else {
+        p(Some(Color::Rgb(0, 255, 0)), "Version: ", false);
+        p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
+    }
+    println!()
 }

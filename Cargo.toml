@@ -21,6 +21,8 @@ git2="*"
 hashbrown="*"
 indicatif = "*"
 krapslog = "0.6"
+libmimalloc-sys = { version = "=0.1.40",  features = ["extended"] }
+mimalloc = { version = "*", default-features = false }
 num-format = "0.4.*"
 serde_json = "1.0.*"
 sigma-rust = "0.5.*"

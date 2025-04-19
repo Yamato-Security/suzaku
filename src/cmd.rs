@@ -27,6 +27,10 @@ pub struct CommonOptions {
     #[arg(help_heading = Some("Display Settings"), short, long, global = true,  display_order = 10)]
     pub quiet: bool,
 
+    /// Print debug information (memory usage, etc...)
+    #[clap(long = "debug", global = true, hide = true)]
+    pub debug: bool,
+
     /// Show the help menu
     #[clap(help_heading = Some("General Options"), short = 'h', long = "help", action = ArgAction::Help, required = false)]
     pub help: Option<bool>,
