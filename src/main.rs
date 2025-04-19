@@ -1,7 +1,7 @@
 use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
-use crate::cmd::Cli;
 use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline, UpdateRules};
+use crate::cmd::{Cli, RELEASE_NAME, VERSION};
 use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
@@ -24,7 +24,7 @@ fn main() {
         || args.len() == 2
             && (args.contains(&String::from("-h")) || args.contains(&String::from("--help")))
     {
-        display_logo(false, false);
+        display_logo(false, false, false, true);
         Cli::command().print_help().unwrap();
         return;
     }
@@ -35,7 +35,7 @@ fn main() {
             options,
             common_opt,
         } => {
-            display_logo(common_opt.quiet, common_opt.no_color);
+            display_logo(common_opt.quiet, common_opt.no_color, true, false);
 
             let dir = &options.input_opt.directory;
             let file = &options.input_opt.filepath;
@@ -71,7 +71,7 @@ fn main() {
             field_name,
             common_opt,
         } => {
-            display_logo(common_opt.quiet, common_opt.no_color);
+            display_logo(common_opt.quiet, common_opt.no_color, true, false);
             let dir = &input_opt.directory;
             let file = &input_opt.filepath;
             let field_name = field_name.as_ref();
@@ -81,7 +81,7 @@ fn main() {
             aws_metrics(dir, file, field_name, output, common_opt.no_color);
         }
         UpdateRules { common_opt } => {
-            display_logo(common_opt.quiet, common_opt.no_color);
+            display_logo(common_opt.quiet, common_opt.no_color, true, false);
             start_update_rules();
         }
     }
@@ -98,21 +98,37 @@ fn main() {
     );
 }
 
-fn display_logo(quiet: bool, no_color: bool) {
+fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
     if !quiet {
         let logo = fs::read_to_string("art/logo.txt").unwrap_or_default();
         if no_color {
-            println!("{}", logo);
+            p(None, &logo, true);
         } else {
             p(Some(Color::Rgb(0, 255, 0)), &logo, true);
         }
         println!();
     }
-    p(Some(Color::Rgb(0, 255, 0)), "Start time: ", false);
-    p(
-        None,
-        Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
-        true,
-    );
-    println!();
+    if help {
+        p(
+            None,
+            &format!("Version: {} ({})", VERSION, RELEASE_NAME),
+            true,
+        );
+    } else {
+        p(Some(Color::Rgb(0, 255, 0)), "Version: ", false);
+        p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
+    }
+    if time {
+        if no_color {
+            p(None, "Start time: ", false);
+        } else {
+            p(Some(Color::Rgb(0, 255, 0)), "Start time: ", false);
+        }
+        p(
+            None,
+            Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
+            true,
+        );
+        println!()
+    }
 }

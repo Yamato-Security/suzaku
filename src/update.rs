@@ -50,7 +50,7 @@ pub fn start_update_rules() {
         p(
             Some(Color::Rgb(255, 175, 0)),
             &format!(
-                "There is a new version of Suzaku: {}",
+                "There is a new version of suzaku: {}",
                 latest_version_data.unwrap().replace('\"', "")
             ),
             true,
@@ -247,11 +247,7 @@ fn print_diff_modified_rule_dates(
         *update_count_by_rule_type
             .entry(tmp[0].to_string())
             .or_insert(0b0) += 1;
-        p(
-            None,
-            &format!(" - {} (Modified: {} )", tmp[1], tmp[2]),
-            true,
-        );
+        p(None, &format!(" - {} (Modified: {})", tmp[1], tmp[2]), true);
     }
     if !update_count_by_rule_type.is_empty() {
         println!();

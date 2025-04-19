@@ -57,7 +57,7 @@ jobs:
           ref: ${{ github.event.inputs.branch_or_tag }}
           submodules: 'true'
 
-      - name: Clone hayabusa rule repo
+      - name: Clone Suzaku rule repo
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
