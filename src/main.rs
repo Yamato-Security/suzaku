@@ -152,16 +152,6 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
         }
         println!();
     }
-    if help {
-        p(
-            None,
-            &format!("Version: {} ({})", VERSION, RELEASE_NAME),
-            true,
-        );
-    } else {
-        p(Some(Color::Rgb(0, 255, 0)), "Version: ", false);
-        p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
-    }
     if time {
         if no_color {
             p(None, "Start time: ", false);
@@ -173,6 +163,16 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
             Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
             true,
         );
-        println!()
     }
+    if help {
+        p(
+            None,
+            &format!("Version: {} ({})", VERSION, RELEASE_NAME),
+            true,
+        );
+    } else {
+        p(Some(Color::Rgb(0, 255, 0)), "Version: ", false);
+        p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
+    }
+    println!()
 }
