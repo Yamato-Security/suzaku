@@ -111,7 +111,7 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
     if help {
         p(
             None,
-            &format!("Suzaku: v{} ({})", VERSION, RELEASE_NAME),
+            &format!("Version: {} ({})", VERSION, RELEASE_NAME),
             true,
         );
     } else {

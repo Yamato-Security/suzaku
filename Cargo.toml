@@ -1,5 +1,5 @@
 [package]
-name = "Suzaku"
+name = "suzaku"
 version = "0.1.0"
 repository = "https://github.com/Yamato-Security/suzaku"
 authors = ["Yamato Security @SecurityYamato"]

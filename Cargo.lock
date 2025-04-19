@@ -3,32 +3,6 @@
 version = 4
 
 [[package]]
-name = "Suzaku"
-version = "0.1.0"
-dependencies = [
- "bytesize",
- "chrono",
- "clap",
- "colored",
- "comfy-table",
- "console",
- "const_format",
- "csv",
- "flate2",
- "git2",
- "hashbrown",
- "indicatif",
- "krapslog",
- "num-format",
- "openssl",
- "serde_json",
- "sigma-rust",
- "termcolor",
- "terminal_size 0.4.2",
- "ureq",
-]
-
-[[package]]
 name = "adler2"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -201,9 +175,9 @@ checksum = "bd1b64030216239a2e7c364b13cd96a2097ebf0dfe5025f2dedee14a23f2ab60"
 
 [[package]]
 name = "clap"
-version = "4.5.36"
+version = "4.5.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2df961d8c8a0d08aa9945718ccf584145eee3f3aa06cddbeac12933781102e04"
+checksum = "eccb054f56cbd38340b380d4a8e69ef1f02f1af43db2f0cc817a4774d80ae071"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -211,9 +185,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.36"
+version = "4.5.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "132dbda40fb6753878316a489d5a1242a8ef2f0d9e47ba01c951ea8aa7d013a5"
+checksum = "efd9466fac8543255d3b1fcad4762c5e116ffe808c8a3043d4263cd4fd4862a2"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1367,6 +1341,32 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "suzaku"
+version = "0.1.0"
+dependencies = [
+ "bytesize",
+ "chrono",
+ "clap",
+ "colored",
+ "comfy-table",
+ "console",
+ "const_format",
+ "csv",
+ "flate2",
+ "git2",
+ "hashbrown",
+ "indicatif",
+ "krapslog",
+ "num-format",
+ "openssl",
+ "serde_json",
+ "sigma-rust",
+ "termcolor",
+ "terminal_size 0.4.2",
+ "ureq",
+]
 
 [[package]]
 name = "syn"

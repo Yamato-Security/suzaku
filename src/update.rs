@@ -50,7 +50,7 @@ pub fn start_update_rules() {
         p(
             Some(Color::Rgb(255, 175, 0)),
             &format!(
-                "There is a new version of Suzaku: {}",
+                "There is a new version of suzaku: {}",
                 latest_version_data.unwrap().replace('\"', "")
             ),
             true,

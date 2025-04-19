@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use const_format::concatcp;
 
-pub const RELEASE_NAME: &str = "xxxx Release";
+pub const RELEASE_NAME: &str = "AlphaOne Release";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
 
@@ -79,7 +79,7 @@ pub enum Commands {
     #[command(
         author = "Yamato Security (https://github.com/Yamato-Security/hayabusa - @SecurityYamato)",
         version = FULL_VERSION,
-        help_template = "\nSuzaku v{version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-timeline <INPUT> [OPTIONS]\n\n{all-args}",
+        help_template = "\nVersion: {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-timeline <INPUT> [OPTIONS]\n\n{all-args}",
         disable_help_flag = true
     )]
     /// Creates an AWS CloudTrail DFIR timeline
@@ -94,7 +94,7 @@ pub enum Commands {
     #[command(
         author = "Yamato Security (https://github.com/Yamato-Security/hayabusa - @SecurityYamato)",
         version = FULL_VERSION,
-        help_template = "\nSuzaku v{version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-metrics <INPUT> [OPTIONS]\n\n{all-args}",
+        help_template = "\nVersion {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-metrics <INPUT> [OPTIONS]\n\n{all-args}",
         disable_help_flag = true
     )]
     /// Generates metrics from AWS CloudTrail logs
