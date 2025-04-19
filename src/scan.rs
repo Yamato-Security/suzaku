@@ -49,7 +49,9 @@ where
         ProgressBar::with_draw_target(Some(count as u64), ProgressDrawTarget::stdout_with_hz(10))
             .with_tab_width(55);
     pb.set_style(pb_style);
-    pb.enable_steady_tick(Duration::from_millis(300));
+    if show_progress {
+        pb.enable_steady_tick(Duration::from_millis(300));
+    }
     for path in file_paths {
         if show_progress {
             let size = fs::metadata(&path).unwrap().len();
