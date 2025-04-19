@@ -233,16 +233,6 @@ In order to load the log files properly, be sure to do the following:
 With the default font `Lucida Console` on Windows, various characters used in the logo and tables will not be displayed properly.
 You should change the font to `Consalas` to fix this.
 
-This will fix most of the text rendering except for the display of Japanese characters in the closing messages:
-
-![Mojibake](screenshots/Mojibake.png)
-
-You have four options to fix this:
-1. Use [Windows Terminal](https://learn.microsoft.com/en-us/windows/terminal/) instead of the Command or PowerShell prompt. (Recommended)
-2. Use the `MS Gothic` font. Note that backslashes will turn into Yen symbols.
-   ![MojibakeFix](screenshots/MojibakeFix.png)
-3. Install the [HackGen](https://github.com/yuru7/HackGen/releases) fonts and use `HackGen Console NF`.
-4. Use the `-q, --quiet` to not display the closing messages that contain Japanese.
 
 ## Linux
 
