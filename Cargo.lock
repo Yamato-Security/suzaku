@@ -3,6 +3,32 @@
 version = 4
 
 [[package]]
+name = "Suzaku"
+version = "0.1.0"
+dependencies = [
+ "bytesize",
+ "chrono",
+ "clap",
+ "colored",
+ "comfy-table",
+ "console",
+ "const_format",
+ "csv",
+ "flate2",
+ "git2",
+ "hashbrown",
+ "indicatif",
+ "krapslog",
+ "num-format",
+ "openssl",
+ "serde_json",
+ "sigma-rust",
+ "termcolor",
+ "terminal_size 0.4.2",
+ "ureq",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -251,6 +277,26 @@ dependencies = [
  "once_cell",
  "unicode-width",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "const_format"
+version = "0.2.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "126f97965c8ad46d6d9163268ff28432e8f6a1196a55578867832e3049df63dd"
+dependencies = [
+ "const_format_proc_macros",
+]
+
+[[package]]
+name = "const_format_proc_macros"
+version = "0.2.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d57c2eccfb16dbac1f4e61e206105db5820c9d26c3c472bc17c774259ef7744"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-xid",
 ]
 
 [[package]]
@@ -1323,31 +1369,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
-name = "suzaku"
-version = "0.1.0"
-dependencies = [
- "bytesize",
- "chrono",
- "clap",
- "colored",
- "comfy-table",
- "console",
- "csv",
- "flate2",
- "git2",
- "hashbrown",
- "indicatif",
- "krapslog",
- "num-format",
- "openssl",
- "serde_json",
- "sigma-rust",
- "termcolor",
- "terminal_size 0.4.2",
- "ureq",
-]
-
-[[package]]
 name = "syn"
 version = "2.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1458,6 +1479,12 @@ name = "unicode-width"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fc81956842c57dac11422a97c3b8195a1ff727f06e85c84ed2e8aa277c9a0fd"
+
+[[package]]
+name = "unicode-xid"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "untrusted"

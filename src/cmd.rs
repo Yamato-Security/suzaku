@@ -1,9 +1,15 @@
 use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand};
 use std::path::PathBuf;
 
+use const_format::concatcp;
+
+pub const RELEASE_NAME: &str = "xxxx Release";
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
+
 #[derive(Parser)]
 #[command(name = "suzaku")]
-#[command(version = "0.1.0")]
+#[command(version = VERSION)]
 #[command(author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)")]
 #[command(about = "Cloud Log Threat Detection and Fast Forensics")]
 pub struct Cli {
@@ -71,9 +77,12 @@ pub struct AwsCtTimelineOptions {
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(
-        about = "Creates an AWS CloudTrail DFIR timeline",
+        author = "Yamato Security (https://github.com/Yamato-Security/hayabusa - @SecurityYamato)",
+        version = FULL_VERSION,
+        help_template = "\nSuzaku v{version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-timeline <INPUT> [OPTIONS]\n\n{all-args}",
         disable_help_flag = true
     )]
+    /// Creates an AWS CloudTrail DFIR timeline
     AwsCtTimeline {
         #[clap(flatten)]
         options: AwsCtTimelineOptions,
@@ -83,9 +92,12 @@ pub enum Commands {
     },
 
     #[command(
-        about = "Generates metrics from AWS CloudTrail logs",
+        author = "Yamato Security (https://github.com/Yamato-Security/hayabusa - @SecurityYamato)",
+        version = FULL_VERSION,
+        help_template = "\nSuzaku v{version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-metrics <INPUT> [OPTIONS]\n\n{all-args}",
         disable_help_flag = true
     )]
+    /// Generates metrics from AWS CloudTrail logs
     AwsCtMetrics {
         #[clap(flatten)]
         input_opt: InputOption,
