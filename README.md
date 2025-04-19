@@ -381,7 +381,7 @@ However, if you use Suzaku in a type of SaaS solution and make improvements to i
 
 * [Flaws.cloud](http://flaws.cloud/)
 * [Invictus-ir](https://www.invictus-ir.com/)
-* [Sigma](https://github.com/SigmaHQ/sigma) project
+* [Sigma](https://github.com/SigmaHQ/sigma)
 * [sigma-rust](https://github.com/jopohl/sigma-rust)
 * [Stratus Red Team](https://stratus-red-team.cloud/)
 * [Traildiscover.cloud](https://traildiscover.cloud/)
