@@ -2,6 +2,7 @@ use crate::cmd::{AwsCtTimelineOptions, CommonOptions};
 use crate::rules;
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::util::{get_json_writer, get_writer, p, s};
+use bytesize::ByteSize;
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
@@ -58,6 +59,7 @@ struct Writers {
     jsonl: Option<BufWriter<Box<dyn Write>>>,
     std: Option<BufferWriter>,
 }
+
 fn write_record(
     profile: &[(String, String)],
     event: &Event,
@@ -150,6 +152,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     let mut csv_writer = None;
     let mut json_writer = None;
     let mut jsonl_writer = None;
+    let mut output_pathes = vec![];
 
     if let Some(output_path) = &options.output {
         let output_type = OutputType::from_u8(options.output_type).unwrap_or(OutputType::Csv);
@@ -159,6 +162,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                 if csv_path.extension().and_then(|ext| ext.to_str()) != Some("csv") {
                     csv_path.set_extension("csv");
                 }
+                output_pathes.push(csv_path.clone());
                 csv_writer = Some(get_writer(&Some(csv_path)));
             }
             _ => {}
@@ -169,6 +173,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                 if json_path.extension().and_then(|ext| ext.to_str()) != Some("json") {
                     json_path.set_extension("json");
                 }
+                output_pathes.push(json_path.clone());
                 json_writer = Some(get_json_writer(&Some(json_path)));
             }
             OutputType::Jsonl | OutputType::CsvAndJsonl => {
@@ -176,6 +181,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                 if jsonl_path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
                     jsonl_path.set_extension("jsonl");
                 }
+                output_pathes.push(jsonl_path.clone());
                 jsonl_writer = Some(get_json_writer(&Some(jsonl_path)));
             }
             _ => {}
@@ -325,6 +331,20 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
 
     if !options.no_summary {
         print_summary(&summary);
+    }
+
+    if !output_pathes.is_empty() {
+        p(Some(Color::Rgb(0, 255, 0)), "Results saved: ", false);
+        for (i, path) in output_pathes.iter().enumerate() {
+            if let Ok(metadata) = path.metadata() {
+                let size = ByteSize::b(metadata.len()).display();
+                p(None, &format!("{} ({})", path.display(), size), false);
+            }
+            if i < output_pathes.len() - 1 {
+                p(None, " and ", false);
+            }
+        }
+        println!();
     }
 }
 

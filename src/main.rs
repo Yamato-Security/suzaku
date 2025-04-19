@@ -107,6 +107,33 @@ fn main() {
         AwsCtMetrics { common_opt, .. } => common_opt.debug,
         UpdateRules { common_opt } => common_opt.debug,
     };
+
+    if matches!(cmd, AwsCtTimeline { .. }) {
+        p(
+            Some(Color::Rgb(0, 255, 0)),
+            "Please report any issues with Suzaku rules to: ",
+            false,
+        );
+        p(
+            None,
+            "https://github.com/Yamato-Security/suzaku-rules/issues",
+            true,
+        );
+        p(
+            Some(Color::Rgb(0, 255, 0)),
+            "Please report any false positives with Sigma rules to: ",
+            false,
+        );
+        p(None, "https://github.com/SigmaHQ/sigma/issues", true);
+        p(
+            Some(Color::Rgb(0, 255, 0)),
+            "Please submit new Sigma rules with pull requests to: ",
+            false,
+        );
+        p(None, "https://github.com/SigmaHQ/sigma/pulls", true);
+        println!()
+    }
+
     if debug {
         println!("Memory usage stats:");
         unsafe {
