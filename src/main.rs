@@ -5,6 +5,9 @@ use crate::cmd::{Cli, RELEASE_NAME, VERSION};
 use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
+use libmimalloc_sys::mi_stats_print_out;
+use mimalloc::MiMalloc;
+use std::ptr::null_mut;
 use std::time::Instant;
 use std::{env, fs};
 use termcolor::Color;
@@ -17,6 +20,9 @@ mod rules;
 mod scan;
 mod update;
 mod util;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -96,6 +102,17 @@ fn main() {
         &format!("{:02}:{:02}:{:02}\n", hours, minutes, seconds),
         true,
     );
+    let debug = match cmd {
+        AwsCtTimeline { common_opt, .. } => common_opt.debug,
+        AwsCtMetrics { common_opt, .. } => common_opt.debug,
+        UpdateRules { common_opt } => common_opt.debug,
+    };
+    if debug {
+        println!("Memory usage stats:");
+        unsafe {
+            mi_stats_print_out(None, null_mut());
+        }
+    }
 }
 
 fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
