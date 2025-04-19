@@ -43,6 +43,7 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
 - [Screenshots](#screenshots)
   - [Startup](#startup)
   - [DFIR Timeline Terminal Output](#dfir-timeline-terminal-output)
+  - [Detection Frequency Timeline](#detection-frequency-timeline)
   - [Results Summary](#results-summary)
 - [Features](#features)
 - [Downloads](#downloads)
@@ -67,10 +68,8 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
   - [Analysis Commands](#analysis-commands-1)
     - [`aws-ct-metrics` command](#aws-ct-metrics-command)
       - [`aws-ct-metrics` command examples](#aws-ct-metrics-command-examples)
-      - [`aws-ct-metrics` screenshot](#aws-ct-metrics-screenshot)
     - [`aws-ct-timeline` command](#aws-ct-timeline-command)
       - [`aws-ct-timeline` command examples](#aws-ct-timeline-command-examples)
-      - [`aws-ct-timeline` screenshot](#aws-ct-timeline-screenshot)
 - [Contribution](#contribution)
 - [Bug Submission](#bug-submission)
 - [License](#license)
@@ -82,9 +81,19 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
 
 ## Startup
 
+![Suzaku Startup](screenshots/Startup.png)
+
 ## DFIR Timeline Terminal Output
 
+![Terminal Output](screenshots/TerminalOutput.png)
+
+## Detection Frequency Timeline
+
+![Detection Frequency Timeline](screenshots/DetectionFrequencyTimeline.png)
+
 ## Results Summary
+
+![Results Summary](screenshots/ResultsSummary.png)
 
 # Features
 
@@ -266,7 +275,7 @@ Then run it from the Suzaku root directory:
 
 ## macOS
 
-From Terminal or iTerm2, you first need to make the binary executable.
+From Terminal or [iTerm2](https://iterm2.com/), you first need to make the binary executable.
 
 ```bash
 chmod +x ./suzaku
@@ -278,24 +287,15 @@ Then, try to run it from the Suzaku root directory:
 ./suzaku
 ```
 
-On the latest version of macOS, you may receive the following security error when you try to run it:
-
-![Mac Error 1 EN](screenshots/MacOS-RunError-1-EN.png)
-
+On the latest version of macOS, you may receive a security error when you try to run it.
 Click "Cancel" and then from System Preferences, open "Security & Privacy" and from the General tab, click "Allow Anyway".
-
-![Mac Error 2 EN](screenshots/MacOS-RunError-2-EN.png)
-
 After that, try to run it again.
 
 ```bash
 ./suzaku
 ```
 
-The following warning will pop up, so please click "Open".
-
-![Mac Error 3 EN](screenshots/MacOS-RunError-3-EN.png)
-
+A warning will pop up so just click "Open".
 You should now be able to run suzaku.
 
 # Command List
@@ -344,8 +344,6 @@ General Options:
 * Output a table of `eventName` API calls to screen: `./suzaku aws-ct-metrics -d ../suzaku-sample-data`
 * Save to a CSV file: `./suzaku aws-ct-metrics -d ../suzaku-sample-data -o sample-metrics.csv`
 
-#### `aws-ct-metrics` screenshot
-
 ### `aws-ct-timeline` command
 
 Create an AWS CloudTrail DFIR timeline based on sigma rules in the `rules` folder.
@@ -379,8 +377,6 @@ Display Settings:
 * Save results to a CSV file: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline.csv`
 * Save results to CSV and JSONL files: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline -t 5`
 
-#### `aws-ct-timeline` screenshot
-
 # Contribution
 
 We would love any form of contribution.
@@ -407,12 +403,12 @@ However, if you use Suzaku in a type of SaaS solution and make improvements to i
 
 * DustInDark (core developer)
 * Fukusuke Takahashi (core developer)
-* Zach Mathis (tool design, rules, testing, etc...) (@yamatosecurity)
+* Zach Mathis (project leader, tool design, rules, testing, etc...) (@yamatosecurity)
 
 # Acknowledgements
 
 * [Flaws.cloud](http://flaws.cloud/)
-* [Invictur-ir](https://www.invictus-ir.com/)
+* [Invictus-ir](https://www.invictus-ir.com/)
 * [Sigma](https://github.com/SigmaHQ/sigma) project
 * [sigma-rust](https://github.com/jopohl/sigma-rust)
 * [Stratus Red Team](https://stratus-red-team.cloud/)
