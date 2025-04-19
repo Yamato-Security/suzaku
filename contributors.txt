@@ -1,1 +1,3 @@
-TODO
+* DustInDark (core developer)
+* Fukusuke Takahashi (core developer)
+* Zach Mathis (project leader, tool design, rules, testing, etc...) (@yamatosecurity)

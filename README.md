@@ -97,6 +97,7 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
 
 * Cross-platform support: Windows, Linux, macOS.
 * Developed in Rust to be memory safe and fast.
+* Scans `.json` or compressed `.json.gz` files.
 * Creates single easy-to-analyze timelines for forensic investigations and incident response.
 * Threat hunting based on IoC signatures written in easy to read/create/edit YML-based [Sigma](https://github.com/SigmaHQ/sigma) rules.
 * Save results to CSV, JSON and JSONL.
