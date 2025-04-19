@@ -20,17 +20,17 @@ Suzaku (朱雀) means ["Vermilion Bird"](https://en.wikipedia.org/wiki/Vermilion
 
 Suzaku is a threat hunting and fast forensics timeline generator for cloud logs.
 (Imagine [Hayabusa](https://github.com/Yamato-Security/hayabusa) but for cloud logs instead of Windows event logs.)
-It is currently under active development with basic native [sigma](https://github.com/SigmaHQ/sigma) detection support AWS CloudTrail logs.
+It is currently under active development with basic native [sigma](https://github.com/SigmaHQ/sigma) detection support for AWS CloudTrail logs.
 After AWS, we plan on supporting Azure and GCP logs.
 
 With cloud logs, there are thousands of different API calls and more events then anyone could sift through manually.
-Suzaku is designed to not just find the attacks amongst the noise, but also to provide you with a DFIR timeline that contains only the events and data you need to perform a forensics investigation.
+Suzaku is designed to not just find the attacks amongst the noise, but also to provide you with a DFIR timeline that contains only the events and data you need to perform a fast-forensics investigation.
 We also plan on creating summaries, search capabilities, etc... in order to quickly discover what happened at a high level as well as not miss any events that an attacker performed after you discover them. 
 
 # Companion Projects
 
-* [suzaku-sample-data](https://github.com/Yamato-Security/suzaku-sample-data) - a repository of various cloud logs with attack evidence inside them used for testing Suzaku as well as for writing new detection rules.
 * [suzaku-rules](https://github.com/Yamato-Security/suzaku-rules) - our repository of sigma rules. New upstream sigma rules are added automatically. We also host our own rules here.
+* [suzaku-sample-data](https://github.com/Yamato-Security/suzaku-sample-data) - a repository of various cloud logs with attack evidence inside them used for testing Suzaku as well as for writing new detection rules.
 
 # Table of Contents
 
