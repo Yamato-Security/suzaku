@@ -65,6 +65,7 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
   - [Analysis Commands](#analysis-commands-1)
     - [`aws-ct-metrics` command](#aws-ct-metrics-command)
       - [`aws-ct-metrics` command examples](#aws-ct-metrics-command-examples)
+  - [DFIR Timeline Commands](#dfir-timeline-commands-1)
     - [`aws-ct-timeline` command](#aws-ct-timeline-command)
       - [`aws-ct-timeline` command examples](#aws-ct-timeline-command-examples)
 - [Contribution](#contribution)
@@ -278,7 +279,7 @@ You should now be able to run suzaku.
 * `aws-ct-metrics`: Generates metrics from AWS CloudTrail logs
   
 ## DFIR Timeline Commands:
-* `aws-ct-metrics`: Creates an AWS CloudTrail DFIR timeline
+* `aws-ct-timeline`: Creates an AWS CloudTrail DFIR timeline
 * `update-rules`: Updates the Sigma detection rules
 
 ## General Commands:
@@ -317,6 +318,8 @@ General Options:
 
 * Output a table of `eventName` API calls to screen: `./suzaku aws-ct-metrics -d ../suzaku-sample-data`
 * Save to a CSV file: `./suzaku aws-ct-metrics -d ../suzaku-sample-data -o sample-metrics.csv`
+
+## DFIR Timeline Commands
 
 ### `aws-ct-timeline` command
 
@@ -388,4 +391,4 @@ However, if you use Suzaku in a type of SaaS solution and make improvements to i
 
 # Twitter
 
-You can recieve the latest news about Suzaku, rule updates, other Yamato Security tools, etc... by following us on Twitter at [@SecurityYamato](https://twitter.com/SecurityYamato).
+You can receive the latest news about Suzaku, rule updates, other Yamato Security tools, etc... by following us on Twitter at [@SecurityYamato](https://twitter.com/SecurityYamato).
