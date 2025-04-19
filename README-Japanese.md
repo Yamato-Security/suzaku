@@ -316,7 +316,7 @@ General Options:
 
 #### `aws-ct-metrics`コマンドの例
 
-*`eventName`のAPIコール数をテーブル形式で出力: `./suzaku aws-ct-metrics -d ../suzaku-sample-data`
+* `eventName`のAPIコール数をテーブル形式で出力: `./suzaku aws-ct-metrics -d ../suzaku-sample-data`
 * CSVに保存: `./suzaku aws-ct-metrics -d ../suzaku-sample-data -o sample-metrics.csv`
 
 ## DFIRタイムラインコマンド
