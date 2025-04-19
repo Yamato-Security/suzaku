@@ -2,6 +2,7 @@ use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
 use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline, UpdateRules};
 use crate::cmd::{Cli, RELEASE_NAME, VERSION};
+use crate::color::SuzakuColor::Green;
 use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
@@ -10,12 +11,12 @@ use mimalloc::MiMalloc;
 use std::ptr::null_mut;
 use std::time::Instant;
 use std::{env, fs};
-use termcolor::Color;
 use update::start_update_rules;
 
 mod aws_detect;
 mod aws_metrics;
 mod cmd;
+mod color;
 mod rules;
 mod scan;
 mod update;
@@ -36,12 +37,17 @@ fn main() {
     }
     let start = Instant::now();
     let cmd = &Cli::parse().cmd;
+    let no_color = match cmd {
+        AwsCtTimeline { common_opt, .. } => common_opt.no_color,
+        AwsCtMetrics { common_opt, .. } => common_opt.no_color,
+        UpdateRules { common_opt } => common_opt.no_color,
+    };
     match cmd {
         AwsCtTimeline {
             options,
             common_opt,
         } => {
-            display_logo(common_opt.quiet, common_opt.no_color, true, false);
+            display_logo(common_opt.quiet, no_color, true, false);
 
             let dir = &options.input_opt.directory;
             let file = &options.input_opt.filepath;
@@ -50,20 +56,17 @@ fn main() {
             }
             if let Some(output) = &options.output {
                 if !options.clobber && output.exists() {
-                    p(
-                        None,
-                        &format!(
-                            "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
-                            output.display()
-                        ),
-                        true,
+                    let msg = format!(
+                        "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
+                        output.display()
                     );
+                    p(None, msg.as_str(), true);
                     return;
                 }
             }
             if !options.rules.exists() {
                 p(
-                    Some(Color::Red),
+                    Green.rdg(no_color),
                     &format!("Rule file or directory does not exist: {:?}", options.rules),
                     true,
                 );
@@ -77,18 +80,18 @@ fn main() {
             field_name,
             common_opt,
         } => {
-            display_logo(common_opt.quiet, common_opt.no_color, true, false);
+            display_logo(common_opt.quiet, no_color, true, false);
             let dir = &input_opt.directory;
             let file = &input_opt.filepath;
             let field_name = field_name.as_ref();
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            aws_metrics(dir, file, field_name, output, common_opt.no_color);
+            aws_metrics(dir, file, field_name, output, no_color);
         }
         UpdateRules { common_opt } => {
-            display_logo(common_opt.quiet, common_opt.no_color, true, false);
-            start_update_rules();
+            display_logo(common_opt.quiet, no_color, true, false);
+            start_update_rules(no_color);
         }
     }
 
@@ -96,7 +99,7 @@ fn main() {
     let hours = duration.as_secs() / 3600;
     let minutes = (duration.as_secs() % 3600) / 60;
     let seconds = duration.as_secs() % 60;
-    p(Some(Color::Rgb(0, 255, 0)), "Elapsed time: ", false);
+    p(Green.rdg(no_color), "Elapsed time: ", false);
     p(
         None,
         &format!("{:02}:{:02}:{:02}\n", hours, minutes, seconds),
@@ -109,28 +112,18 @@ fn main() {
     };
 
     if matches!(cmd, AwsCtTimeline { .. }) {
-        p(
-            Some(Color::Rgb(0, 255, 0)),
-            "Please report any issues with Suzaku rules to: ",
-            false,
-        );
-        p(
-            None,
-            "https://github.com/Yamato-Security/suzaku-rules/issues",
-            true,
-        );
-        p(
-            Some(Color::Rgb(0, 255, 0)),
-            "Please report any false positives with Sigma rules to: ",
-            false,
-        );
-        p(None, "https://github.com/SigmaHQ/sigma/issues", true);
-        p(
-            Some(Color::Rgb(0, 255, 0)),
-            "Please submit new Sigma rules with pull requests to: ",
-            false,
-        );
-        p(None, "https://github.com/SigmaHQ/sigma/pulls", true);
+        let mut msg = "Please report any issues with Suzaku rules to: ";
+        p(Green.rdg(no_color), msg, false);
+        msg = "https://github.com/Yamato-Security/suzaku-rules/issues";
+        p(None, msg, true);
+        msg = "Please report any false positives with Sigma rules to: ";
+        p(Green.rdg(no_color), msg, false);
+        msg = "https://github.com/SigmaHQ/sigma/issues";
+        p(None, msg, true);
+        msg = "Please submit new Sigma rules with pull requests to: ";
+        p(Green.rdg(no_color), msg, false);
+        msg = "https://github.com/SigmaHQ/sigma/pulls";
+        p(None, msg, true);
         println!()
     }
 
@@ -145,33 +138,19 @@ fn main() {
 fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
     if !quiet {
         let logo = fs::read_to_string("art/logo.txt").unwrap_or_default();
-        if no_color {
-            p(None, &logo, true);
-        } else {
-            p(Some(Color::Rgb(0, 255, 0)), &logo, true);
-        }
+        p(Green.rdg(no_color), &logo, true);
         println!();
     }
     if time {
-        if no_color {
-            p(None, "Start time: ", false);
-        } else {
-            p(Some(Color::Rgb(0, 255, 0)), "Start time: ", false);
-        }
-        p(
-            None,
-            Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
-            true,
-        );
+        let msg = Local::now().format("%Y/%m/%d %H:%M").to_string();
+        p(Green.rdg(no_color), "Start time: ", false);
+        p(None, msg.as_str(), true);
     }
     if help {
-        p(
-            None,
-            &format!("Version: {} ({})", VERSION, RELEASE_NAME),
-            true,
-        );
+        let msg = format!("Version: {} ({})", VERSION, RELEASE_NAME);
+        p(None, msg.as_str(), true);
     } else {
-        p(Some(Color::Rgb(0, 255, 0)), "Version: ", false);
+        p(Green.rdg(no_color), "Version: ", false);
         p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
     }
     println!()

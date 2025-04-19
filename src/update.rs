@@ -6,9 +6,10 @@ use serde_json::Value;
 use std::fs::{self, create_dir};
 use std::path::{Path, PathBuf};
 
+use crate::color::SuzakuColor::Orange;
 use termcolor::Color;
 
-pub fn start_update_rules() {
+pub fn start_update_rules(no_color: bool) {
     // エラーが出た場合はインターネット接続がそもそもできないなどの問題点もあるためエラー等の出力は行わない
     let latest_version_data = get_latest_suzaku_version().unwrap_or_default();
     let now_version = &format!("v{}", env!("CARGO_PKG_VERSION"));
@@ -16,11 +17,7 @@ pub fn start_update_rules() {
     match update_rules() {
         Ok(output) => {
             if output != "You currently have the latest rules." {
-                p(
-                    Some(Color::Rgb(255, 175, 0)),
-                    "Rules updated successfully.",
-                    true,
-                );
+                p(Orange.rdg(no_color), "Rules updated successfully.", true);
             }
         }
         Err(e) => {
@@ -48,7 +45,7 @@ pub fn start_update_rules() {
         .collect::<Vec<i8>>();
     if split_latest_version > split_now_version {
         p(
-            Some(Color::Rgb(255, 175, 0)),
+            Orange.rdg(no_color),
             &format!(
                 "There is a new version of suzaku: {}",
                 latest_version_data.unwrap().replace('\"', "")
@@ -56,7 +53,7 @@ pub fn start_update_rules() {
             true,
         );
         p(
-            Some(Color::Rgb(255, 175, 0)),
+            Orange.rdg(no_color),
             "You can download it at https://github.com/Yamato-Security/suzaku/releases",
             true,
         );
