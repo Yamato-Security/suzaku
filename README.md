@@ -19,7 +19,7 @@
 Suzaku (朱雀) means ["Vermilion Bird"](https://en.wikipedia.org/wiki/Vermilion_Bird) who is a god who flies above the clouds ruling over the southern heavens in [Chinese mythology](https://en.wikipedia.org/wiki/Four_Holy_Beasts).
 
 Suzaku is a threat hunting and fast forensics timeline generator for cloud logs.
-(Imagine [suzaku](https://github.com/Yamato-Security/suzaku) but for cloud logs instead of Windows event logs.)
+(Imagine [Hayabusa](https://github.com/Yamato-Security/hayabusa) but for cloud logs instead of Windows event logs.)
 It is currently under active development with basic native [sigma](https://github.com/SigmaHQ/sigma) detection support AWS CloudTrail logs.
 After AWS, we plan on supporting Azure and GCP logs.
 
