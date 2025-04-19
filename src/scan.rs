@@ -11,8 +11,8 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
-use std::{fs, io};
 use std::time::Duration;
+use std::{fs, io};
 use termcolor::Color;
 
 pub fn process_events_from_dir<F>(
