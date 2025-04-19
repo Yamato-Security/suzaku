@@ -68,6 +68,7 @@ Suzakuは、ノイズの中から攻撃を見つけるだけでなく、迅速�
   - [DFIRタイムラインコマンド](#dfirタイムラインコマンド-1)
     - [`aws-ct-timeline`コマンド](#aws-ct-timelineコマンド)
       - [`aws-ct-timeline`コマンドの例](#aws-ct-timelineコマンドの例)
+      - [`aws-ct-timeline`出力プロフィール](#aws-ct-timeline出力プロフィール)
 - [貢献](#貢献)
 - [バグの報告](#バグの報告)
 - [ライセンス](#ライセンス)
@@ -354,6 +355,31 @@ Display Settings:
 * スクリーンにアラートを出力: `./suzaku aws-ct-timeline -d ../suzaku-sample-data`
 * CSVに保存: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline.csv`
 * CSVとJSONLに保存: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline -t 5`
+
+#### `aws-ct-timeline`出力プロフィール
+
+Suzakuは`config/default_profile.yaml`ファイルに基づいて情報を出力します:
+```yaml
+Timestamp: '.eventTime'
+RuleTitle: 'sigma.title'
+Level: 'sigma.level'
+EventName: '.eventName'
+EventSource: '.eventSource'
+AWS-Region: '.awsRegion'
+SrcIP: '.sourceIPAddress'
+UserAgent: '.userAgent'
+UserName: '.userIdentity.userName'
+UserType: '.userIdentity.type'
+UserAccountID: '.userIdentity.accountId'
+UserARN: '.userIdentity.arn'
+UserPrincipalID: '.userIdentity.principalId'
+UserAccessKeyID: '.userIdentity.accessKeyId'
+EventID: '.eventID'
+```
+
+* `.`（例: `.eventTime`）で始まるフィールド値は、CloudTrailログから取得されます。
+* `sigma.`（例: `sigma.title`）で始まるフィールド値は、Sigmaルールから取得されます。
+* 現在は文字列のみをサポートしていますが、将来的には他の型のフィールド値にも対応する予定です。
 
 # 貢献
 
