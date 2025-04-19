@@ -233,7 +233,6 @@ In order to load the log files properly, be sure to do the following:
 With the default font `Lucida Console` on Windows, various characters used in the logo and tables will not be displayed properly.
 You should change the font to `Consalas` to fix this.
 
-
 ## Linux
 
 You first need to make the binary executable.
@@ -357,21 +356,19 @@ Display Settings:
 We would love any form of contribution.
 Pull requests, rule creation and sample logs are the best but feature requests, notifying us of bugs, etc... are also very welcome.
 
-At the least, if you like our tools and resources then please give us a star on GitHub and show your support!
+At the least, **if you like our tools and resources then please give us a star on GitHub and show your support!**
 
 # Bug Submission
 
-Please submit any bugs you find [here.](https://github.com/Yamato-Security/suzaku/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5Bbug%5D)
-This project is currently actively maintained and we are happy to fix any bugs reported.
-
-If you find any issues (false positives, bugs, etc...) with Suzaku rules, please report them to the suzaku-rules GitHub issues page [here](https://github.com/Yamato-Security/suzaku-rules/issues/new).
-
-If you find any issues (false positives, bugs, etc...) with Sigma rules, please report them to the upstream SigmaHQ GitHub issues page [here](https://github.com/SigmaHQ/sigma/issues).
+* Please submit any bugs you find [here.](https://github.com/Yamato-Security/suzaku/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5Bbug%5D)
+* This project is currently actively maintained and we are happy to fix any bugs reported.
+* If you find any issues (false positives, bugs, etc...) with Suzaku rules, please report them to the suzaku-rules GitHub issues page [here](https://github.com/Yamato-Security/suzaku-rules/issues/new).
+* If you find any issues (false positives, bugs, etc...) with Sigma rules, please report them to the upstream SigmaHQ GitHub issues page [here](https://github.com/SigmaHQ/sigma/issues).
 
 # License
 
-Suzaku is released under [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html) and all rules are released under the [Detection Rule License (DRL) 1.1](https://github.com/SigmaHQ/sigma/blob/master/LICENSE.Detection.Rules.md).
-You may freely use Suzaku internally, SaaS solutions, for consulting work, etc...
+* Suzaku is released under [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html) and all rules are released under the [Detection Rule License (DRL) 1.1](https://github.com/SigmaHQ/sigma/blob/master/LICENSE.Detection.Rules.md).
+* You may freely use Suzaku internally, SaaS solutions, for consulting work, etc...
 However, if you use Suzaku in a type of SaaS solution and make improvements to it, we ask you to open-source those improvements and give back to the project.
 
 # Contributors
