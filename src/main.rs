@@ -129,5 +129,6 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
             Local::now().format("%Y/%m/%d %H:%M").to_string().as_str(),
             true,
         );
+        println!()
     }
 }
