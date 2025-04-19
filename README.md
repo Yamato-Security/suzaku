@@ -48,7 +48,6 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
 - [Git Cloning](#git-cloning)
 - [Advanced: Compiling From Source (Optional)](#advanced-compiling-from-source-optional)
   - [Updating Rust Packages](#updating-rust-packages)
-  - [Cross-compiling 32-bit Windows Binaries](#cross-compiling-32-bit-windows-binaries)
   - [macOS Compiling Notes](#macos-compiling-notes)
   - [Linux Compiling Notes](#linux-compiling-notes)
   - [Cross-compiling Linux MUSL Binaries](#cross-compiling-linux-musl-binaries)
@@ -170,18 +169,6 @@ cargo update
 ```
 
 > Please let us know if anything breaks after you update.
-
-## Cross-compiling 32-bit Windows Binaries
-
-You can create 32-bit binaries on 64-bit Windows systems with the following:
-
-```bash
-rustup install stable-i686-pc-windows-msvc
-rustup target add i686-pc-windows-msvc
-rustup run stable-i686-pc-windows-msvc cargo build --release
-```
-
-> **Warning: Be sure to run `rustup install stable-i686-pc-windows-msvc` whenever there is a new stable version of Rust as `rustup update stable` will not update the compiler for cross compiling and you may receive build errors.**
 
 ## macOS Compiling Notes
 
