@@ -8,8 +8,8 @@
 ---
 
 <p align="center">
-    <a href="Maintenance Level"><img src="https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen.svg" /></a>
-    <a href="Total Commits"><img src="https://img.shields.io/github/commit-activity/t/Yamato-Security/suzaku/main" /></a>
+    <a href="https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d"><img src="https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen.svg" /></a>
+    <a href="https://github.com/Yamato-Security/suzaku/commits/main/"><img src="https://img.shields.io/github/commit-activity/t/Yamato-Security/suzaku/main" /></a>
     <a href="https://twitter.com/SecurityYamato"><img src="https://img.shields.io/twitter/follow/SecurityYamato?style=social"/></a>
 </p>
 
