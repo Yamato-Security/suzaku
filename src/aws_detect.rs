@@ -264,7 +264,8 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                                 }
                                 if let Some(level) = &rule.level {
                                     let level = format!("{:?}", level).to_lowercase();
-                                    let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                                    let date =
+                                        event_time.date_naive().format("%Y-%m-%d").to_string();
                                     summary
                                         .dates_with_hits
                                         .entry(level)
