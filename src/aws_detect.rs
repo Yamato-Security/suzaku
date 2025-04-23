@@ -248,8 +248,8 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                     }
 
                     if let Some(event_time) = event.data.get("eventTime") {
-                        let event_time_str = event_time.as_str().unwrap();
-                        if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+                        if let Some(event_time_str) = event_time.as_str() {
+                            if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
                             let unix_time = event_time.timestamp();
                             summary.timestamps.push(unix_time);
                             if summary.first_event_time.is_none()
