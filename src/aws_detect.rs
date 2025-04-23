@@ -250,28 +250,29 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                     if let Some(event_time) = event.data.get("eventTime") {
                         if let Some(event_time_str) = event_time.as_str() {
                             if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
-                            let unix_time = event_time.timestamp();
-                            summary.timestamps.push(unix_time);
-                            if summary.first_event_time.is_none()
-                                || event_time < summary.first_event_time.unwrap()
-                            {
-                                summary.first_event_time = Some(event_time);
-                            }
-                            if summary.last_event_time.is_none()
-                                || event_time > summary.last_event_time.unwrap()
-                            {
-                                summary.last_event_time = Some(event_time);
-                            }
-                            if let Some(level) = &rule.level {
-                                let level = format!("{:?}", level).to_lowercase();
-                                let date = event_time.date_naive().format("%Y-%m-%d").to_string();
-                                summary
-                                    .dates_with_hits
-                                    .entry(level)
-                                    .or_default()
-                                    .entry(date)
-                                    .and_modify(|e| *e += 1)
-                                    .or_insert(1);
+                                let unix_time = event_time.timestamp();
+                                summary.timestamps.push(unix_time);
+                                if summary.first_event_time.is_none()
+                                    || event_time < summary.first_event_time.unwrap()
+                                {
+                                    summary.first_event_time = Some(event_time);
+                                }
+                                if summary.last_event_time.is_none()
+                                    || event_time > summary.last_event_time.unwrap()
+                                {
+                                    summary.last_event_time = Some(event_time);
+                                }
+                                if let Some(level) = &rule.level {
+                                    let level = format!("{:?}", level).to_lowercase();
+                                    let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                                    summary
+                                        .dates_with_hits
+                                        .entry(level)
+                                        .or_default()
+                                        .entry(date)
+                                        .and_modify(|e| *e += 1)
+                                        .or_insert(1);
+                                }
                             }
                         }
                     }
