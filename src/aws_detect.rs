@@ -1,9 +1,9 @@
 use crate::cmd::{AwsCtTimelineOptions, CommonOptions};
 use crate::color::SuzakuColor;
 use crate::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
-use crate::rules;
+use crate::rules::load_rules_from_dir;
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_json_writer, get_writer, p, s};
+use crate::util::{get_json_writer, get_writer, p};
 use bytesize::ByteSize;
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
@@ -12,7 +12,8 @@ use comfy_table::{Cell, Table, TableComponent};
 use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
-use sigma_rust::{Event, Rule};
+use sigma_rust::Rule;
+use sigmars::{Event, SigmaCollection};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -143,7 +144,14 @@ fn write_record(
 
 pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     let profile = load_profile("config/default_profile.yaml");
-    let rules = rules::load_rules_from_dir(&options.rules);
+    let rule_path = options.rules.to_str().expect("Invalid UTF-8 in path");
+    let rule_ids = load_rules_from_dir(&options.rules);
+    let rules = SigmaCollection::new_from_dir(rule_path);
+    if rules.is_err() {
+        p(Some(Color::Rgb(255, 0, 0)), "Failed to load rules.", true);
+        return;
+    }
+    let rules = rules.unwrap();
     let no_color = common_opt.no_color;
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
@@ -211,62 +219,60 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     };
 
     let mut summary = DetectionSummary::default();
-    let scan_by_all_rules = |event| {
+    let scan_by_all_rules = |event: Event| {
         summary.total_events += 1;
-        let mut counted = false;
-        for rule in &rules {
-            if rule.is_match(&event) {
-                if !counted {
-                    summary.event_with_hits += 1;
-                    counted = true;
-                }
+        let matches = rules.get_detection_matches(&event);
+        if !matches.is_empty() {
+            summary.event_with_hits += 1;
+            for uuid in matches {
+                if let Some(rule) = rule_ids.get(&uuid) {
+                    write_record(&profile, &event, rule, &mut wrt, common_opt.no_color);
 
-                write_record(&profile, &event, rule, &mut wrt, common_opt.no_color);
+                    if let Some(author) = &rule.author {
+                        summary
+                            .author_titles
+                            .entry(author.clone())
+                            .or_default()
+                            .insert(rule.title.clone());
+                    }
 
-                if let Some(author) = &rule.author {
-                    summary
-                        .author_titles
-                        .entry(author.clone())
-                        .or_default()
-                        .insert(rule.title.clone());
-                }
+                    if let Some(level) = &rule.level {
+                        let level = format!("{:?}", level).to_lowercase();
+                        summary
+                            .level_with_hits
+                            .entry(level)
+                            .or_default()
+                            .entry(rule.title.clone())
+                            .and_modify(|e| *e += 1)
+                            .or_insert(1);
+                    }
 
-                if let Some(level) = &rule.level {
-                    let level = format!("{:?}", level).to_lowercase();
-                    summary
-                        .level_with_hits
-                        .entry(level)
-                        .or_default()
-                        .entry(rule.title.clone())
-                        .and_modify(|e| *e += 1)
-                        .or_insert(1);
-                }
-
-                if let Some(event_time) = event.get("eventTime") {
-                    let event_time_str = s(format!("{:?}", event_time));
-                    if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
-                        let unix_time = event_time.timestamp();
-                        summary.timestamps.push(unix_time);
-                        if summary.first_event_time.is_none()
-                            || event_time < summary.first_event_time.unwrap()
-                        {
-                            summary.first_event_time = Some(event_time);
-                        }
-                        if summary.last_event_time.is_none()
-                            || event_time > summary.last_event_time.unwrap()
-                        {
-                            summary.last_event_time = Some(event_time);
-                        }
-                        if let Some(level) = &rule.level {
-                            let level = format!("{:?}", level).to_lowercase();
-                            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
-                            summary
-                                .dates_with_hits
-                                .entry(level)
-                                .or_default()
-                                .entry(date)
-                                .and_modify(|e| *e += 1)
-                                .or_insert(1);
+                    if let Some(event_time) = event.data.get("eventTime") {
+                        let event_time_str = event_time.as_str().unwrap();
+                        if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+                            let unix_time = event_time.timestamp();
+                            summary.timestamps.push(unix_time);
+                            if summary.first_event_time.is_none()
+                                || event_time < summary.first_event_time.unwrap()
+                            {
+                                summary.first_event_time = Some(event_time);
+                            }
+                            if summary.last_event_time.is_none()
+                                || event_time > summary.last_event_time.unwrap()
+                            {
+                                summary.last_event_time = Some(event_time);
+                            }
+                            if let Some(level) = &rule.level {
+                                let level = format!("{:?}", level).to_lowercase();
+                                let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                                summary
+                                    .dates_with_hits
+                                    .entry(level)
+                                    .or_default()
+                                    .entry(date)
+                                    .and_modify(|e| *e += 1)
+                                    .or_insert(1);
+                            }
                         }
                     }
                 }
@@ -647,15 +653,27 @@ fn load_profile(file_path: &str) -> Vec<(String, String)> {
 fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
     if key.starts_with(".") {
         let key = key.strip_prefix(".").unwrap();
-        if let Some(value) = event.get(key) {
-            if key == "eventTime" {
-                s(format!("{:?}", value)).replace("T", " ").replace("Z", "")
+        let keys: Vec<&str> = key.split('.').collect();
+        let mut current_value = &event.data;
+
+        for k in keys {
+            if let Some(value) = current_value.get(k) {
+                if value.as_object().is_some() {
+                    current_value = value;
+                } else if let Some(val) = value.as_str() {
+                    return if k == "eventTime" {
+                        val.to_string().replace("T", " ").replace("Z", "")
+                    } else {
+                        val.to_string()
+                    };
+                } else {
+                    return "-".to_string();
+                }
             } else {
-                s(format!("{:?}", value))
+                return "-".to_string();
             }
-        } else {
-            "-".to_string()
         }
+        "-".to_string()
     } else if key.starts_with("sigma.") {
         let key = key.replace("sigma.", "");
         if key == "title" {

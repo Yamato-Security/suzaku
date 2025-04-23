@@ -1,8 +1,8 @@
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, p, s};
+use crate::util::{get_writer, p};
 use comfy_table::{Cell, CellAlignment, Table};
 use csv::Writer;
-use sigma_rust::Event;
+use sigmars::Event;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
@@ -23,12 +23,9 @@ pub fn aws_metrics(
 
     let mut count_map = HashMap::new();
     let stats_func = |event: Event| {
-        let value = event.get(field);
-        if let Some(value) = value {
-            let event_name = s(format!("{:?}", value));
-            let count = count_map.entry(event_name).or_insert(0);
-            *count += 1;
-        }
+        let event_name = event.data[field].as_str().unwrap_or("").to_string();
+        let count = count_map.entry(event_name).or_insert(0);
+        *count += 1;
     };
 
     if let Some(d) = directory {

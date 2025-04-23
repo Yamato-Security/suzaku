@@ -6,8 +6,7 @@ use console::style;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use serde_json::Value;
-use sigma_rust::Event;
-use sigma_rust::event_from_json;
+use sigmars::Event;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -73,15 +72,14 @@ where
                 match json_value {
                     Value::Array(json_array) => {
                         for json_value in json_array {
-                            let event: Event = event_from_json(json_value.to_string().as_str())?;
+                            let event: Event = Event::new(json_value.clone());
                             process_event(event);
                         }
                     }
                     Value::Object(json_map) => {
                         if let Some(json_array) = json_map.get("Records") {
                             for json_value in json_array.as_array().unwrap() {
-                                let event: Event =
-                                    event_from_json(json_value.to_string().as_str())?;
+                                let event: Event = Event::new(json_value.clone());
                                 process_event(event);
                             }
                         }
@@ -148,14 +146,14 @@ pub fn load_json_from_file(log_contents: &str) -> Result<Vec<Event>, Box<dyn Err
     match json_value {
         Value::Array(json_array) => {
             for json_value in json_array {
-                let event: Event = event_from_json(json_value.to_string().as_str())?;
+                let event = Event::new(json_value.clone());
                 events.push(event);
             }
         }
         Value::Object(json_map) => {
             if let Some(json_array) = json_map.get("Records") {
                 for json_value in json_array.as_array().unwrap() {
-                    let event: Event = event_from_json(json_value.to_string().as_str())?;
+                    let event = Event::new(json_value.clone());
                     events.push(event);
                 }
             }

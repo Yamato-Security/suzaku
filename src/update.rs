@@ -218,6 +218,12 @@ fn clone_rules(rules_path: &Path) -> Result<String, git2::Error> {
 /// Create rules folder files Hashset. Format is "[rule title in yaml]|[filepath]|[filemodified date]|[rule type in yaml]"
 fn get_updated_rules(rule_folder_path: &PathBuf) -> HashSet<String> {
     let rulefile_loader = load_rules_from_dir(rule_folder_path);
+    let rulefile_loader = rulefile_loader
+        .into_iter()
+        .filter(|(_, rule)| {
+            rule.date.is_some() || rule.modified.is_some() || rule.description.is_some()
+        })
+        .map(|(_, rule)| rule);
 
     HashSet::from_iter(rulefile_loader.into_iter().map(|yaml| {
         let yaml_date = yaml.date.unwrap_or("-".to_string());
