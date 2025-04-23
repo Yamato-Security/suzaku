@@ -660,6 +660,24 @@ fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
         let key = key.replace("sigma.", "");
         if key == "title" {
             rule.title.to_string()
+        } else if key == "id" && rule.id.is_some() {
+            rule.id.as_ref().unwrap().to_string()
+        } else if key == "status" {
+            format!("{:?}", rule.status.as_ref().unwrap()).to_lowercase()
+        } else if key == "author" && rule.author.is_some() {
+            rule.author.as_ref().unwrap().to_string()
+        } else if key == "description" && rule.description.is_some() {
+            rule.description.as_ref().unwrap().to_string()
+        } else if key == "references" && rule.references.is_some() {
+            format!("{:?}", rule.references.as_ref().unwrap())
+        } else if key == "date" && rule.date.is_some() {
+            rule.date.as_ref().unwrap().to_string()
+        } else if key == "modified" && rule.modified.is_some() {
+            rule.modified.as_ref().unwrap().to_string()
+        } else if key == "tags" && rule.tags.is_some() {
+            format!("{:?}", rule.tags.as_ref().unwrap())
+        } else if key == "falsepositives" && rule.falsepositives.is_some() {
+            format!("{:?}", rule.falsepositives.as_ref().unwrap())
         } else if key == "level" {
             format!("{:?}", rule.level.as_ref().unwrap()).to_lowercase()
         } else {

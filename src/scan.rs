@@ -1,4 +1,4 @@
-use crate::color::SuzakuColor::Green;
+use crate::color::SuzakuColor::{Green, Orange};
 use crate::util::p;
 use bytesize::ByteSize;
 use colored::Colorize;
@@ -30,6 +30,9 @@ where
     p(None, count.to_string().as_str(), true);
     p(Green.rdg(no_color), "Total file size: ", false);
     p(None, size.to_string().as_str(), true);
+    println!();
+
+    p(Orange.rdg(no_color), "Scanning now. Please wait.", true);
     println!();
 
     let template = if no_color {
