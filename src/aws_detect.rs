@@ -662,7 +662,7 @@ fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
             rule.title.to_string()
         } else if key == "id" && rule.id.is_some() {
             rule.id.as_ref().unwrap().to_string()
-        } else if key == "status" {
+        } else if key == "status" && rule.status.is_some() {
             format!("{:?}", rule.status.as_ref().unwrap()).to_lowercase()
         } else if key == "author" && rule.author.is_some() {
             rule.author.as_ref().unwrap().to_string()
