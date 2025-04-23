@@ -154,7 +154,7 @@ pub async fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptio
     let mut rules = rules.unwrap();
     let mut backend = MemBackend::new().await;
     rules.init(&mut backend).await;
-    
+
     let no_color = common_opt.no_color;
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
@@ -299,7 +299,8 @@ pub async fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptio
             d,
             options.output.is_some(),
             common_opt.no_color,
-        ).await;
+        )
+        .await;
     } else if let Some(f) = &options.input_opt.filepath {
         let log_contents = get_content(f);
         if let Ok(events) = load_json_from_file(&log_contents) {
