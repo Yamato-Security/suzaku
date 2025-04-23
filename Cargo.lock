@@ -1742,6 +1742,7 @@ dependencies = [
  "sigmars",
  "termcolor",
  "terminal_size 0.4.2",
+ "tokio",
  "ureq",
 ]
 

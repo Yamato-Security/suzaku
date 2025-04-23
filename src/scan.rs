@@ -14,14 +14,14 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{fs, io};
 
-pub fn process_events_from_dir<F>(
+pub async fn process_events_from_dir<F>(
     mut process_event: F,
     directory: &PathBuf,
     show_progress: bool,
     no_color: bool,
 ) -> Result<(), Box<dyn Error>>
 where
-    F: FnMut(Event),
+    F: AsyncFnMut(Event),
 {
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).display().to_string();
@@ -73,14 +73,14 @@ where
                     Value::Array(json_array) => {
                         for json_value in json_array {
                             let event: Event = Event::new(json_value.clone());
-                            process_event(event);
+                            process_event(event).await;
                         }
                     }
                     Value::Object(json_map) => {
                         if let Some(json_array) = json_map.get("Records") {
                             for json_value in json_array.as_array().unwrap() {
                                 let event: Event = Event::new(json_value.clone());
-                                process_event(event);
+                                process_event(event).await;
                             }
                         }
                     }

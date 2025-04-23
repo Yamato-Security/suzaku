@@ -30,6 +30,7 @@ sigmars = "*"
 termcolor = "*"
 terminal_size = "0.4.*"
 ureq="*"
+tokio = { version = "1.0.0", features = ["rt", "rt-multi-thread", "macros"] }
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.

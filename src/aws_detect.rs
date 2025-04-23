@@ -13,7 +13,7 @@ use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use sigma_rust::Rule;
-use sigmars::{Event, SigmaCollection};
+use sigmars::{Event, MemBackend, SigmaCollection};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -142,7 +142,7 @@ fn write_record(
     }
 }
 
-pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
+pub async fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     let profile = load_profile("config/default_profile.yaml");
     let rule_path = options.rules.to_str().expect("Invalid UTF-8 in path");
     let rule_ids = load_rules_from_dir(&options.rules);
@@ -151,7 +151,10 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         p(Some(Color::Rgb(255, 0, 0)), "Failed to load rules.", true);
         return;
     }
-    let rules = rules.unwrap();
+    let mut rules = rules.unwrap();
+    let mut backend = MemBackend::new().await;
+    rules.init(&mut backend).await;
+    
     let no_color = common_opt.no_color;
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
@@ -219,7 +222,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     };
 
     let mut summary = DetectionSummary::default();
-    let scan_by_all_rules = |event: Event| {
+    let mut scan_by_all_rules = async |event: Event| {
         summary.total_events += 1;
         let matches = rules.get_detection_matches(&event);
         if !matches.is_empty() {
@@ -280,20 +283,29 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                 }
             }
         }
+        let res = rules.get_matches(&event).await;
+        if let Ok(res) = res {
+            for uuid in res {
+                if let Some(rule) = rule_ids.get(&uuid) {
+                    write_record(&profile, &event, rule, &mut wrt, common_opt.no_color);
+                }
+            }
+        }
     };
 
     if let Some(d) = &options.input_opt.directory {
-        process_events_from_dir(
+        let _ = process_events_from_dir(
             scan_by_all_rules,
             d,
             options.output.is_some(),
             common_opt.no_color,
-        )
-        .unwrap();
+        ).await;
     } else if let Some(f) = &options.input_opt.filepath {
         let log_contents = get_content(f);
         if let Ok(events) = load_json_from_file(&log_contents) {
-            events.into_iter().for_each(scan_by_all_rules);
+            for event in events {
+                scan_by_all_rules(event).await;
+            }
         }
     }
     if let Some(ref mut writer) = wrt.csv {

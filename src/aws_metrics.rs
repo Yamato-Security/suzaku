@@ -8,7 +8,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use termcolor::Color;
 
-pub fn aws_metrics(
+pub async fn aws_metrics(
     directory: &Option<PathBuf>,
     file: &Option<PathBuf>,
     field: &str,
@@ -22,20 +22,22 @@ pub fn aws_metrics(
     }
 
     let mut count_map = HashMap::new();
-    let stats_func = |event: Event| {
+    let mut stats_func = async |event: Event| {
         let event_name = event.data[field].as_str().unwrap_or("").to_string();
         let count = count_map.entry(event_name).or_insert(0);
         *count += 1;
     };
 
     if let Some(d) = directory {
-        process_events_from_dir(stats_func, d, true, no_color).unwrap();
+        let _ = process_events_from_dir(stats_func, d, true, no_color).await;
         print_count_map_desc(csv_header, &count_map, wtr, output.is_none());
     } else if let Some(f) = file {
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
-            events.into_iter().for_each(stats_func);
+            for event in events {
+                stats_func(event).await;
+            }
             print_count_map_desc(csv_header, &count_map, wtr, output.is_none());
         }
     }
