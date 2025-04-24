@@ -76,7 +76,12 @@ fn write_record(
 
     // 標準出力
     if let Some(writer) = &mut wrt.std {
-        let level = &record[2];
+        let level_index = profile.iter().position(|(k, _)| k == "Level");
+        let level = if let Some(index) = level_index {
+            record[index].to_lowercase()
+        } else {
+            "informational".to_string()
+        };
         let color = if level == "critical" {
             Red
         } else if level == "high" {
