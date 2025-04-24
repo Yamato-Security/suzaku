@@ -159,7 +159,7 @@ fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_colo
     let fmt_and_sort = |map: &HashMap<String, usize>| -> String {
         map.iter()
             .sorted_by(|a, b| b.1.cmp(a.1)) // 件数の多い順にソート
-            .map(|(key, count)| format!("{} - {}", count, key))
+            .map(|(key, count)| format!("{} - {}", count.to_formatted_string(&Locale::en), key))
             .join("\n")
     };
 
