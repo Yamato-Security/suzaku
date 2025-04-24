@@ -76,7 +76,12 @@ fn write_record(
 
     // 標準出力
     if let Some(writer) = &mut wrt.std {
-        let level = &record[2];
+        let level_index = profile.iter().position(|(k, _)| k == "Level");
+        let level = if let Some(index) = level_index {
+            record[index].to_lowercase()
+        } else {
+            "informational".to_string()
+        };
         let color = if level == "critical" {
             Red
         } else if level == "high" {
@@ -660,6 +665,24 @@ fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
         let key = key.replace("sigma.", "");
         if key == "title" {
             rule.title.to_string()
+        } else if key == "id" && rule.id.is_some() {
+            rule.id.as_ref().unwrap().to_string()
+        } else if key == "status" && rule.status.is_some() {
+            format!("{:?}", rule.status.as_ref().unwrap()).to_lowercase()
+        } else if key == "author" && rule.author.is_some() {
+            rule.author.as_ref().unwrap().to_string()
+        } else if key == "description" && rule.description.is_some() {
+            rule.description.as_ref().unwrap().to_string()
+        } else if key == "references" && rule.references.is_some() {
+            format!("{:?}", rule.references.as_ref().unwrap())
+        } else if key == "date" && rule.date.is_some() {
+            rule.date.as_ref().unwrap().to_string()
+        } else if key == "modified" && rule.modified.is_some() {
+            rule.modified.as_ref().unwrap().to_string()
+        } else if key == "tags" && rule.tags.is_some() {
+            format!("{:?}", rule.tags.as_ref().unwrap())
+        } else if key == "falsepositives" && rule.falsepositives.is_some() {
+            format!("{:?}", rule.falsepositives.as_ref().unwrap())
         } else if key == "level" {
             format!("{:?}", rule.level.as_ref().unwrap()).to_lowercase()
         } else {
