@@ -124,6 +124,19 @@ pub enum Commands {
         common_opt: CommonOptions,
     },
 
+    /// Generates summary from AWS CloudTrail logs
+    AwsCtSummary {
+        #[clap(flatten)]
+        input_opt: InputOption,
+
+        /// Output CSV
+        #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true)]
+        output: PathBuf,
+
+        #[clap(flatten)]
+        common_opt: CommonOptions,
+    },
+
     #[command(about = "Update rules", disable_help_flag = true)]
     UpdateRules {
         #[clap(flatten)]

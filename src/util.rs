@@ -1,3 +1,5 @@
+use crate::color::SuzakuColor::Green;
+use bytesize::ByteSize;
 use csv::Writer;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -54,4 +56,18 @@ pub fn p(color: Option<Color>, msg: &str, newline: bool) {
         write!(buf, "{msg}").ok();
     }
     wtr.print(&buf).ok();
+}
+
+pub fn output_path_info(no_color: bool, output_pathes: &[PathBuf]) {
+    p(Green.rdg(no_color), "Results saved: ", false);
+    for (i, path) in output_pathes.iter().enumerate() {
+        if let Ok(metadata) = path.metadata() {
+            let size = ByteSize::b(metadata.len()).display();
+            p(None, &format!("{} ({})", path.display(), size), false);
+        }
+        if i < output_pathes.len() - 1 {
+            p(None, " and ", false);
+        }
+    }
+    println!();
 }
