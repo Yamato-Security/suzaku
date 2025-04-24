@@ -155,7 +155,7 @@ fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_colo
     let mut sorted_user_data: Vec<_> = user_data.iter().collect();
     sorted_user_data.sort_by(|a, b| b.1.num_of_events.cmp(&a.1.num_of_events));
 
-    for (user_arn, summary) in sorted_user_data.iter(){
+    for (user_arn, summary) in sorted_user_data.iter() {
         let num_of_events = summary.num_of_events.to_string();
         let first_timestamp = summary.first_timestamp.clone();
         let last_timestamp = summary.last_timestamp.clone();
