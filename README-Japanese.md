@@ -362,6 +362,7 @@ Suzakuは`config/default_profile.yaml`ファイルに基づいて情報を出力
 ```yaml
 Timestamp: '.eventTime'
 RuleTitle: 'sigma.title'
+RuleAuthor: 'sigma.author'
 Level: 'sigma.level'
 EventName: '.eventName'
 EventSource: '.eventSource'
@@ -375,6 +376,7 @@ UserARN: '.userIdentity.arn'
 UserPrincipalID: '.userIdentity.principalId'
 UserAccessKeyID: '.userIdentity.accessKeyId'
 EventID: '.eventID'
+RuleID: 'sigma.id'
 ```
 
 * `.`（例: `.eventTime`）で始まるフィールド値は、CloudTrailログから取得されます。

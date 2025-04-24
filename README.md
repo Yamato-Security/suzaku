@@ -20,7 +20,7 @@ Suzaku (朱雀) means ["Vermilion Bird"](https://en.wikipedia.org/wiki/Vermilion
 
 Suzaku is a threat hunting and fast forensics timeline generator for cloud logs.
 (Imagine [Hayabusa](https://github.com/Yamato-Security/hayabusa) but for cloud logs instead of Windows event logs.)
-It is currently under active development with basic native [sigma](https://github.com/SigmaHQ/sigma) detection support for AWS CloudTrail logs.
+It is currently under active development with basic native [Sigma](https://github.com/SigmaHQ/sigma) detection support for AWS CloudTrail logs.
 After AWS, we plan on supporting Azure and GCP logs.
 
 With cloud logs, there are thousands of different API calls and more events then anyone could sift through manually.
@@ -29,7 +29,7 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
 
 # Companion Projects
 
-* [suzaku-rules](https://github.com/Yamato-Security/suzaku-rules) - our repository of sigma rules. New upstream sigma rules are added automatically. We also host our own rules here.
+* [suzaku-rules](https://github.com/Yamato-Security/suzaku-rules) - our repository of Sigma rules. New upstream Sigma rules are added automatically. We also host our own rules here.
 * [suzaku-sample-data](https://github.com/Yamato-Security/suzaku-sample-data) - a repository of various cloud logs with attack evidence inside them used for testing Suzaku as well as for writing new detection rules.
 
 # Table of Contents
@@ -325,7 +325,7 @@ General Options:
 
 ### `aws-ct-timeline` command
 
-Create an AWS CloudTrail DFIR timeline based on sigma rules in the `rules` folder.
+Create an AWS CloudTrail DFIR timeline based on Sigma rules in the `rules` folder.
 
 ```
 Usage: suzaku aws-ct-timeline [OPTIONS] <--directory <DIR>|--file <FILE>>
@@ -362,6 +362,7 @@ Suzaku will output information based on the `config/default_profile.yaml` file:
 ```yaml
 Timestamp: '.eventTime'
 RuleTitle: 'sigma.title'
+RuleAuthor: 'sigma.author'
 Level: 'sigma.level'
 EventName: '.eventName'
 EventSource: '.eventSource'
@@ -375,6 +376,7 @@ UserARN: '.userIdentity.arn'
 UserPrincipalID: '.userIdentity.principalId'
 UserAccessKeyID: '.userIdentity.accessKeyId'
 EventID: '.eventID'
+RuleID: 'sigma.id'
 ```
 
 * Any field value that starts with `.` (ex: `.eventTime`) will be taken from the CloudTrail log.
