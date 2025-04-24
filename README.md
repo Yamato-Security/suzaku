@@ -362,6 +362,7 @@ Suzaku will output information based on the `config/default_profile.yaml` file:
 ```yaml
 Timestamp: '.eventTime'
 RuleTitle: 'sigma.title'
+RuleAuthor: 'sigma.author'
 Level: 'sigma.level'
 EventName: '.eventName'
 EventSource: '.eventSource'
@@ -375,6 +376,7 @@ UserARN: '.userIdentity.arn'
 UserPrincipalID: '.userIdentity.principalId'
 UserAccessKeyID: '.userIdentity.accessKeyId'
 EventID: '.eventID'
+RuleID: 'sigma.id'
 ```
 
 * Any field value that starts with `.` (ex: `.eventTime`) will be taken from the CloudTrail log.
