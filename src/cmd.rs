@@ -135,9 +135,17 @@ pub enum Commands {
         #[clap(flatten)]
         input_opt: InputOption,
 
+        /// Filter out temporary AWS STS access key IDs
+        #[arg(help_heading = Some("Filtering"), short = 's', long = "filter_sts_keys")]
+        filter_sts: Option<String>,
+
         /// Output CSV
         #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true)]
         output: PathBuf,
+
+        /// Hide description
+        #[arg(help_heading = Some("Output"), short = 'D', long = "hide_descriptions")]
+        hide_descriptions: bool,
 
         #[clap(flatten)]
         common_opt: CommonOptions,
