@@ -1,6 +1,6 @@
 [package]
 name = "suzaku"
-version = "0.1.1"
+version = "0.2.0-dev"
 repository = "https://github.com/Yamato-Security/suzaku"
 authors = ["Yamato Security @SecurityYamato"]
 edition = "2024"
@@ -20,6 +20,7 @@ flate2 = { version = "1.1.*", features = ["zlib-rs"], default-features = false }
 git2="*"
 hashbrown="*"
 indicatif = "*"
+itertools = "*"
 krapslog = "0.6"
 libmimalloc-sys = { version = "=0.1.40",  features = ["extended"] }
 mimalloc = { version = "*", default-features = false }

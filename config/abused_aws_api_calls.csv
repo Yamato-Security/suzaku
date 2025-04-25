@@ -1,0 +1,44 @@
+EventName,Description
+AssumeRole,Lateral movement via roles
+AssumeRoleWithWebIdentity,Lateral movement via roles
+AttachUserPolicy,Inject permissions
+CreateAccessKey,Creates long-term credentials for backdoor
+CreateFunction,Deploy attacker-controlled Lambda
+CreateInstanceProfile,IAM persistence for EC2-based access
+CreateLoginProfile,Add IAM users (login backdoors)
+CreatePolicy,Inject permissions
+CreateRole,Add custom roles with privileges
+CreateUser,Add IAM users (login backdoors)
+DeletePolicy,Remove audit controls
+DeleteTrail,Disable or delete CloudTrail
+DescribeInstances,EC2 and network layout recon
+DescribeVpcs,EC2 and network layout recon
+DetachPolicy,Remove audit controls
+GetAccessKeyLastUsed,Recon for keys in use
+GetBucketAcl,S3 recon
+GetBucketPolicy,S3 recon
+GetCallerIdentity,Current credentials recon
+GetParameter,Retrieves SSM Parameter Store (may include credentials)
+GetParameterHistory,Gets historical (often unencrypted) versions
+GetSecretValue,Retrieves Secrets Manager values
+InvokeFunction,Executes Lambda (can run attacker code)
+ListAccessKeys,Enumerates keys on IAM users
+ListBuckets,S3 recon
+ListGroups,IAM enumeration
+ListParameters,Find credential storage locations
+ListRoles,IAM enumeration
+ListSecrets,Find credential storage locations
+ListUsers,IAM enumeration
+PassRole,"Pass privileges to services (e.g. Lambda, EC2)"
+PutBucketPolicy,Inject persistent permissions
+PutEventSelectors,Narrow what gets logged
+PutRolePolicy,Add custom roles with privileges
+PutUserPolicy,Inject persistent permissions
+PutUserPolicy,Inject permissions
+RunInstances,"Spin up EC2 instances (crypto mining, tools)"
+SendCommand,Run arbitrary shell commands on EC2
+StartInstances,"Spin up EC2 instances (crypto mining, tools)"
+StartSession,Interactive shell via SSM
+StopLogging,Disable or delete CloudTrail logs
+UpdateAssumeRolePolicy,Modify trust relationship (backdoor a role)
+UpdateTrail,Point logs to attacker-controlled S3

@@ -3,8 +3,7 @@ use crate::color::SuzakuColor;
 use crate::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::rules;
 use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_json_writer, get_writer, p, s};
-use bytesize::ByteSize;
+use crate::util::{get_json_writer, get_writer, output_path_info, p, s};
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
@@ -335,17 +334,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     }
 
     if !output_pathes.is_empty() {
-        p(Green.rdg(no_color), "Results saved: ", false);
-        for (i, path) in output_pathes.iter().enumerate() {
-            if let Ok(metadata) = path.metadata() {
-                let size = ByteSize::b(metadata.len()).display();
-                p(None, &format!("{} ({})", path.display(), size), false);
-            }
-            if i < output_pathes.len() - 1 {
-                p(None, " and ", false);
-            }
-        }
-        println!();
+        output_path_info(no_color, &output_pathes);
     }
 }
 

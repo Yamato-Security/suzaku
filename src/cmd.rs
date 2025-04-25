@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use const_format::concatcp;
 
-pub const RELEASE_NAME: &str = "AlphaOne Release";
+pub const RELEASE_NAME: &str = "Dev Build";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
 
@@ -119,6 +119,25 @@ pub enum Commands {
         /// Output CSV
         #[arg(help_heading = Some("Output"), short, long, value_name = "FILE")]
         output: Option<PathBuf>,
+
+        #[clap(flatten)]
+        common_opt: CommonOptions,
+    },
+
+    #[command(
+        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
+        version = FULL_VERSION,
+        help_template = "\nVersion {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-summary <INPUT> [OPTIONS]\n\n{all-args}",
+        disable_help_flag = true
+    )]
+    /// Generates summary from AWS CloudTrail logs
+    AwsCtSummary {
+        #[clap(flatten)]
+        input_opt: InputOption,
+
+        /// Output CSV
+        #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true)]
+        output: PathBuf,
 
         #[clap(flatten)]
         common_opt: CommonOptions,

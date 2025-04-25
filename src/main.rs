@@ -1,6 +1,7 @@
 use crate::aws_detect::aws_detect;
 use crate::aws_metrics::aws_metrics;
-use crate::cmd::Commands::{AwsCtMetrics, AwsCtTimeline, UpdateRules};
+use crate::aws_summary::aws_summary;
+use crate::cmd::Commands::{AwsCtMetrics, AwsCtSummary, AwsCtTimeline, UpdateRules};
 use crate::cmd::{Cli, RELEASE_NAME, VERSION};
 use crate::color::SuzakuColor::Green;
 use crate::util::{check_path_exists, p};
@@ -15,6 +16,7 @@ use update::start_update_rules;
 
 mod aws_detect;
 mod aws_metrics;
+mod aws_summary;
 mod cmd;
 mod color;
 mod rules;
@@ -40,6 +42,7 @@ fn main() {
     let no_color = match cmd {
         AwsCtTimeline { common_opt, .. } => common_opt.no_color,
         AwsCtMetrics { common_opt, .. } => common_opt.no_color,
+        AwsCtSummary { common_opt, .. } => common_opt.no_color,
         UpdateRules { common_opt } => common_opt.no_color,
     };
     match cmd {
@@ -89,6 +92,19 @@ fn main() {
             }
             aws_metrics(dir, file, field_name, output, no_color);
         }
+        AwsCtSummary {
+            input_opt,
+            output,
+            common_opt,
+        } => {
+            display_logo(common_opt.quiet, no_color, true, false);
+            let dir = &input_opt.directory;
+            let file = &input_opt.filepath;
+            if !check_path_exists(file.clone(), dir.clone()) {
+                return;
+            }
+            aws_summary(dir, file, output, no_color);
+        }
         UpdateRules { common_opt } => {
             display_logo(common_opt.quiet, no_color, true, false);
             start_update_rules(no_color);
@@ -108,6 +124,7 @@ fn main() {
     let debug = match cmd {
         AwsCtTimeline { common_opt, .. } => common_opt.debug,
         AwsCtMetrics { common_opt, .. } => common_opt.debug,
+        AwsCtSummary { common_opt, .. } => common_opt.debug,
         UpdateRules { common_opt } => common_opt.debug,
     };
 
