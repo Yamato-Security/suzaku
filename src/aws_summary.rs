@@ -165,8 +165,16 @@ fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_colo
 
     for (user_arn, summary) in sorted_user_data.iter() {
         let num_of_events = summary.num_of_events.to_formatted_string(&Locale::en);
-        let first_timestamp = summary.first_timestamp.clone();
-        let last_timestamp = summary.last_timestamp.clone();
+        let first_timestamp = summary
+            .first_timestamp
+            .clone()
+            .replace("T", " ")
+            .replace("Z", "");
+        let last_timestamp = summary
+            .last_timestamp
+            .clone()
+            .replace("T", " ")
+            .replace("Z", "");
         let aws_regions = fmt_and_sort(&summary.aws_regions);
         let event_names = fmt_and_sort(&summary.event_names);
         let src_ips = fmt_and_sort(&summary.src_ips);
