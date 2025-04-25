@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0 [2025/05/22] - AUSCERT Release
+
+**New Features:**
+
+- `aws-ct-summary`: for each unique ARN, creates a summary of total events, regions used, user types, access keys, user agents, etc...  (#53) (@fukusuket)
+
 ## 0.1.1 [2025/04/24] - AlphaOne Release
 
 **Bug Fixes:**
