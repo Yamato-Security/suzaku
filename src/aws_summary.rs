@@ -15,6 +15,10 @@ struct CTSummary {
     num_of_events: usize,
     first_timestamp: String,
     last_timestamp: String,
+    abused_api_success: HashMap<String, (usize, String, String)>,
+    abused_api_failed: HashMap<String, (usize, String, String)>,
+    other_api_success: HashMap<String, (usize, String, String)>,
+    other_api_failed: HashMap<String, (usize, String, String)>,
     aws_regions: HashMap<String, (usize, String, String)>,
     event_names: HashMap<String, (usize, String, String)>,
     src_ips: HashMap<String, (usize, String, String)>,
@@ -34,6 +38,10 @@ impl CTSummary {
         user_type: String,
         access_key_id: String,
         user_agent: String,
+        abused_api_success: String,
+        abused_api_failed: String,
+        other_api_success: String,
+        other_api_failed: String,
     ) {
         self.num_of_events += 1;
 
@@ -80,6 +88,37 @@ impl CTSummary {
             self.last_timestamp.clone(),
         ));
         entry.0 += 1;
+
+        if !abused_api_success.is_empty() {
+            let entry = self
+                .abused_api_success
+                .entry(abused_api_success.clone())
+                .or_insert((0, self.first_timestamp.clone(), self.last_timestamp.clone()));
+            entry.0 += 1;
+        }
+
+        if !abused_api_failed.is_empty() {
+            let entry = self
+                .abused_api_failed
+                .entry(abused_api_failed.clone())
+                .or_insert((0, self.first_timestamp.clone(), self.last_timestamp.clone()));
+            entry.0 += 1;
+        }
+        if !other_api_success.is_empty() {
+            let entry = self
+                .other_api_success
+                .entry(other_api_success.clone())
+                .or_insert((0, self.first_timestamp.clone(), self.last_timestamp.clone()));
+            entry.0 += 1;
+        }
+
+        if !other_api_failed.is_empty() {
+            let entry = self
+                .other_api_failed
+                .entry(other_api_failed.clone())
+                .or_insert((0, self.first_timestamp.clone(), self.last_timestamp.clone()));
+            entry.0 += 1;
+        }
     }
 }
 
@@ -91,6 +130,7 @@ pub fn aws_summary(
     filter_sts: &Option<String>,
     hide_descriptions: &bool,
 ) {
+    let abused_aws_api_calls = read_abused_aws_api_calls("config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
     let summary_func = |event: Event| {
         let user_identity_arn = match event.get("userIdentity.arn") {
@@ -107,6 +147,14 @@ pub fn aws_summary(
         };
         let event_name = match event.get("eventName") {
             Some(name) => s(format!("{:?}", name)),
+            None => "-".to_string(),
+        };
+        let event_source = match event.get("eventSource") {
+            Some(source) => s(format!("{:?}", source)),
+            None => "-".to_string(),
+        };
+        let error_code = match event.get("errorCode") {
+            Some(code) => s(format!("{:?}", code)),
             None => "-".to_string(),
         };
         let source_ipaddress = match event.get("sourceIPAddress") {
@@ -134,50 +182,65 @@ pub fn aws_summary(
             None => "-".to_string(),
         };
 
+        let event_name_disc = if *hide_descriptions {
+            event_name.clone()
+        } else {
+            abused_aws_api_calls
+                .get(&event_name)
+                .unwrap_or(&event_name)
+                .to_string()
+        };
+
+        let mut abused_api_success = "".to_string();
+        if event_name_disc != event_name && error_code != "AccessDenied" {
+            abused_api_success = event_name_disc.clone();
+        }
+
+        let mut abused_api_failed = "".to_string();
+        if event_name_disc != event_name && error_code == "AccessDenied" {
+            abused_api_failed = event_name_disc.clone();
+        }
+
+        let mut other_api_success = "".to_string();
+        if event_name_disc == event_name && error_code != "AccessDenied" {
+            other_api_success = event_name_disc.clone();
+        }
+
+        let mut other_api_failed = "".to_string();
+        if event_name_disc == event_name && error_code == "AccessDenied" {
+            other_api_failed = event_name_disc.clone();
+        }
+
         let entry = user_data.entry(user_identity_arn.clone()).or_default();
         entry.add_event(
             event_time,
             aws_region,
-            event_name,
+            format!("{}({})", event_name, event_source),
             source_ipaddress,
             user_identity_type,
             user_identity_access_key_id,
             user_agent,
+            abused_api_success,
+            abused_api_failed,
+            other_api_success,
+            other_api_failed,
         );
     };
-    let abused_aws_api_calls = read_abused_aws_api_calls("config/abused_aws_api_calls.csv");
+
     if let Some(d) = directory {
         process_events_from_dir(summary_func, d, true, no_color).unwrap();
-        output_summary(
-            &user_data,
-            &abused_aws_api_calls,
-            output,
-            no_color,
-            hide_descriptions,
-        );
+        output_summary(&user_data, output, no_color);
     } else if let Some(f) = file {
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
             events.into_iter().for_each(summary_func);
-            output_summary(
-                &user_data,
-                &abused_aws_api_calls,
-                output,
-                no_color,
-                hide_descriptions,
-            );
+            output_summary(&user_data, output, no_color);
         }
     }
 }
 
-fn output_summary(
-    user_data: &HashMap<String, CTSummary>,
-    api_calls: &HashMap<String, String>,
-    output: &Path,
-    no_color: bool,
-    hide_descriptions: &bool,
-) {
+fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_color: bool) {
     if user_data.is_empty() {
         p(Some(Color::Rgb(255, 0, 0)), "No events found.", true);
         return;
@@ -193,6 +256,10 @@ fn output_summary(
         "NumOfEvents",
         "FirstTimestamp",
         "LastTimestamp",
+        "AbusedAPIs-Success",
+        "AbusedAPIs-Failed",
+        "OtherAPIs-Success",
+        "OtherAPIs-Failed",
         "AWS-Regions",
         "EventNames",
         "SrcIPs",
@@ -207,9 +274,9 @@ fn output_summary(
     sorted_user_data.sort_by(|a, b| b.1.num_of_events.cmp(&a.1.num_of_events));
 
     let fmt_and_sort = |key: &str, map: &HashMap<String, (usize, String, String)>| -> String {
-        let total: usize = map.values().map(|v| v.0).sum();
+        let total: usize = map.keys().len();
         let total = total.to_formatted_string(&Locale::en);
-        let mut result = vec![format!("Total {}s: {}", key, total)];
+        let mut result = vec![format!("Total {}: {}", key, total)];
         result.extend(
             map.iter()
                 .sorted_by(|a, b| b.1.cmp(a.1)) // 件数の多い順にソート
@@ -238,23 +305,26 @@ fn output_summary(
             .clone()
             .replace("T", " ")
             .replace("Z", "");
-        let aws_regions = fmt_and_sort("region", &summary.aws_regions);
-        let event_names = if *hide_descriptions {
-            fmt_and_sort("event name", &summary.event_names)
-        } else {
-            let rep_event_names = replace_with_descriptions(&summary.event_names, api_calls);
-            fmt_and_sort("event name", &rep_event_names)
-        };
-        let src_ips = fmt_and_sort("src ip", &summary.src_ips);
-        let user_types = fmt_and_sort("user type", &summary.user_types);
-        let access_key_ids = fmt_and_sort("access key id", &summary.access_key_ids);
-        let user_agents = fmt_and_sort("user agent", &summary.user_agents);
+        let aws_regions = fmt_and_sort("regions", &summary.aws_regions);
+        let event_names = fmt_and_sort("event names", &summary.event_names);
+        let src_ips = fmt_and_sort("src ips", &summary.src_ips);
+        let user_types = fmt_and_sort("user types", &summary.user_types);
+        let access_key_ids = fmt_and_sort("access key ids", &summary.access_key_ids);
+        let user_agents = fmt_and_sort("user agents", &summary.user_agents);
+        let abused_api_success = fmt_and_sort("abused api success", &summary.abused_api_success);
+        let abused_api_failed = fmt_and_sort("abused api failed", &summary.abused_api_failed);
+        let other_api_success = fmt_and_sort("other api success", &summary.other_api_success);
+        let other_api_failed = fmt_and_sort("other api failed", &summary.other_api_failed);
         csv_wtr
             .write_record(vec![
                 user_arn,
                 &num_of_events,
                 &first_timestamp,
                 &last_timestamp,
+                &abused_api_success,
+                &abused_api_failed,
+                &other_api_success,
+                &other_api_failed,
                 &aws_regions,
                 &event_names,
                 &src_ips,
@@ -275,11 +345,12 @@ fn read_abused_aws_api_calls(file_path: &str) -> HashMap<String, String> {
         Ok(file) => {
             let reader = BufReader::new(file);
             let mut csv_reader = ReaderBuilder::new().has_headers(true).from_reader(reader);
-            for result in csv_reader.records() {
-                let record = result.expect("Failed to read record");
-                let event_name = record.get(0).expect("Missing EventName").to_string();
-                let description = record.get(1).expect("Missing Description").to_string();
-                map.insert(event_name, description);
+            for record in csv_reader.records().flatten() {
+                if let Some(event_name) = record.get(0) {
+                    if let Some(description) = record.get(1) {
+                        map.insert(event_name.to_string(), description.to_string());
+                    }
+                }
             }
             map
         }
@@ -292,20 +363,4 @@ fn read_abused_aws_api_calls(file_path: &str) -> HashMap<String, String> {
             HashMap::new()
         }
     }
-}
-
-fn replace_with_descriptions(
-    event_names: &HashMap<String, (usize, String, String)>,
-    api_calls: &HashMap<String, String>,
-) -> HashMap<String, (usize, String, String)> {
-    event_names
-        .iter()
-        .map(|(key, value)| {
-            let new_key = api_calls
-                .get(key)
-                .unwrap_or(&"OtherAPIs".to_string())
-                .to_string();
-            (new_key, value.clone())
-        })
-        .collect()
 }
