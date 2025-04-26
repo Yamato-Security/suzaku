@@ -16,7 +16,7 @@ pub fn aws_metrics(
     no_color: bool,
 ) {
     let mut wtr = get_writer(output);
-    let csv_header = vec!["Total", "%", field];
+    let csv_header = vec!["EventName", "Percent", "Total"];
     if output.is_some() {
         wtr.write_record(&csv_header).unwrap();
     }
