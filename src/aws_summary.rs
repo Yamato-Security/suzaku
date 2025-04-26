@@ -176,25 +176,25 @@ pub fn aws_summary(
         let mut abused_api_success = "".to_string();
         if let Some(desc) = abused_aws_api_calls.get(&event_name) {
             if error_code != "AccessDenied" {
-                abused_api_success = format!("{}({}) - {}", event_name, event_source, desc);
+                abused_api_success = format!("{} ({}) - {}", event_name, event_source, desc);
             }
         };
 
         let mut abused_api_failed = "".to_string();
         if let Some(desc) = abused_aws_api_calls.get(&event_name) {
             if error_code == "AccessDenied" {
-                abused_api_failed = format!("{}({}) - {}", event_name, event_source, desc);
+                abused_api_failed = format!("{} ({}) - {}", event_name, event_source, desc);
             }
         };
 
         let mut other_api_success = "".to_string();
         if !abused_aws_api_calls.contains_key(&event_name) && error_code != "AccessDenied" {
-            other_api_success = format!("{}({})", event_name, event_source);
+            other_api_success = format!("{} ({})", event_name, event_source);
         };
 
         let mut other_api_failed = "".to_string();
         if !abused_aws_api_calls.contains_key(&event_name) && error_code == "AccessDenied" {
-            other_api_failed = format!("{}({})", event_name, event_source);
+            other_api_failed = format!("{} ({})", event_name, event_source);
         };
 
         let entry = user_data.entry(user_identity_arn.clone()).or_default();
