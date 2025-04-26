@@ -314,9 +314,9 @@ fn output_summary(
             .replace("T", " ")
             .replace("Z", "");
         let aws_regions = fmt_key_total("Total regions", &summary.aws_regions);
-        let src_ips = fmt_key_total("Total src ips", &summary.src_ips);
+        let src_ips = fmt_key_total("Total source IDs", &summary.src_ips);
         let user_types = fmt_key_total("Total user types", &summary.user_types);
-        let access_key_ids = fmt_key_total("Total access key ids", &summary.access_key_ids);
+        let access_key_ids = fmt_key_total("Total access key IDs", &summary.access_key_ids);
         let user_agents = fmt_key_total("Total user agents", &summary.user_agents);
 
         let mut abused_suc = fmt_key_total("Unique APIs", &summary.abused_api_success);
