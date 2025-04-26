@@ -94,7 +94,9 @@ fn main() {
         }
         AwsCtSummary {
             input_opt,
+            include_sts,
             output,
+            hide_descriptions,
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
@@ -103,7 +105,7 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            aws_summary(dir, file, output, no_color);
+            aws_summary(dir, file, output, no_color, include_sts, hide_descriptions);
         }
         UpdateRules { common_opt } => {
             display_logo(common_opt.quiet, no_color, true, false);

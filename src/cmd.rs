@@ -84,7 +84,8 @@ pub enum Commands {
         author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
         version = FULL_VERSION,
         help_template = "\nVersion: {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-timeline <INPUT> [OPTIONS]\n\n{all-args}",
-        disable_help_flag = true
+        disable_help_flag = true,
+        disable_version_flag = true
     )]
     /// Creates an AWS CloudTrail DFIR timeline
     AwsCtTimeline {
@@ -99,7 +100,8 @@ pub enum Commands {
         author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
         version = FULL_VERSION,
         help_template = "\nVersion {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-metrics <INPUT> [OPTIONS]\n\n{all-args}",
-        disable_help_flag = true
+        disable_help_flag = true,
+        disable_version_flag = true
     )]
     /// Generates metrics from AWS CloudTrail logs
     AwsCtMetrics {
@@ -128,16 +130,25 @@ pub enum Commands {
         author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
         version = FULL_VERSION,
         help_template = "\nVersion {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-summary <INPUT> [OPTIONS]\n\n{all-args}",
-        disable_help_flag = true
+        disable_help_flag = true,
+        disable_version_flag = true
     )]
     /// Generates summary from AWS CloudTrail logs
     AwsCtSummary {
         #[clap(flatten)]
         input_opt: InputOption,
 
+        /// Include temporary AWS STS access key IDs
+        #[arg(help_heading = Some("Filtering"), short = 's', long = "include-sts-keys")]
+        include_sts: bool,
+
         /// Output CSV
         #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true)]
         output: PathBuf,
+
+        /// Hide description
+        #[arg(help_heading = Some("Output"), short = 'D', long = "hide-descriptions")]
+        hide_descriptions: bool,
 
         #[clap(flatten)]
         common_opt: CommonOptions,
