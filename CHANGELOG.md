@@ -6,6 +6,10 @@
 
 - `aws-ct-summary`: for each unique ARN, creates a summary of total events, regions used, user types, access keys, user agents, etc...  (#53) (@fukusuket)
 
+**Bug Fixes:**
+
+- The CSV headers for the `aws-ct-metrics` command were incorrect. (#72) (@fukusuket)
+
 ## 0.1.1 [2025/04/24] - AlphaOne Release
 
 **Bug Fixes:**
