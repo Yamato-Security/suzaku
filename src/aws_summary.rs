@@ -200,7 +200,7 @@ pub fn aws_summary(
         };
 
         let mut other_api_failed = "".to_string();
-        if abused_aws_api_calls.contains_key(&event_name) && error_code != "AccessDenied" {
+        if abused_aws_api_calls.contains_key(&event_name) && error_code == "AccessDenied" {
             other_api_failed = event_name.clone();
         };
 
