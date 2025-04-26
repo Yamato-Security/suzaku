@@ -20,7 +20,6 @@ struct CTSummary {
     other_api_success: HashMap<String, (usize, String, String)>,
     other_api_failed: HashMap<String, (usize, String, String)>,
     aws_regions: HashMap<String, (usize, String, String)>,
-    event_names: HashMap<String, (usize, String, String)>,
     src_ips: HashMap<String, (usize, String, String)>,
     user_types: HashMap<String, (usize, String, String)>,
     access_key_ids: HashMap<String, (usize, String, String)>,
@@ -33,7 +32,6 @@ impl CTSummary {
         &mut self,
         event_time: String,
         aws_region: String,
-        event_name: String,
         source_ip: String,
         user_type: String,
         access_key_id: String,
@@ -53,12 +51,6 @@ impl CTSummary {
         }
 
         let entry = self.aws_regions.entry(aws_region.clone()).or_insert((
-            0,
-            self.first_timestamp.clone(),
-            self.last_timestamp.clone(),
-        ));
-        entry.0 += 1;
-        let entry = self.event_names.entry(event_name.clone()).or_insert((
             0,
             self.first_timestamp.clone(),
             self.last_timestamp.clone(),
@@ -145,14 +137,7 @@ pub fn aws_summary(
             Some(region) => s(format!("{:?}", region)),
             None => "-".to_string(),
         };
-        let event_name = match event.get("eventName") {
-            Some(name) => s(format!("{:?}", name)),
-            None => "-".to_string(),
-        };
-        let event_source = match event.get("eventSource") {
-            Some(source) => s(format!("{:?}", source)),
-            None => "-".to_string(),
-        };
+
         let error_code = match event.get("errorCode") {
             Some(code) => s(format!("{:?}", code)),
             None => "-".to_string(),
@@ -180,35 +165,42 @@ pub fn aws_summary(
             None => "-".to_string(),
         };
 
+        let event_name = match event.get("eventName") {
+            Some(name) => s(format!("{:?}", name)),
+            None => "-".to_string(),
+        };
+        let event_source = match event.get("eventSource") {
+            Some(source) => s(format!("{:?}", source)),
+            None => "-".to_string(),
+        };
         let mut abused_api_success = "".to_string();
         if let Some(desc) = abused_aws_api_calls.get(&event_name) {
             if error_code != "AccessDenied" {
-                abused_api_success = format!("{} - {}", event_name, desc);
+                abused_api_success = format!("{}({}) - {}", event_name, event_source, desc);
             }
         };
 
         let mut abused_api_failed = "".to_string();
         if let Some(desc) = abused_aws_api_calls.get(&event_name) {
             if error_code == "AccessDenied" {
-                abused_api_failed = format!("{} - {}", event_name, desc);
+                abused_api_failed = format!("{}({}) - {}", event_name, event_source, desc);
             }
         };
 
         let mut other_api_success = "".to_string();
-        if abused_aws_api_calls.contains_key(&event_name) && error_code != "AccessDenied" {
-            other_api_success = event_name.clone();
+        if !abused_aws_api_calls.contains_key(&event_name) && error_code != "AccessDenied" {
+            other_api_success = format!("{}({})", event_name, event_source);
         };
 
         let mut other_api_failed = "".to_string();
-        if abused_aws_api_calls.contains_key(&event_name) && error_code == "AccessDenied" {
-            other_api_failed = event_name.clone();
+        if !abused_aws_api_calls.contains_key(&event_name) && error_code == "AccessDenied" {
+            other_api_failed = format!("{}({})", event_name, event_source);
         };
 
         let entry = user_data.entry(user_identity_arn.clone()).or_default();
         entry.add_event(
             event_time,
             aws_region,
-            format!("{}({})", event_name, event_source),
             source_ipaddress,
             user_identity_type,
             user_identity_access_key_id,
@@ -272,7 +264,6 @@ fn output_summary(
         "OtherAPIs-Success",
         "OtherAPIs-Failed",
         "AWS-Regions",
-        "EventNames",
         "SrcIPs",
         "UserTypes",
         "UserAccessKeyIDs",
@@ -323,7 +314,6 @@ fn output_summary(
             .replace("T", " ")
             .replace("Z", "");
         let aws_regions = fmt_key_total("Total regions", &summary.aws_regions);
-        let event_names = fmt_key_total("Total event names", &summary.event_names);
         let src_ips = fmt_key_total("Total src ips", &summary.src_ips);
         let user_types = fmt_key_total("Total user types", &summary.user_types);
         let access_key_ids = fmt_key_total("Total access key ids", &summary.access_key_ids);
@@ -370,7 +360,6 @@ fn output_summary(
                 &other_suc,
                 &other_fai,
                 &aws_regions,
-                &event_names,
                 &src_ips,
                 &user_types,
                 &access_key_ids,
