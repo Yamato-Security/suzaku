@@ -127,10 +127,10 @@ pub fn aws_summary(
     file: &Option<PathBuf>,
     output: &Path,
     no_color: bool,
-    filter_sts: &Option<String>,
+    include_sts: &bool,
     hide_descriptions: &bool,
 ) {
-    let abused_aws_api_calls = read_abused_aws_api_calls("config/abused_aws_api_calls.csv");
+    let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
     let summary_func = |event: Event| {
         let user_identity_arn = match event.get("userIdentity.arn") {
@@ -168,10 +168,8 @@ pub fn aws_summary(
         let user_identity_access_key_id = match event.get("userIdentity.accessKeyId") {
             Some(access_key_id) => {
                 let key = s(format!("{:?}", access_key_id));
-                if let Some(filter) = filter_sts {
-                    if key.contains(filter) {
-                        return;
-                    }
+                if !*include_sts && key.starts_with("ASIA") {
+                    return;
                 }
                 key
             }
@@ -182,34 +180,29 @@ pub fn aws_summary(
             None => "-".to_string(),
         };
 
-        let event_name_disc = if *hide_descriptions {
-            event_name.clone()
-        } else {
-            abused_aws_api_calls
-                .get(&event_name)
-                .unwrap_or(&event_name)
-                .to_string()
+        let mut abused_api_success = "".to_string();
+        if let Some(desc) = abused_aws_api_calls.get(&event_name) {
+            if error_code != "AccessDenied" {
+                abused_api_success = format!("{} - {}", event_name, desc);
+            }
         };
 
-        let mut abused_api_success = "".to_string();
-        if event_name_disc != event_name && error_code != "AccessDenied" {
-            abused_api_success = event_name_disc.clone();
-        }
-
         let mut abused_api_failed = "".to_string();
-        if event_name_disc != event_name && error_code == "AccessDenied" {
-            abused_api_failed = event_name_disc.clone();
-        }
+        if let Some(desc) = abused_aws_api_calls.get(&event_name) {
+            if error_code == "AccessDenied" {
+                abused_api_failed = format!("{} - {}", event_name, desc);
+            }
+        };
 
         let mut other_api_success = "".to_string();
-        if event_name_disc == event_name && error_code != "AccessDenied" {
-            other_api_success = event_name_disc.clone();
-        }
+        if abused_aws_api_calls.contains_key(&event_name) && error_code != "AccessDenied" {
+            other_api_success = event_name.clone();
+        };
 
         let mut other_api_failed = "".to_string();
-        if event_name_disc == event_name && error_code == "AccessDenied" {
-            other_api_failed = event_name_disc.clone();
-        }
+        if abused_aws_api_calls.contains_key(&event_name) && error_code != "AccessDenied" {
+            other_api_failed = event_name.clone();
+        };
 
         let entry = user_data.entry(user_identity_arn.clone()).or_default();
         entry.add_event(
@@ -226,21 +219,39 @@ pub fn aws_summary(
             other_api_failed,
         );
     };
-
+    let abused_aws_api_values: Vec<String> = abused_aws_api_calls.values().cloned().collect();
     if let Some(d) = directory {
         process_events_from_dir(summary_func, d, true, no_color).unwrap();
-        output_summary(&user_data, output, no_color);
+        output_summary(
+            &user_data,
+            output,
+            no_color,
+            hide_descriptions,
+            abused_aws_api_values,
+        );
     } else if let Some(f) = file {
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
             events.into_iter().for_each(summary_func);
-            output_summary(&user_data, output, no_color);
+            output_summary(
+                &user_data,
+                output,
+                no_color,
+                hide_descriptions,
+                abused_aws_api_values,
+            );
         }
     }
 }
 
-fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_color: bool) {
+fn output_summary(
+    user_data: &HashMap<String, CTSummary>,
+    output: &Path,
+    no_color: bool,
+    hide_descriptions: &bool,
+    abused_aws_api_disc: Vec<String>,
+) {
     if user_data.is_empty() {
         p(Some(Color::Rgb(255, 0, 0)), "No events found.", true);
         return;
@@ -273,10 +284,10 @@ fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_colo
     let mut sorted_user_data: Vec<_> = user_data.iter().collect();
     sorted_user_data.sort_by(|a, b| b.1.num_of_events.cmp(&a.1.num_of_events));
 
-    let fmt_and_sort = |key: &str, map: &HashMap<String, (usize, String, String)>| -> String {
+    let fmt_key_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
         let total: usize = map.keys().len();
         let total = total.to_formatted_string(&Locale::en);
-        let mut result = vec![format!("Total {}: {}", key, total)];
+        let mut result = vec![format!("{}: {}", msg, total)];
         result.extend(
             map.iter()
                 .sorted_by(|a, b| b.1.cmp(a.1)) // 件数の多い順にソート
@@ -293,6 +304,12 @@ fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_colo
         result.join("\n")
     };
 
+    let fmt_val_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
+        let total: usize = map.values().map(|v| v.0).sum();
+        let total = total.to_formatted_string(&Locale::en);
+        format!("| {} {}", msg, total)
+    };
+
     for (user_arn, summary) in sorted_user_data.iter() {
         let num_of_events = summary.num_of_events.to_formatted_string(&Locale::en);
         let first_timestamp = summary
@@ -305,26 +322,53 @@ fn output_summary(user_data: &HashMap<String, CTSummary>, output: &Path, no_colo
             .clone()
             .replace("T", " ")
             .replace("Z", "");
-        let aws_regions = fmt_and_sort("regions", &summary.aws_regions);
-        let event_names = fmt_and_sort("event names", &summary.event_names);
-        let src_ips = fmt_and_sort("src ips", &summary.src_ips);
-        let user_types = fmt_and_sort("user types", &summary.user_types);
-        let access_key_ids = fmt_and_sort("access key ids", &summary.access_key_ids);
-        let user_agents = fmt_and_sort("user agents", &summary.user_agents);
-        let abused_api_success = fmt_and_sort("abused api success", &summary.abused_api_success);
-        let abused_api_failed = fmt_and_sort("abused api failed", &summary.abused_api_failed);
-        let other_api_success = fmt_and_sort("other api success", &summary.other_api_success);
-        let other_api_failed = fmt_and_sort("other api failed", &summary.other_api_failed);
+        let aws_regions = fmt_key_total("Total regions", &summary.aws_regions);
+        let event_names = fmt_key_total("Total event names", &summary.event_names);
+        let src_ips = fmt_key_total("Total src ips", &summary.src_ips);
+        let user_types = fmt_key_total("Total user types", &summary.user_types);
+        let access_key_ids = fmt_key_total("Total access key ids", &summary.access_key_ids);
+        let user_agents = fmt_key_total("Total user agents", &summary.user_agents);
+
+        let mut abused_suc = fmt_key_total("Unique APIs", &summary.abused_api_success);
+        if let Some(pos) = abused_suc.find('\n') {
+            let abused_suc_val = fmt_val_total("Total APIs", &summary.abused_api_success);
+            abused_suc.insert_str(pos, &format!(" {}", abused_suc_val));
+        }
+        let mut abused_fai = fmt_key_total("Unique APIs", &summary.abused_api_failed);
+        if let Some(pos) = abused_fai.find('\n') {
+            let abused_fai_val = fmt_val_total("Total APIs", &summary.abused_api_failed);
+            abused_fai.insert_str(pos, &format!(" {}", abused_fai_val));
+        }
+        let mut other_suc = fmt_key_total("Unique APIs", &summary.other_api_success);
+        if let Some(pos) = other_suc.find('\n') {
+            let other_suc_val = fmt_val_total("Total APIs", &summary.other_api_success);
+            other_suc.insert_str(pos, &format!(" {}", other_suc_val));
+        }
+        let mut other_fai = fmt_key_total("Unique APIs", &summary.other_api_failed);
+        if let Some(pos) = other_fai.find('\n') {
+            let other_fai_val = fmt_val_total("Total APIs", &summary.other_api_failed);
+            other_fai.insert_str(pos, &format!(" {}", other_fai_val));
+        }
+
+        if *hide_descriptions {
+            abused_aws_api_disc.iter().for_each(|disc| {
+                abused_suc = abused_suc.replace(disc, "");
+                abused_fai = abused_fai.replace(disc, "");
+            });
+            abused_suc = abused_suc.replace("-  (2", "(2");
+            abused_fai = abused_fai.replace("-  (2", "(2");
+        }
+
         csv_wtr
             .write_record(vec![
                 user_arn,
                 &num_of_events,
                 &first_timestamp,
                 &last_timestamp,
-                &abused_api_success,
-                &abused_api_failed,
-                &other_api_success,
-                &other_api_failed,
+                &abused_suc,
+                &abused_fai,
+                &other_suc,
+                &other_fai,
                 &aws_regions,
                 &event_names,
                 &src_ips,

@@ -138,9 +138,9 @@ pub enum Commands {
         #[clap(flatten)]
         input_opt: InputOption,
 
-        /// Filter out temporary AWS STS access key IDs
-        #[arg(help_heading = Some("Filtering"), short = 's', long = "filter-sts-keys")]
-        filter_sts: Option<String>,
+        /// Include temporary AWS STS access key IDs
+        #[arg(help_heading = Some("Filtering"), short = 's', long = "include-sts-keys")]
+        include_sts: bool,
 
         /// Output CSV
         #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true)]
