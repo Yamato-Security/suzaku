@@ -1,4 +1,4 @@
-use crate::color::SuzakuColor::Green;
+use crate::core::color::SuzakuColor::Green;
 use bytesize::ByteSize;
 use csv::Writer;
 use std::fs::File;

@@ -1,5 +1,7 @@
-use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, output_path_info, p, s};
+use crate::core::color::SuzakuColor::Red;
+use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
+use crate::core::util::{get_writer, output_path_info, p, s};
+use crate::option::geoip::GeoIPSearch;
 use csv::ReaderBuilder;
 use itertools::Itertools;
 use num_format::{Locale, ToFormattedString};
@@ -121,7 +123,22 @@ pub fn aws_summary(
     no_color: bool,
     include_sts: &bool,
     hide_descriptions: &bool,
+    geo_ip: &Option<PathBuf>,
 ) {
+    let mut geo_search = None;
+    if let Some(path) = geo_ip.as_ref() {
+        let res = GeoIPSearch::new(path);
+        if let Ok(geo) = res {
+            geo_search = Some(geo);
+        } else {
+            p(
+                Red.rdg(no_color),
+                "Could not find the appropriate MaxMind GeoIP .mmdb database files.\n",
+                true,
+            );
+            return;
+        }
+    }
     let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
     let summary_func = |event: Event| {
@@ -143,7 +160,18 @@ pub fn aws_summary(
             None => "-".to_string(),
         };
         let source_ipaddress = match event.get("sourceIPAddress") {
-            Some(ip) => s(format!("{:?}", ip)),
+            Some(ip) => {
+                let mut ip_str = s(format!("{:?}", ip));
+                if let Some(geo) = geo_search.as_mut() {
+                    if let Some(ip) = geo.convert(ip_str.as_str()) {
+                        let asn = geo.get_asn(ip);
+                        let country = geo.get_country(ip);
+                        let city = geo.get_city(ip);
+                        ip_str = format!("{} ({}, {}, {})", ip_str, asn, city, country);
+                    }
+                }
+                ip_str
+            }
             None => "-".to_string(),
         };
         let user_identity_type = match event.get("userIdentity.type") {

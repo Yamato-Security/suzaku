@@ -1,28 +1,22 @@
-use crate::aws_detect::aws_detect;
-use crate::aws_metrics::aws_metrics;
-use crate::aws_summary::aws_summary;
-use crate::cmd::Commands::{AwsCtMetrics, AwsCtSummary, AwsCtTimeline, UpdateRules};
-use crate::cmd::{Cli, RELEASE_NAME, VERSION};
-use crate::color::SuzakuColor::Green;
-use crate::util::{check_path_exists, p};
 use chrono::Local;
 use clap::{CommandFactory, Parser};
+use cmd::aws_detect::aws_detect;
+use cmd::aws_metrics::aws_metrics;
+use cmd::aws_summary::aws_summary;
+use cmd::update::start_update_rules;
+use core::color::SuzakuColor::Green;
+use core::util::{check_path_exists, p};
 use libmimalloc_sys::mi_stats_print_out;
 use mimalloc::MiMalloc;
+use option::cli::Commands::{AwsCtMetrics, AwsCtSummary, AwsCtTimeline, UpdateRules};
+use option::cli::{Cli, RELEASE_NAME, VERSION};
 use std::ptr::null_mut;
 use std::time::Instant;
 use std::{env, fs};
-use update::start_update_rules;
 
-mod aws_detect;
-mod aws_metrics;
-mod aws_summary;
 mod cmd;
-mod color;
-mod rules;
-mod scan;
-mod update;
-mod util;
+mod core;
+mod option;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -97,6 +91,7 @@ fn main() {
             include_sts,
             output,
             hide_descriptions,
+            geo_ip,
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
@@ -105,7 +100,15 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            aws_summary(dir, file, output, no_color, include_sts, hide_descriptions);
+            aws_summary(
+                dir,
+                file,
+                output,
+                no_color,
+                include_sts,
+                hide_descriptions,
+                geo_ip,
+            );
         }
         UpdateRules { common_opt } => {
             display_logo(common_opt.quiet, no_color, true, false);

@@ -1,9 +1,10 @@
-use crate::cmd::{AwsCtTimelineOptions, CommonOptions};
-use crate::color::SuzakuColor;
-use crate::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
-use crate::rules;
-use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_json_writer, get_writer, output_path_info, p, s};
+use crate::core::color::SuzakuColor;
+use crate::core::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
+use crate::core::rules;
+use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
+use crate::core::util::{get_json_writer, get_writer, output_path_info, p, s};
+use crate::option::cli::{AwsCtTimelineOptions, CommonOptions};
+use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
@@ -67,10 +68,11 @@ fn write_record(
     rule: &Rule,
     wrt: &mut Writers,
     no_color: bool,
+    geo: &mut Option<GeoIPSearch>,
 ) {
     let record: Vec<String> = profile
         .iter()
-        .map(|(_k, v)| get_value_from_event(v, event, rule))
+        .map(|(_k, v)| get_value_from_event(v, event, rule, geo))
         .collect();
 
     // 標準出力
@@ -121,7 +123,7 @@ fn write_record(
     if let Some(writer) = &mut wrt.json {
         let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
-            let value = get_value_from_event(v, event, rule);
+            let value = get_value_from_event(v, event, rule, geo);
             json_record.insert(k.clone(), value.to_string());
         }
         let rec = serde_json::to_string_pretty(&json_record);
@@ -135,7 +137,7 @@ fn write_record(
     if let Some(writer) = &mut wrt.jsonl {
         let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
-            let value = get_value_from_event(v, event, rule);
+            let value = get_value_from_event(v, event, rule, geo);
             json_record.insert(k.clone(), value.to_string());
         }
         if let Ok(json_string) = serde_json::to_string(&json_record) {
@@ -146,9 +148,23 @@ fn write_record(
 }
 
 pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
-    let profile = load_profile("config/default_profile.yaml");
-    let rules = rules::load_rules_from_dir(&options.rules);
     let no_color = common_opt.no_color;
+    let mut geo_search = None;
+    if let Some(path) = options.geo_ip.as_ref() {
+        let res = GeoIPSearch::new(path);
+        if let Ok(geo) = res {
+            geo_search = Some(geo);
+        } else {
+            p(
+                Red.rdg(no_color),
+                "Could not find the appropriate MaxMind GeoIP .mmdb database files.\n",
+                true,
+            );
+            return;
+        }
+    }
+    let profile = load_profile("config/default_profile.yaml", &geo_search);
+    let rules = rules::load_rules_from_dir(&options.rules);
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
 
@@ -225,7 +241,14 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                     counted = true;
                 }
 
-                write_record(&profile, &event, rule, &mut wrt, common_opt.no_color);
+                write_record(
+                    &profile,
+                    &event,
+                    rule,
+                    &mut wrt,
+                    common_opt.no_color,
+                    &mut geo_search,
+                );
 
                 if let Some(author) = &rule.author {
                     summary
@@ -621,7 +644,7 @@ fn print_timeline_hist(timestamps: &[i64], length: usize, side_margin_size: usiz
     println!();
 }
 
-fn load_profile(file_path: &str) -> Vec<(String, String)> {
+fn load_profile(file_path: &str, geo_search: &Option<GeoIPSearch>) -> Vec<(String, String)> {
     let file = File::open(file_path).expect("Unable to open profile file");
     let reader = BufReader::new(file);
     let mut profile = vec![];
@@ -633,12 +656,38 @@ fn load_profile(file_path: &str) -> Vec<(String, String)> {
             let key = parts[0].trim();
             let val = parts[1].trim().trim_matches('\'');
             profile.push((key.to_string(), val.to_string()));
+            if key == "SrcIP" && geo_search.is_some() {
+                profile.push(("SrcASN".to_string(), "SrcASN".to_string()));
+                profile.push(("SrcCity".to_string(), "SrcCity".to_string()));
+                profile.push(("SrcCountry".to_string(), "SrcCountry".to_string()));
+            }
         }
     }
     profile
 }
 
-fn get_value_from_event(key: &str, event: &Event, rule: &Rule) -> String {
+fn get_value_from_event(
+    key: &str,
+    event: &Event,
+    rule: &Rule,
+    geo_ip: &mut Option<GeoIPSearch>,
+) -> String {
+    if let Some(geo) = geo_ip {
+        if let Some(ip) = event.get("sourceIPAddress") {
+            let ip = s(format!("{:?}", ip));
+            if let Some(ip) = geo.convert(ip.as_str()) {
+                if key == "SrcASN" {
+                    return geo.get_asn(ip);
+                } else if key == "SrcCity" {
+                    return geo.get_city(ip);
+                } else if key == "SrcCountry" {
+                    return geo.get_country(ip);
+                }
+            } else {
+                return ip;
+            }
+        }
+    }
     if key.starts_with(".") {
         let key = key.strip_prefix(".").unwrap();
         if let Some(value) = event.get(key) {

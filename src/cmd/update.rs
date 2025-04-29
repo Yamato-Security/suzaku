@@ -1,12 +1,12 @@
-use crate::rules::load_rules_from_dir;
-use crate::util::p;
+use crate::core::rules::load_rules_from_dir;
+use crate::core::util::p;
 use git2::{ErrorCode, Repository};
 use hashbrown::{HashMap, HashSet};
 use serde_json::Value;
 use std::fs::{self, create_dir};
 use std::path::{Path, PathBuf};
 
-use crate::color::SuzakuColor::Orange;
+use crate::core::color::SuzakuColor::Orange;
 use termcolor::Color;
 
 pub fn start_update_rules(no_color: bool) {
@@ -82,7 +82,7 @@ fn get_latest_suzaku_version() -> Result<Option<String>, Box<dyn std::error::Err
 pub fn update_rules() -> Result<String, git2::Error> {
     let mut result;
     let mut prev_modified_rules: HashSet<String> = HashSet::default();
-    let suzaku_repo = Repository::open(Path::new("."));
+    let suzaku_repo = Repository::open(Path::new("../.."));
     let rule_path = "./rules";
     let rule_path = Path::new(rule_path);
     let suzaku_rule_repo = Repository::open(rule_path);
@@ -104,7 +104,7 @@ pub fn update_rules() -> Result<String, git2::Error> {
         // case of no exist suzaku-rules repository in rules.
         // execute update because submodule information exists if suzaku repository exists submodule information.
 
-        let rules_path = Path::new("./rules");
+        let rules_path = Path::new("../../rules");
         if !rules_path.exists() {
             create_dir(rules_path).ok();
         }
