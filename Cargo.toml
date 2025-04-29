@@ -32,8 +32,7 @@ sigma-rust = "0.5.*"
 termcolor = "*"
 terminal_size = "0.4.*"
 ureq="*"
-serde = { version = "1.0.219", features = ["derive"] }
-lazy_static = "1.5.0"
+
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.
