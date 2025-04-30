@@ -1,5 +1,5 @@
-use crate::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::util::{get_writer, output_path_info, p, s};
+use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
+use crate::core::util::{get_writer, output_path_info, p, s};
 use comfy_table::{Cell, CellAlignment, Table};
 use csv::Writer;
 use sigma_rust::Event;

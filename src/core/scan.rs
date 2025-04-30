@@ -1,5 +1,5 @@
-use crate::color::SuzakuColor::{Green, Orange};
-use crate::util::p;
+use crate::core::color::SuzakuColor::{Green, Orange};
+use crate::core::util::p;
 use bytesize::ByteSize;
 use colored::Colorize;
 use console::style;

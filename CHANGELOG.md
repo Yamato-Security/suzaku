@@ -6,6 +6,10 @@
 
 - `aws-ct-summary`: for each unique ARN, creates a summary of total events, regions used, user types, access keys, user agents, etc...  (#53) (@fukusuket)
 
+**Enhancements:**
+
+- Added Maxmind geolocation information to source IP addresses for the `aws-ct-timeline` and `aws-ct-summary` commands. (#16)(@fukusuket)
+
 **Bug Fixes:**
 
 - The CSV headers for the `aws-ct-metrics` command were incorrect. (#72) (@fukusuket)
