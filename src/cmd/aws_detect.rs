@@ -168,7 +168,6 @@ fn write_record(
                 let value = get_value_from_event(&v, event, rule, geo);
                 json_record[k] = Value::String(value.to_string());
             }
-            let json_record = json.clone();
             let rec = serde_json::to_string(&json_record);
             if let Ok(json_string) = rec {
                 writer.write_all(json_string.as_bytes()).unwrap();
