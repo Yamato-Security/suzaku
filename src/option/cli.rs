@@ -81,7 +81,7 @@ pub struct AwsCtTimelineOptions {
     #[arg(help_heading = Some("Output"), short = 'G', long = "GeoIP", value_name = "MAXMIND-DB-DIR")]
     pub geo_ip: Option<PathBuf>,
 
-    /// Output the original JSON logs
+    /// Output the original JSON logs (only available in JSON format --output-type 2 or 3 or 4 or 5)
     #[arg(help_heading = Some("Output"), short = 'R', long = "raw-output")]
     pub raw_output: bool,
 }
