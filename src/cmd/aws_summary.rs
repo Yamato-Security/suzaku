@@ -1,11 +1,12 @@
 use crate::core::color::SuzakuColor::Red;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::core::util::{get_writer, output_path_info, p, s};
+use crate::core::util::{get_writer, output_path_info, p};
 use crate::option::geoip::GeoIPSearch;
 use csv::ReaderBuilder;
 use itertools::Itertools;
 use num_format::{Locale, ToFormattedString};
-use sigma_rust::Event;
+use serde_json::Value;
+use sigma_rust::{Event, event_from_json};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -141,27 +142,31 @@ pub fn aws_summary(
     }
     let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
-    let summary_func = |event: Event| {
+    let mut summary_func = |json_value: &Value| {
+        let event: Event = match event_from_json(json_value.to_string().as_str()) {
+            Ok(event) => event,
+            Err(_) => return,
+        };
         let user_identity_arn = match event.get("userIdentity.arn") {
-            Some(arn) => s(format!("{:?}", arn)),
+            Some(arn) => arn.value_to_string(),
             None => return,
         };
         let event_time = match event.get("eventTime") {
-            Some(time) => s(format!("{:?}", time)),
+            Some(time) => time.value_to_string(),
             None => "-".to_string(),
         };
         let aws_region = match event.get("awsRegion") {
-            Some(region) => s(format!("{:?}", region)),
+            Some(region) => region.value_to_string(),
             None => "-".to_string(),
         };
 
         let error_code = match event.get("errorCode") {
-            Some(code) => s(format!("{:?}", code)),
+            Some(code) => code.value_to_string(),
             None => "-".to_string(),
         };
         let source_ipaddress = match event.get("sourceIPAddress") {
             Some(ip) => {
-                let mut ip_str = s(format!("{:?}", ip));
+                let mut ip_str = ip.value_to_string();
                 if let Some(geo) = geo_search.as_mut() {
                     if let Some(ip) = geo.convert(ip_str.as_str()) {
                         let asn = geo.get_asn(ip);
@@ -175,12 +180,12 @@ pub fn aws_summary(
             None => "-".to_string(),
         };
         let user_identity_type = match event.get("userIdentity.type") {
-            Some(user_type) => s(format!("{:?}", user_type)),
+            Some(user_type) => user_type.value_to_string(),
             None => "-".to_string(),
         };
         let user_identity_access_key_id = match event.get("userIdentity.accessKeyId") {
             Some(access_key_id) => {
-                let key = s(format!("{:?}", access_key_id));
+                let key = access_key_id.value_to_string();
                 if !*include_sts && key.starts_with("ASIA") {
                     return;
                 }
@@ -189,16 +194,16 @@ pub fn aws_summary(
             None => "-".to_string(),
         };
         let user_agent = match event.get("userAgent") {
-            Some(agent) => s(format!("{:?}", agent)),
+            Some(agent) => agent.value_to_string(),
             None => "-".to_string(),
         };
 
         let event_name = match event.get("eventName") {
-            Some(name) => s(format!("{:?}", name)),
+            Some(name) => name.value_to_string(),
             None => "-".to_string(),
         };
         let event_source = match event.get("eventSource") {
-            Some(source) => s(format!("{:?}", source)),
+            Some(source) => source.value_to_string(),
             None => "-".to_string(),
         };
         let mut abused_api_success = "".to_string();
@@ -253,7 +258,9 @@ pub fn aws_summary(
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
-            events.into_iter().for_each(summary_func);
+            for event in events {
+                summary_func(&event);
+            }
             output_summary(
                 &user_data,
                 output,

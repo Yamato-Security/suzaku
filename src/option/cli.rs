@@ -80,6 +80,10 @@ pub struct AwsCtTimelineOptions {
     /// Add GeoIP (ASN, city, country) info to IP addresses
     #[arg(help_heading = Some("Output"), short = 'G', long = "GeoIP", value_name = "MAXMIND-DB-DIR")]
     pub geo_ip: Option<PathBuf>,
+
+    /// Output the original JSON logs (only available in JSON formats)
+    #[arg(help_heading = Some("Output"), short = 'R', long = "raw-output")]
+    pub raw_output: bool,
 }
 
 #[derive(Subcommand)]

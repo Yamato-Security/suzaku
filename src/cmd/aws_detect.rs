@@ -2,7 +2,7 @@ use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::core::rules;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::core::util::{get_json_writer, get_writer, output_path_info, p, s};
+use crate::core::util::{get_json_writer, get_writer, output_path_info, p};
 use crate::option::cli::{AwsCtTimelineOptions, CommonOptions};
 use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Utc};
@@ -12,7 +12,8 @@ use comfy_table::{Cell, Table, TableComponent};
 use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
-use sigma_rust::{Event, Rule};
+use serde_json::Value;
+use sigma_rust::{Event, Rule, event_from_json};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -62,13 +63,16 @@ struct Writers {
     std: Option<BufferWriter>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn write_record(
     profile: &[(String, String)],
     event: &Event,
+    json: &Value,
     rule: &Rule,
     wrt: &mut Writers,
     no_color: bool,
     geo: &mut Option<GeoIPSearch>,
+    raw_output: bool,
 ) {
     let record: Vec<String> = profile
         .iter()
@@ -121,6 +125,24 @@ fn write_record(
 
     // JSON出力
     if let Some(writer) = &mut wrt.json {
+        if raw_output {
+            let mut json_record = json.clone();
+            let sigma_profile: Vec<(String, String)> = profile
+                .iter()
+                .filter(|(_, value)| value.starts_with("sigma."))
+                .cloned()
+                .collect();
+            for (k, v) in sigma_profile {
+                let value = get_value_from_event(&v, event, rule, geo);
+                json_record[k] = Value::String(value.to_string());
+            }
+            let rec = serde_json::to_string_pretty(&json_record);
+            if let Ok(json_string) = rec {
+                writer.write_all(json_string.as_bytes()).unwrap();
+                writer.write_all(b"\n").unwrap();
+            }
+            return;
+        }
         let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
             let value = get_value_from_event(v, event, rule, geo);
@@ -135,6 +157,24 @@ fn write_record(
 
     // JSONL出力
     if let Some(writer) = &mut wrt.jsonl {
+        if raw_output {
+            let mut json_record = json.clone();
+            let sigma_profile: Vec<(String, String)> = profile
+                .iter()
+                .filter(|(_, value)| value.starts_with("sigma."))
+                .cloned()
+                .collect();
+            for (k, v) in sigma_profile {
+                let value = get_value_from_event(&v, event, rule, geo);
+                json_record[k] = Value::String(value.to_string());
+            }
+            let rec = serde_json::to_string(&json_record);
+            if let Ok(json_string) = rec {
+                writer.write_all(json_string.as_bytes()).unwrap();
+                writer.write_all(b"\n").unwrap();
+            }
+            return;
+        }
         let mut json_record: BTreeMap<String, String> = BTreeMap::new();
         for (k, v) in profile {
             let value = get_value_from_event(v, event, rule, geo);
@@ -231,7 +271,11 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     };
 
     let mut summary = DetectionSummary::default();
-    let scan_by_all_rules = |event| {
+    let mut scan_by_all_rules = |json_value: &Value| {
+        let event: Event = match event_from_json(json_value.to_string().as_str()) {
+            Ok(event) => event,
+            Err(_) => return,
+        };
         summary.total_events += 1;
         let mut counted = false;
         for rule in &rules {
@@ -244,10 +288,12 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                 write_record(
                     &profile,
                     &event,
+                    json_value,
                     rule,
                     &mut wrt,
                     common_opt.no_color,
                     &mut geo_search,
+                    options.raw_output,
                 );
 
                 if let Some(author) = &rule.author {
@@ -270,7 +316,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
                 }
 
                 if let Some(event_time) = event.get("eventTime") {
-                    let event_time_str = s(format!("{:?}", event_time));
+                    let event_time_str = event_time.value_to_string();
                     if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
                         let unix_time = event_time.timestamp();
                         summary.timestamps.push(unix_time);
@@ -312,7 +358,9 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     } else if let Some(f) = &options.input_opt.filepath {
         let log_contents = get_content(f);
         if let Ok(events) = load_json_from_file(&log_contents) {
-            events.into_iter().for_each(scan_by_all_rules);
+            for event in events {
+                scan_by_all_rules(&event);
+            }
         }
     }
     if let Some(ref mut writer) = wrt.csv {
@@ -674,7 +722,7 @@ fn get_value_from_event(
 ) -> String {
     if let Some(geo) = geo_ip {
         if let Some(ip) = event.get("sourceIPAddress") {
-            let ip = s(format!("{:?}", ip));
+            let ip = ip.value_to_string();
             if let Some(ip) = geo.convert(ip.as_str()) {
                 if key == "SrcASN" {
                     return geo.get_asn(ip);
@@ -692,9 +740,9 @@ fn get_value_from_event(
         let key = key.strip_prefix(".").unwrap();
         if let Some(value) = event.get(key) {
             if key == "eventTime" {
-                s(format!("{:?}", value)).replace("T", " ").replace("Z", "")
+                value.value_to_string().replace("T", " ").replace("Z", "")
             } else {
-                s(format!("{:?}", value))
+                value.value_to_string()
             }
         } else {
             "-".to_string()

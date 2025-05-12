@@ -6,8 +6,6 @@ use console::style;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use serde_json::Value;
-use sigma_rust::Event;
-use sigma_rust::event_from_json;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -22,7 +20,7 @@ pub fn process_events_from_dir<F>(
     no_color: bool,
 ) -> Result<(), Box<dyn Error>>
 where
-    F: FnMut(Event),
+    F: FnMut(&Value),
 {
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).display().to_string();
@@ -76,16 +74,13 @@ where
                 match json_value {
                     Value::Array(json_array) => {
                         for json_value in json_array {
-                            let event: Event = event_from_json(json_value.to_string().as_str())?;
-                            process_event(event);
+                            process_event(&json_value);
                         }
                     }
                     Value::Object(json_map) => {
                         if let Some(json_array) = json_map.get("Records") {
                             for json_value in json_array.as_array().unwrap() {
-                                let event: Event =
-                                    event_from_json(json_value.to_string().as_str())?;
-                                process_event(event);
+                                process_event(json_value);
                             }
                         }
                     }
@@ -145,21 +140,19 @@ pub fn read_gz_file(file_path: &PathBuf) -> io::Result<String> {
     decoder.read_to_string(&mut contents)?;
     Ok(contents)
 }
-pub fn load_json_from_file(log_contents: &str) -> Result<Vec<Event>, Box<dyn Error>> {
+pub fn load_json_from_file(log_contents: &str) -> Result<Vec<Value>, Box<dyn Error>> {
     let mut events = Vec::new();
     let json_value: Value = serde_json::from_str(log_contents)?;
     match json_value {
         Value::Array(json_array) => {
             for json_value in json_array {
-                let event: Event = event_from_json(json_value.to_string().as_str())?;
-                events.push(event);
+                events.push(json_value);
             }
         }
         Value::Object(json_map) => {
             if let Some(json_array) = json_map.get("Records") {
                 for json_value in json_array.as_array().unwrap() {
-                    let event: Event = event_from_json(json_value.to_string().as_str())?;
-                    events.push(event);
+                    events.push(json_value.clone());
                 }
             }
         }

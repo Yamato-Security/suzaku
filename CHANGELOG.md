@@ -8,7 +8,8 @@
 
 **Enhancements:**
 
-- Added Maxmind geolocation information to source IP addresses for the `aws-ct-timeline` and `aws-ct-summary` commands. (#16)(@fukusuket)
+- Added Maxmind geolocation information to source IP addresses for the `aws-ct-timeline` and `aws-ct-summary` commands. (#16) (@fukusuket)
+- Added a `-R, --raw-output` option to the `aws-ct-timeline` command to output the original JSON data when there is a detection. (#67) (@fukusuket)
 
 **Bug Fixes:**
 
