@@ -25,10 +25,6 @@ pub fn get_json_writer(output: &Option<PathBuf>) -> BufWriter<Box<dyn Write>> {
     }
 }
 
-pub fn s(input: String) -> String {
-    input.replace(r#"Value(String(""#, "").replace(r#""))"#, "")
-}
-
 pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) -> bool {
     if let Some(file) = filepath {
         if !file.exists() {

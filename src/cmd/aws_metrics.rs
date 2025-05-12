@@ -1,8 +1,9 @@
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::core::util::{get_writer, output_path_info, p, s};
+use crate::core::util::{get_writer, output_path_info, p};
 use comfy_table::{Cell, CellAlignment, Table};
 use csv::Writer;
-use sigma_rust::Event;
+use serde_json::Value;
+use sigma_rust::{Event, event_from_json};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
@@ -22,10 +23,14 @@ pub fn aws_metrics(
     }
 
     let mut count_map = HashMap::new();
-    let stats_func = |event: Event| {
+    let mut stats_func = |json_value: &Value| {
+        let event: Event = match event_from_json(json_value.to_string().as_str()) {
+            Ok(event) => event,
+            Err(_) => return,
+        };
         let value = event.get(field);
         if let Some(value) = value {
-            let event_name = s(format!("{:?}", value));
+            let event_name = value.value_to_string();
             let count = count_map.entry(event_name).or_insert(0);
             *count += 1;
         }
@@ -38,7 +43,9 @@ pub fn aws_metrics(
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
-            events.into_iter().for_each(stats_func);
+            for event in events {
+                stats_func(&event);
+            }
             print_count_map_desc(csv_header, &count_map, wtr, output, no_color);
         }
     }

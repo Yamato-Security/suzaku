@@ -28,7 +28,7 @@ maxminddb = "*"
 mimalloc = { version = "*", default-features = false }
 num-format = "0.4.*"
 serde_json = "1.0.*"
-sigma-rust = "0.5.*"
+sigma-rust = "*"
 termcolor = "*"
 terminal_size = "0.4.*"
 ureq="*"

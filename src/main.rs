@@ -63,8 +63,16 @@ fn main() {
             }
             if !options.rules.exists() {
                 p(
-                    Green.rdg(no_color),
+                    None,
                     &format!("Rule file or directory does not exist: {:?}", options.rules),
+                    true,
+                );
+                return;
+            }
+            if options.raw_output && options.output_type == 1 {
+                p(
+                    None,
+                    "--raw-output option is only available in JSON format (--output-type 2 or 3 or 4 or 5)",
                     true,
                 );
                 return;
