@@ -72,7 +72,7 @@ fn main() {
             if options.raw_output && options.output_type == 1 {
                 p(
                     None,
-                    "--raw-output option is only available in JSON format (--output-type 2 or 3 or 4 or 5)",
+                    "--raw-output option is only available in JSON formats. Please specify an output type of 2-5.",
                     true,
                 );
                 return;
