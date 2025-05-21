@@ -1,6 +1,6 @@
 # 変更点
 
-## 0.2.0 [2025/05/22] - AUSCERT Release
+## 0.2.0 [2025/05/22] - AUSCERT/SINCON Release
 
 **新機能:**
 
