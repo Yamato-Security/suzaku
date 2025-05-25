@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use const_format::concatcp;
 
-pub const RELEASE_NAME: &str = "Dev Build";
+pub const RELEASE_NAME: &str = "AUSCERT/SINCON Release";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
 
@@ -150,11 +150,11 @@ pub enum Commands {
         #[arg(help_heading = Some("Filtering"), short = 's', long = "include-sts-keys")]
         include_sts: bool,
 
-        /// Output CSV
+        /// Output results to a CSV file
         #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true)]
         output: PathBuf,
 
-        /// Hide description
+        /// Hide description of the commonly abused API calls
         #[arg(help_heading = Some("Output"), short = 'D', long = "hide-descriptions")]
         hide_descriptions: bool,
 

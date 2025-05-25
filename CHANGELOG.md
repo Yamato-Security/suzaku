@@ -1,6 +1,10 @@
 # Changes
 
-## 0.2.0 [2025/05/22] - AUSCERT Release
+## 0.2.1 [2025/05/25] - AUSCERT/SINCON Release 2
+
+- Fixed the release name and updated the readme. (@yamatosecurity)
+
+## 0.2.0 [2025/05/22] - AUSCERT/SINCON Release
 
 **New Features:**
 

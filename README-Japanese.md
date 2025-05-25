@@ -342,6 +342,8 @@ Output:
   -o, --output <FILE>              ファイルに結果を保存
   -t, --output-type <OUTPUT_TYPE>  ファイルタイプ 1: CSV (デフォルト), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [デフォルト: 1]
   -C, --clobber                    結果ファイルを上書きする
+  -G, --GeoIP <MAXMIND-DB-DIR>     IPアドレスにGeoIP (ASN、都市、国)情報を追加する
+  -R, --raw-output                 元のJSONログを出力する（JSON形式のみ利用可能）
 
 Display Settings:
   -K, --no-color               カラーで出力しない

@@ -59,14 +59,29 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
   - [macOS](#macos)
 - [Command List](#command-list)
   - [Analysis Commands:](#analysis-commands)
+  - [Summary Commands:](#summary-commands)
   - [DFIR Timeline Commands:](#dfir-timeline-commands)
   - [General Commands:](#general-commands)
-- [Command Usage](#command-usage)
+- [Command Details](#command-details)
   - [Analysis Commands](#analysis-commands-1)
     - [`aws-ct-metrics` command](#aws-ct-metrics-command)
+    - [Command usage](#command-usage)
       - [`aws-ct-metrics` command examples](#aws-ct-metrics-command-examples)
+  - [DFIR Summary Commands](#dfir-summary-commands)
+    - [`aws-ct-summary` command](#aws-ct-summary-command)
+      - [`AbusedAPIs-Success` example:](#abusedapis-success-example)
+      - [`AbusedAPIs-Failed` example:](#abusedapis-failed-example)
+      - [`OtherAPIs-Success` example:](#otherapis-success-example)
+      - [`AWS-Regions` example:](#aws-regions-example)
+      - [`SrcIPs` example:](#srcips-example)
+      - [`UserType` example:](#usertype-example)
+      - [`UserAccessKeyIDs` example:](#useraccesskeyids-example)
+      - [`UserAgents` example:](#useragents-example)
+    - [Command usage](#command-usage-1)
+      - [`aws-ct-metrics` command example](#aws-ct-metrics-command-example)
   - [DFIR Timeline Commands](#dfir-timeline-commands-1)
     - [`aws-ct-timeline` command](#aws-ct-timeline-command)
+    - [Command usage](#command-usage-2)
       - [`aws-ct-timeline` command examples](#aws-ct-timeline-command-examples)
       - [`aws-ct-timeline` output profile](#aws-ct-timeline-output-profile)
 - [Contribution](#contribution)
@@ -280,6 +295,9 @@ You should now be able to run suzaku.
 ## Analysis Commands:
 * `aws-ct-metrics`: Generates metrics from AWS CloudTrail logs
   
+## Summary Commands:
+* `aws-ct-summary`: Generates a summary of activity from user ARNs
+
 ## DFIR Timeline Commands:
 * `aws-ct-timeline`: Creates an AWS CloudTrail DFIR timeline
 * `update-rules`: Updates the Sigma detection rules
@@ -287,7 +305,7 @@ You should now be able to run suzaku.
 ## General Commands:
 * `help`: Print the help menu for commands
 
-# Command Usage
+# Command Details
 
 ## Analysis Commands
 
@@ -297,6 +315,7 @@ Use this command to create metrics on fields inside AWS CloudTrail logs.
 By default, it will scan the `eventName` field.
 We are currently using this command to figure out which API calls are the most common in order to prioritize writing detection rules.
 
+### Command usage
 ```
 Usage: suzaku aws-ct-metrics [OPTIONS] <--directory <DIR>|--file <FILE>>
 
@@ -321,12 +340,166 @@ General Options:
 * Output a table of `eventName` API calls to screen: `./suzaku aws-ct-metrics -d ../suzaku-sample-data`
 * Save to a CSV file: `./suzaku aws-ct-metrics -d ../suzaku-sample-data -o sample-metrics.csv`
 
+## DFIR Summary Commands
+
+### `aws-ct-summary` command
+
+This command creates a summary of the following information based on user ARNs:
+  - Total number of events (API calls) (`NumOfEvents`)
+  - Timestamp of the first API call found in the logs (`FirstTimestamp`)
+  - Timestamp of the last API call found in the logs (`LastTimestamp`)
+  - Commonly abused API calls that were successful (`AbusedAPIs-Success`)
+  - Commonly abused API calls that were attempted but failed (`AbusedAPIs-Failed`)
+  - Other API calls that are not on the list of commonly abused API calls that were successful (`OtherAPIs-Success`)
+  - Other API calls that are not on the list of commonly abused API calls that were attempted but failed (`OtherAPIs-Failed`)
+  - AWS regions of where the API calls were made (`AWS-Regions`)
+  - Source IP addresses of the API call (`SrcIPs`)
+  - User types (`UserTypes`)
+  - User access key IDs (`UserAccessKeyIDs`)
+  - User agents of the source who made the API call (`UserAgents`)
+
+※ Note: the API calls that are commonly abused come from the config file hosted at [https://github.com/Yamato-Security/suzaku-rules/blob/main/config/abused_aws_api_calls.csv](https://github.com/Yamato-Security/suzaku-rules/blob/main/config/abused_aws_api_calls.csv). This file will be updated over time and will be locally synced every time you run the `update-rules` command.
+
+These results are intended to provide analysts with information to discover compromised accounts or attacks that does not rely on specific signatures.
+For example, you can check to see if certain users are calling suspicious API calls that they shouldn't be calling, using regions that are not typically used, logging in from suspicious source IP addresses or with suspicious user agents, etc...
+After you found any suspicious API calls being called, source IP addresses or user agents, you can quickly determine which access keys might have been abused during that timeframe and pivot on those keywords in the original JSON logs to create a timeline of attacker activity.
+
+> Warning: there will be a lot of data in the cells and will most likely not display well in programs like Excel. Please use Numbers on a Mac, Timeline Explorer on Windows, etc...
+
+#### `AbusedAPIs-Success` example:
+```
+Total abused api success: 5
+640,772 - Spin up EC2 instances (crypto mining, tools) (2019-08-23 06:00:07 ~ 2019-08-23 06:00:07)
+38,892 - S3 recon (2019-08-23 06:00:07 ~ 2019-08-23 06:14:53)
+16,600 - EC2 and network layout recon (2019-08-23 06:00:07 ~ 2019-08-23 06:04:20)
+11,056 - Current credentials recon (2019-08-23 06:00:07 ~ 2019-08-23 06:04:14)
+26 - IAM enumeration (2019-08-21 08:03:00 ~ 2019-10-19 23:49:25)
+```
+
+#### `AbusedAPIs-Failed` example:
+```
+Total abused api failed: 14
+11,603 - Lateral movement via roles (2019-08-21 08:03:00 ~ 2019-09-18 07:04:12)
+7,801 - S3 recon (2019-08-21 08:03:00 ~ 2019-09-09 09:01:26)
+666 - IAM enumeration (2019-08-21 08:03:00 ~ 2019-08-29 14:53:14)
+210 - Find credential storage locations (2019-08-21 08:03:00 ~ 2019-10-19 23:49:30)
+112 - Enumerates keys on IAM users (2019-08-21 08:03:00 ~ 2019-09-16 14:28:15)
+21 - Inject permissions (2019-08-21 08:03:00 ~ 2019-09-16 15:09:27)
+17 - Add IAM users (login backdoors) (2019-08-21 08:03:00 ~ 2019-09-16 15:09:27)
+12 - Creates long-term credentials for backdoor (2019-08-21 08:03:00 ~ 2019-09-30 06:36:16)
+8 - Add custom roles with privileges (2019-01-08 20:30:01 ~ 2020-04-24 18:36:27)
+6 - Inject persistent permissions (2019-01-08 20:30:01 ~ 2020-03-29 09:06:56)
+5 - Interactive shell via SSM (2019-08-21 08:03:00 ~ 2019-11-17 05:15:02)
+3 - Retrieves SSM Parameter Store (may include credentials) (2019-01-08 20:30:01 ~ 2020-08-20 17:45:23)
+1 - Retrieves Secrets Manager values (2019-08-21 08:03:00 ~ 2020-02-04 10:40:44)
+1 - Run arbitrary shell commands on EC2 (2019-01-08 20:30:01 ~ 2020-07-28 04:58:41)
+```
+
+#### `OtherAPIs-Success` example:
+```
+Total other api success: 281
+99,259 - DescribeSnapshots (2019-08-23 06:00:07 ~ 2019-08-23 06:50:59)
+10,679 - DescribeSpotPriceHistory (2019-08-21 08:03:00 ~ 2019-09-12 20:07:32)
+4,123 - CreateDefaultVpc (2019-08-23 06:00:07 ~ 2019-08-23 06:04:17)
+3,740 - DescribeReservedInstancesOfferings (2019-08-21 08:03:00 ~ 2019-09-12 20:07:30)
+```
+
+#### `AWS-Regions` example:
+```
+Total regions: 16
+167,155 - us-west-2 (2019-08-23 06:00:07 ~ 2019-08-23 06:14:53)
+113,328 - us-east-1 (2019-08-23 06:00:07 ~ 2019-08-23 06:04:14)
+65,718 - ap-northeast-2 (2019-08-23 06:00:07 ~ 2019-08-23 06:22:55)
+64,787 - ap-northeast-1 (2019-08-23 06:00:07 ~ 2019-08-23 06:34:57)
+```
+
+#### `SrcIPs` example:
+```
+Total src ips: 5,293
+634,454 - 5.205.62.253 (2019-08-23 06:00:07 ~ 2019-08-23 06:00:07)
+23,498 - 193.29.252.218 (2019-08-21 08:03:00 ~ 2019-10-17 09:11:22)
+15,925 - 155.63.17.217 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+9,067 - 253.0.255.253 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+7,078 - 163.21.250.220 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+6,575 - 236.9.245.88 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+5,138 - 84.252.252.117 (2019-01-08 20:30:01 ~ 2020-03-29 09:06:56)
+4,946 - 24.251.252.2 (2019-08-21 08:03:00 ~ 2019-09-30 06:36:13)
+4,225 - 211.111.151.81 (2019-08-21 08:03:00 ~ 2019-09-12 19:53:35)
+```
+
+#### `UserType` example:
+```
+IAMUser
+```
+
+#### `UserAccessKeyIDs` example:
+```
+Total access key ids: 629
+667,476 - AKIA01U43UX3RBRDXF4Q (2019-08-23 06:00:07 ~ 2019-08-23 06:00:07)
+218,544 - ASIARF55FBMFZBXLKDFW (2019-08-21 11:31:47 ~ 2019-08-23 13:00:28)
+12,677 - AKIA1ZBTOEKWKVHP6GHZ (2017-02-12 21:15:12 ~ 2020-09-21 21:06:22)
+8,822 - ASIAGD2JRX0V6RJGWR59 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+4,940 - ASIAUNHV6EHIK5MNPEKF (2019-08-21 08:03:00 ~ 2019-09-30 06:36:17)
+```
+
+> Note that since there will be a large amount of temporary AWS STS access key IDs, these are filtered out by default. Add the `-s, --include-sts-keys` option if you want to include these.
+
+#### `UserAgents` example:
+```
+Total user agents: 7,760
+351,022 - Boto3/1.9.201 Python/2.7.12 Linux/4.4.0-159-generic Botocore/1.12.201 (2019-08-23 06:00:07 ~ 2019-08-23 06:00:07)
+283,430 - Boto3/1.9.201 Python/2.7.12 Linux/4.4.0-157-generic Botocore/1.12.201 (2019-08-21 11:31:47 ~ 2019-08-23 13:00:28)
+23,467 - [Boto3/1.15.13 Python/3.8.5 Darwin/19.6.0 Botocore/1.18.13 Resource] (2017-02-12 21:15:12 ~ 2020-10-07 16:05:52)
+15,924 - Boto3/1.7.4 Python/2.7.12 Linux/4.4.0-119-generic Botocore/1.10.4 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+9,400 - aws-sdk-java/1.11.301 Linux/4.9.93-linuxkit-aufs Java_HotSpot(TM)_64-Bit_Server_VM/25.172-b11 java/1.8.0_172 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+6,372 - [Boto3/1.7.65 Python/3.5.2 Linux/4.13.0-37-generic Botocore/1.10.65 Resource] (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
+5,352 - AWSPowerShell/3.3.365.0 .NET_Runtime/4.0 .NET_Framework/4.0 OS/Microsoft_Windows_NT_10.0.01985.0 WindowsPowerShell/5.0 ClientSync (2019-01-08 20:30:01 ~ 2020-03-29 09:06:56)
+4,945 - Boto3/1.9.231 Python/2.7.15+ Linux/4.15.0-64-generic Botocore/1.12.231 (2019-08-21 08:03:00 ~ 2019-09-30 06:36:13)
+4,599 - [aws-cli/1.16.301 Python/3.7.6 Linux/5.4.0-kali3-amd64 botocore/1.13.37] (2019-08-21 08:03:00 ~ 2020-02-09 22:00:32)
+3,909 - Boto3/1.14.28 Python/3.8.5 Linux/5.7.0-kali1-amd64 Botocore/1.17.28 (2019-01-08 20:30:01 ~ 2020-09-11 17:35:39)
+3,450 - Boto3/1.4.2 Python/2.7.13+ Linux/4.9.0-3-amd64 Botocore/1.5.19 (2017-02-12 21:15:12 ~ 2020-09-21 21:06:22)
+3,198 - Boto3/1.4.2 Python/2.7.14 Linux/4.13.0-1-amd64 Botocore/1.5.19 (2017-02-12 21:15:12 ~ 2020-09-21 21:06:22)
+```
+
+> Note that the `aws` client tool will include the OS information in the user agent so it is possible to detect if there were API calls made from attacker OSes like `kali`.
+
+
+### Command usage
+```
+Usage:
+  suzaku aws-ct-summary <INPUT> [OPTIONS]
+
+Input:
+  -d, --directory <DIR>  Directory of multiple gz/json files
+  -f, --file <FILE>      File path to one gz/json file
+
+Filtering:
+  -s, --include-sts-keys  Include temporary AWS STS access key IDs
+
+Output:
+  -o, --output <FILE>           Output results to a CSV file
+  -D, --hide-descriptions       Hide description of the commonly abused API calls
+  -G, --GeoIP <MAXMIND-DB-DIR>  Add GeoIP (ASN, city, country) info to IP addresses
+
+Display Settings:
+  -K, --no-color  Disable color output
+  -q, --quiet     Quiet mode: do not display the launch banner
+
+General Options:
+  -h, --help  Show the help menu
+  ```
+
+#### `aws-ct-metrics` command example
+
+* Save results to a CSV file: `./suzaku aws-ct-summary -d ../suzaku-sample-data -o sample-summary.csv`
+
 ## DFIR Timeline Commands
 
 ### `aws-ct-timeline` command
 
 Create an AWS CloudTrail DFIR timeline based on Sigma rules in the `rules` folder.
 
+### Command usage
 ```
 Usage: suzaku aws-ct-timeline [OPTIONS] <--directory <DIR>|--file <FILE>>
 
@@ -342,10 +515,12 @@ Output:
   -o, --output <FILE>              Save the results to a file
   -t, --output-type <OUTPUT_TYPE>  Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [default: 1]
   -C, --clobber                    Overwrite files when saving
+  -G, --GeoIP <MAXMIND-DB-DIR>     Add GeoIP (ASN, city, country) info to IP addresses
+  -R, --raw-output                 Output the original JSON logs (only available in JSON formats)
 
 Display Settings:
   -K, --no-color               Disable color output
-  -N, --no-summary             Do not display results summary
+  -N, --no-summary             Do not display result summary
   -T, --no-frequency-timeline  Disable event frequency timeline (terminal needs to support Unicode)
   -q, --quiet                  Quiet mode: do not display the launch banner
   ```

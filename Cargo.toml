@@ -1,10 +1,10 @@
 [package]
 name = "suzaku"
-version = "0.2.0-dev"
+version = "0.2.1"
 repository = "https://github.com/Yamato-Security/suzaku"
 authors = ["Yamato Security @SecurityYamato"]
 edition = "2024"
-rust-version = "1.86.0"
+rust-version = "1.87.0"
 include = ["src/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
 
 [dependencies]
@@ -23,7 +23,7 @@ hashbrown="*"
 indicatif = "*"
 itertools = "*"
 krapslog = "0.6"
-libmimalloc-sys = { version = "=0.1.40",  features = ["extended"] }
+libmimalloc-sys = { version = "*",  features = ["extended"] }
 maxminddb = "*"
 mimalloc = { version = "*", default-features = false }
 num-format = "0.4.*"
