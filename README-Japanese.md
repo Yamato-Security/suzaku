@@ -469,23 +469,23 @@ Usage:
   suzaku aws-ct-summary <INPUT> [OPTIONS]
 
 Input:
-  -d, --directory <DIR>  Directory of multiple gz/json files
-  -f, --file <FILE>      File path to one gz/json file
+  -d, --directory <DIR>  複数gz/jsonファイルのディレクトリパス
+  -f, --file <FILE>      gz/jsonファイルのパス
 
 Filtering:
-  -s, --include-sts-keys  Include temporary AWS STS access key IDs
+  -s, --include-sts-keys  一時的なAWS STSアクセスキーIDを結果に含める
 
 Output:
-  -o, --output <FILE>           Output results to a CSV file
-  -D, --hide-descriptions       Hide description of the commonly abused API calls
-  -G, --GeoIP <MAXMIND-DB-DIR>  Add GeoIP (ASN, city, country) info to IP addresses
+  -o, --output <FILE>           CSVファイルに結果を保存
+  -D, --hide-descriptions       一般的に悪用されるAPIコールの説明を非表示にする
+  -G, --GeoIP <MAXMIND-DB-DIR>  IPアドレスにGeoIP (ASN、都市、国)情報を追加する
 
 Display Settings:
-  -K, --no-color  Disable color output
-  -q, --quiet     Quiet mode: do not display the launch banner
+  -K, --no-color               カラーで出力しない
+  -q, --quiet                  Quietモード: 起動バナーを表示しない
 
 General Options:
-  -h, --help  Show the help menu
+  -h, --help  ヘルプメニューを表示する
   ```
 
 #### `aws-ct-summary`コマンドの例
