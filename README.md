@@ -520,7 +520,7 @@ Output:
 
 Display Settings:
   -K, --no-color               Disable color output
-  -N, --no-summary             Do not display result summary
+  -N, --no-summary             Do not display results summary
   -T, --no-frequency-timeline  Disable event frequency timeline (terminal needs to support Unicode)
   -q, --quiet                  Quiet mode: do not display the launch banner
   ```
