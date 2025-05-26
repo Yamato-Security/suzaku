@@ -24,7 +24,7 @@ struct CTSummary {
     other_api_failed: HashMap<String, (usize, String, String)>,
     aws_regions: HashMap<String, (usize, String, String)>,
     src_ips: HashMap<String, (usize, String, String)>,
-    user_types: HashMap<String, (usize, String, String)>,
+    user_types: String,
     access_key_ids: HashMap<String, (usize, String, String)>,
     user_agents: HashMap<String, (usize, String, String)>,
 }
@@ -65,12 +65,7 @@ impl CTSummary {
             self.last_timestamp.clone(),
         ));
         entry.0 += 1;
-        let entry = self.user_types.entry(user_type.clone()).or_insert((
-            0,
-            self.first_timestamp.clone(),
-            self.last_timestamp.clone(),
-        ));
-        entry.0 += 1;
+        self.user_types = user_type.clone();
         let entry = self.access_key_ids.entry(access_key_id.clone()).or_insert((
             0,
             self.first_timestamp.clone(),
@@ -350,7 +345,7 @@ fn output_summary(
             .replace("Z", "");
         let aws_regions = fmt_key_total("Total regions", &summary.aws_regions);
         let src_ips = fmt_key_total("Total source IDs", &summary.src_ips);
-        let user_types = fmt_key_total("Total user types", &summary.user_types);
+        let user_types = &summary.user_types;
         let access_key_ids = fmt_key_total("Total access key IDs", &summary.access_key_ids);
         let user_agents = fmt_key_total("Total user agents", &summary.user_agents);
 
