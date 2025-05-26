@@ -1,5 +1,9 @@
 # 変更点
 
+## 0.2.1 [2025/05/25] - AUSCERT/SINCON Release 2
+
+- リリース名を修正し、readmeを更新した。 (@yamatosecurity)
+
 ## 0.2.0 [2025/05/22] - AUSCERT Release
 
 **新機能:**
