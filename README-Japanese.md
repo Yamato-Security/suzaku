@@ -67,7 +67,7 @@ Suzakuは、ノイズの中から攻撃を見つけるだけでなく、迅速�
     - [`aws-ct-metrics`コマンド](#aws-ct-metricsコマンド)
     - [コマンド使用例](#コマンド使用例)
       - [`aws-ct-metrics`コマンドの例](#aws-ct-metricsコマンドの例)
-  - [DFIRサマリーコマンド](#DFIRサマリーコマンド)
+  - [DFIRサマリーコマンド](#dfirサマリーコマンド)
     - [`aws-ct-summary`コマンド](#aws-ct-summaryコマンド)
       - [`AbusedAPIs-Success`の例](#abusedapis-successの例)
       - [`AbusedAPIs-Failed`の例](#abusedapis-failedの例)
@@ -368,40 +368,50 @@ General Options:
 
 #### `AbusedAPIs-Success`の例
 ```
-Total abused api success: 5
-640,772 - Spin up EC2 instances (crypto mining, tools) (2019-08-23 06:00:07 ~ 2019-08-23 06:00:07)
-38,892 - S3 recon (2019-08-23 06:00:07 ~ 2019-08-23 06:14:53)
-16,600 - EC2 and network layout recon (2019-08-23 06:00:07 ~ 2019-08-23 06:04:20)
-11,056 - Current credentials recon (2019-08-23 06:00:07 ~ 2019-08-23 06:04:14)
-26 - IAM enumeration (2019-08-21 08:03:00 ~ 2019-10-19 23:49:25)
+Unique APIs: 11 | Total APIs 477,373
+415,552 - RunInstances (ec2.amazonaws.com) - Spin up EC2 instances (crypto mining, tools) (2019-08-23 06:00:07 ~ 2019-08-23 06:00:07)
+28,907 - GetBucketAcl (s3.amazonaws.com) - S3 recon (2019-08-21 08:03:03 ~ 2019-10-21 13:59:40)
+10,095 - GetCallerIdentity (sts.amazonaws.com) - Current credentials recon (2019-08-23 06:00:07 ~ 2019-08-23 06:04:14)
+9,936 - ListBuckets (s3.amazonaws.com) - S3 recon (2019-08-23 06:00:07 ~ 2019-08-23 06:14:53)
+9,168 - DescribeInstances (ec2.amazonaws.com) - EC2 and network layout recon (2019-08-23 06:00:07 ~ 2019-08-23 06:04:20)
+3,658 - DescribeVpcs (ec2.amazonaws.com) - EC2 and network layout recon (2019-08-21 08:03:03 ~ 2019-09-12 20:00:44)
+19 - ListGroups (greengrass.amazonaws.com) - IAM enumeration (2019-08-21 08:03:03 ~ 2019-10-19 23:49:25)
+14 - DescribeInstances (opsworks.amazonaws.com) - EC2 and network layout recon (2019-08-21 08:03:03 ~ 2019-10-19 23:49:22)
+12 - GetBucketPolicy (s3.amazonaws.com) - S3 recon (2019-01-08 20:30:01 ~ 2020-03-29 09:06:56)
+7 - ListGroups (resource-groups.amazonaws.com) - IAM enumeration (2019-01-08 20:30:01 ~ 2020-03-29 09:06:56)
+5 - StartInstances (ec2.amazonaws.com) - Spin up EC2 instances (crypto mining, tools) (2019-08-21 08:03:03 ~ 2019-12-12 07:07:31)
 ```
 
 #### `AbusedAPIs-Failed`の例
 ```
-Total abused api failed: 14
-11,603 - Lateral movement via roles (2019-08-21 08:03:00 ~ 2019-09-18 07:04:12)
-7,801 - S3 recon (2019-08-21 08:03:00 ~ 2019-09-09 09:01:26)
-666 - IAM enumeration (2019-08-21 08:03:00 ~ 2019-08-29 14:53:14)
-210 - Find credential storage locations (2019-08-21 08:03:00 ~ 2019-10-19 23:49:30)
-112 - Enumerates keys on IAM users (2019-08-21 08:03:00 ~ 2019-09-16 14:28:15)
-21 - Inject permissions (2019-08-21 08:03:00 ~ 2019-09-16 15:09:27)
-17 - Add IAM users (login backdoors) (2019-08-21 08:03:00 ~ 2019-09-16 15:09:27)
-12 - Creates long-term credentials for backdoor (2019-08-21 08:03:00 ~ 2019-09-30 06:36:16)
-8 - Add custom roles with privileges (2019-01-08 20:30:01 ~ 2020-04-24 18:36:27)
-6 - Inject persistent permissions (2019-01-08 20:30:01 ~ 2020-03-29 09:06:56)
-5 - Interactive shell via SSM (2019-08-21 08:03:00 ~ 2019-11-17 05:15:02)
-3 - Retrieves SSM Parameter Store (may include credentials) (2019-01-08 20:30:01 ~ 2020-08-20 17:45:23)
-1 - Retrieves Secrets Manager values (2019-08-21 08:03:00 ~ 2020-02-04 10:40:44)
-1 - Run arbitrary shell commands on EC2 (2019-01-08 20:30:01 ~ 2020-07-28 04:58:41)
+Unique APIs: 23 | Total APIs 20,464
+11,603 - AssumeRole (sts.amazonaws.com) - Lateral movement via roles (2019-08-21 08:03:03 ~ 2019-09-18 07:04:12)
+7,279 - GetBucketAcl (s3.amazonaws.com) - S3 recon (2019-08-21 08:03:03 ~ 2019-09-09 09:01:26)
+515 - GetBucketPolicy (s3.amazonaws.com) - S3 recon (2019-08-21 08:03:03 ~ 2019-10-01 19:11:07)
+331 - ListUsers (iam.amazonaws.com) - IAM enumeration (2019-08-21 08:03:03 ~ 2019-08-29 14:53:14)
+210 - ListSecrets (secretsmanager.amazonaws.com) - Find credential storage locations (2019-08-21 08:03:03 ~ 2019-10-19 23:49:30)
+153 - ListGroups (iam.amazonaws.com) - IAM enumeration (2019-08-21 08:03:03 ~ 2019-09-12 15:24:39)
+148 - ListRoles (iam.amazonaws.com) - IAM enumeration (2019-08-21 08:03:03 ~ 2019-09-12 15:20:56)
+112 - ListAccessKeys (iam.amazonaws.com) - Enumerates keys on IAM users (2019-08-21 08:03:03 ~ 2019-09-16 14:28:15)
+31 - ListGroups (greengrass.amazonaws.com) - IAM enumeration (2019-08-21 08:03:03 ~ 2020-02-25 14:41:24)
+...
 ```
 
 #### `OtherAPIs-Success`の例
 ```
-Total other api success: 281
-99,259 - DescribeSnapshots (2019-08-23 06:00:07 ~ 2019-08-23 06:50:59)
-10,679 - DescribeSpotPriceHistory (2019-08-21 08:03:00 ~ 2019-09-12 20:07:32)
-4,123 - CreateDefaultVpc (2019-08-23 06:00:07 ~ 2019-08-23 06:04:17)
-3,740 - DescribeReservedInstancesOfferings (2019-08-21 08:03:00 ~ 2019-09-12 20:07:30)
+Unique APIs: 289 | Total APIs 143,759
+98,689 - DescribeSnapshots (ec2.amazonaws.com) (2019-08-23 06:00:07 ~ 2019-08-23 06:50:59)
+10,679 - DescribeSpotPriceHistory (ec2.amazonaws.com) (2019-08-21 08:03:03 ~ 2019-09-12 20:07:32)
+3,740 - DescribeReservedInstancesOfferings (ec2.amazonaws.com) (2019-08-21 08:03:03 ~ 2019-09-12 20:07:30)
+2,372 - DescribeSnapshotAttribute (ec2.amazonaws.com) (2019-08-21 08:03:03 ~ 2019-08-24 12:38:34)
+2,307 - CreateDefaultVpc (ec2.amazonaws.com) (2019-08-23 06:00:07 ~ 2019-08-23 06:04:17)
+1,532 - DescribeKeyPairs (ec2.amazonaws.com) (2019-08-23 06:00:07 ~ 2019-08-23 06:04:16)
+1,504 - DescribeSecurityGroups (ec2.amazonaws.com) (2019-08-21 08:03:03 ~ 2019-09-12 20:00:40)
+1,495 - DescribeImages (ec2.amazonaws.com) (2019-08-21 08:03:03 ~ 2019-09-12 20:07:26)
+1,438 - CreateKeyPair (ec2.amazonaws.com) (2019-08-23 06:00:07 ~ 2019-08-23 06:04:16)
+1,402 - DescribeVolumes (ec2.amazonaws.com) (2019-08-21 08:03:03 ~ 2019-09-03 12:06:20)
+1,217 - DescribeSubnets (ec2.amazonaws.com) (2019-08-21 08:03:03 ~ 2019-09-12 20:00:43)
+...
 ```
 
 #### `AWS-Regions`の例
@@ -415,7 +425,7 @@ Total regions: 16
 
 #### `SrcIPs`の例
 ```
-Total src ips: 5,293
+Total source IPs: 5,293
 634,454 - 5.205.62.253 (2019-08-23 06:00:07 ~ 2019-08-23 06:00:07)
 23,498 - 193.29.252.218 (2019-08-21 08:03:00 ~ 2019-10-17 09:11:22)
 15,925 - 155.63.17.217 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
