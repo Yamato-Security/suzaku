@@ -205,6 +205,15 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     }
     let profile = load_profile("config/default_profile.yaml", &geo_search);
     let rules = rules::load_rules_from_dir(&options.rules);
+    if rules.is_empty() {
+        p(
+            Red.rdg(no_color),
+            "Suzaku could not load any rules. Please download the rules with the update-rules command.\n",
+            true,
+        );
+        return;
+    }
+
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
 
