@@ -92,7 +92,7 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            aws_metrics(dir, file, field_name, output, no_color);
+            aws_metrics(input_opt, field_name, output, no_color);
         }
         AwsCtSummary {
             input_opt,
@@ -109,8 +109,7 @@ fn main() {
                 return;
             }
             aws_summary(
-                dir,
-                file,
+                input_opt,
                 output,
                 no_color,
                 include_sts,
