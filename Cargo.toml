@@ -29,8 +29,10 @@ mimalloc = { version = "*", default-features = false }
 num-format = "0.4.*"
 serde_json = "1.0.*"
 sigma-rust = "*"
+sigmars = "*"
 termcolor = "*"
 terminal_size = "0.4.*"
+tokio = "1.*"
 ureq="*"
 
 

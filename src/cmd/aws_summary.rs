@@ -112,7 +112,7 @@ impl CTSummary {
     }
 }
 
-pub fn aws_summary(
+pub async fn aws_summary(
     directory: &Option<PathBuf>,
     file: &Option<PathBuf>,
     output: &Path,
@@ -137,7 +137,7 @@ pub fn aws_summary(
     }
     let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
-    let mut summary_func = |json_value: &Value| {
+    let mut summary_func = async |json_value: &Value| {
         let event: Event = match event_from_json(json_value.to_string().as_str()) {
             Ok(event) => event,
             Err(_) => return,
@@ -241,7 +241,7 @@ pub fn aws_summary(
     };
     let abused_aws_api_values: Vec<String> = abused_aws_api_calls.values().cloned().collect();
     if let Some(d) = directory {
-        process_events_from_dir(summary_func, d, true, no_color).unwrap();
+        let _ = process_events_from_dir(summary_func, d, true, no_color).await;
         output_summary(
             &user_data,
             output,
@@ -254,7 +254,7 @@ pub fn aws_summary(
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
             for event in events {
-                summary_func(&event);
+                let _ = summary_func(&event).await;
             }
             output_summary(
                 &user_data,

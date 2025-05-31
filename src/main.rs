@@ -21,7 +21,8 @@ mod option;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() == 1
         || args.len() == 2
@@ -77,7 +78,7 @@ fn main() {
                 );
                 return;
             }
-            aws_detect(options, common_opt);
+            aws_detect(options, common_opt).await;
         }
         AwsCtMetrics {
             input_opt,
@@ -92,7 +93,7 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            aws_metrics(dir, file, field_name, output, no_color);
+            aws_metrics(dir, file, field_name, output, no_color).await;
         }
         AwsCtSummary {
             input_opt,
@@ -116,7 +117,8 @@ fn main() {
                 include_sts,
                 hide_descriptions,
                 geo_ip,
-            );
+            )
+            .await;
         }
         UpdateRules { common_opt } => {
             display_logo(common_opt.quiet, no_color, true, false);
