@@ -117,7 +117,8 @@ async fn main() {
                 include_sts,
                 hide_descriptions,
                 geo_ip,
-            ).await;
+            )
+            .await;
         }
         UpdateRules { common_opt } => {
             display_logo(common_opt.quiet, no_color, true, false);
