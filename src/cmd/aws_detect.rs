@@ -74,7 +74,7 @@ fn write_record(
     geo: &mut Option<GeoIPSearch>,
     raw_output: bool,
 ) {
-    let record: Vec<String> = profile
+    let mut record: Vec<String> = profile
         .iter()
         .map(|(_k, v)| get_value_from_event(v, event, rule, geo))
         .collect();
@@ -83,15 +83,18 @@ fn write_record(
     if let Some(writer) = &mut wrt.std {
         let level_index = profile.iter().position(|(k, _)| k == "Level");
         let level = if let Some(index) = level_index {
-            record[index].to_lowercase()
+            let org = record[index].to_lowercase();
+            let abb = abbrivate_level(&org);
+            record[index] = abb.to_string();
+            abb.to_string()
         } else {
-            "informational".to_string()
+            "info".to_string()
         };
-        let color = if level == "critical" {
+        let color = if level == "crit" {
             Red
         } else if level == "high" {
             Orange
-        } else if level == "medium" {
+        } else if level == "med" {
             Yellow
         } else if level == "low" {
             Green
@@ -184,6 +187,15 @@ fn write_record(
             writer.write_all(json_string.as_bytes()).unwrap();
             writer.write_all(b"\n").unwrap();
         }
+    }
+}
+
+fn abbrivate_level(level: &str) -> &str {
+    match level {
+        "critical" => "crit",
+        "medium" => "med",
+        "informational" => "info",
+        _ => level,
     }
 }
 
