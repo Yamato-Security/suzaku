@@ -40,11 +40,11 @@ pub struct CommonOptions {
 #[clap(group(ArgGroup::new("input_filtering")))]
 pub struct TimeOption {
     /// Start time of the event to load (ex: "2022-02-22T23:59:59Z)
-    #[arg(help_heading = Some("Filtering"), long = "timeline-end", value_name = "DATE")]
+    #[arg(help_heading = Some("Filtering"), long = "timeline-start", value_name = "DATE")]
     pub timeline_start: Option<String>,
 
     /// End time of the event to load (ex: "2020-02-22T00:00:00Z")
-    #[arg(help_heading = Some("Filtering"), long = "timeline-start", value_name = "DATE")]
+    #[arg(help_heading = Some("Filtering"), long = "timeline-end", value_name = "DATE")]
     pub timeline_end: Option<String>,
 
     /// Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
