@@ -9,7 +9,9 @@ pub fn load_rules_from_dir(path: &PathBuf) -> HashMap<String, Rule> {
     if path.is_file() {
         if let Ok(contents) = fs::read_to_string(path) {
             if let Ok(rule) = rule_from_yaml(&contents) {
-                rules.insert(rule.id.clone().unwrap_or_default(), rule);
+                if let Some(id) = &rule.id {
+                    rules.insert(id.clone(), rule);
+                }
             }
         }
         return rules;
