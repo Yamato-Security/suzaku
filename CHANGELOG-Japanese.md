@@ -1,5 +1,12 @@
 # 変更点
 
+## x.x.x [xxxx/xx/xx]
+
+**改善:**
+
+- レベル名は`aws-ct-timeline`で省略されるようになった。(#68) (@fukusuket)
+- ルールが見つからない場合は、エラーメッセージを出力するようになった。 (#76) (@fukusuket)
+
 ## 0.2.1 [2025/05/25] - AUSCERT/SINCON Release 2
 
 - リリース名を修正し、readmeを更新した。 (@yamatosecurity)
