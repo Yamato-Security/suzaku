@@ -103,8 +103,6 @@ pub struct AwsCtTimelineOptions {
     /// Output the original JSON logs (only available in JSON formats)
     #[arg(help_heading = Some("Output"), short = 'R', long = "raw-output")]
     pub raw_output: bool,
-    
-    
 }
 
 #[derive(Subcommand)]
