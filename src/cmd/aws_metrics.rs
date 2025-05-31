@@ -1,5 +1,7 @@
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::core::util::{get_writer, output_path_info, p};
+use crate::option::cli::InputOption;
+use crate::option::timefiler::filter_by_time;
 use comfy_table::{Cell, CellAlignment, Table};
 use csv::Writer;
 use serde_json::Value;
@@ -9,13 +11,9 @@ use std::io::Write;
 use std::path::PathBuf;
 use termcolor::Color;
 
-pub fn aws_metrics(
-    directory: &Option<PathBuf>,
-    file: &Option<PathBuf>,
-    field: &str,
-    output: &Option<PathBuf>,
-    no_color: bool,
-) {
+pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf>, no_color: bool) {
+    let directory = &input_opt.directory;
+    let file = &input_opt.filepath;
     let mut wtr = get_writer(output);
     let csv_header = vec!["EventName", "Percent", "Total"];
     if output.is_some() {
@@ -24,6 +22,9 @@ pub fn aws_metrics(
 
     let mut count_map = HashMap::new();
     let mut stats_func = |json_value: &Value| {
+        if !filter_by_time(&input_opt.time_opt, json_value) {
+            return;
+        }
         let event: Event = match event_from_json(json_value.to_string().as_str()) {
             Ok(event) => event,
             Err(_) => return,
