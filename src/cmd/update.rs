@@ -220,6 +220,7 @@ fn get_updated_rules(rule_folder_path: &PathBuf) -> HashSet<String> {
     let rulefile_loader = load_rules_from_dir(rule_folder_path);
 
     HashSet::from_iter(rulefile_loader.into_iter().map(|yaml| {
+        let yaml = yaml.1;
         let yaml_date = yaml.date.unwrap_or("-".to_string());
 
         format!(
