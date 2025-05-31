@@ -1,5 +1,12 @@
 # Changes
 
+## x.x.x [xxxx/xx/xx]
+
+**Enhancements:**
+
+- Level names are now abbreviated in `aws-ct-timeline`. (#68) (@fukusuket)
+- Error message output when no rules are found. (#76) (@fukusuket)
+
 ## 0.2.1 [2025/05/25] - AUSCERT/SINCON Release 2
 
 - Fixed the release name and updated the readme. (@yamatosecurity)
