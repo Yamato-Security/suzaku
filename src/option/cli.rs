@@ -37,6 +37,22 @@ pub struct CommonOptions {
 }
 
 #[derive(Args, Clone, Debug, Default)]
+#[clap(group(ArgGroup::new("input_filtering")))]
+pub struct TimeOption {
+    /// Start time of the events to load (ex: "2022-02-22T23:59:59Z)
+    #[arg(help_heading = Some("Filtering"), long = "timeline-start", value_name = "DATE")]
+    pub timeline_start: Option<String>,
+
+    /// End time of the events to load (ex: "2020-02-22T00:00:00Z")
+    #[arg(help_heading = Some("Filtering"), long = "timeline-end", value_name = "DATE")]
+    pub timeline_end: Option<String>,
+
+    /// Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
+    #[arg(help_heading = Some("Filtering"), long = "time-offset", value_name = "OFFSET", conflicts_with = "start_timeline")]
+    pub time_offset: Option<String>,
+}
+
+#[derive(Args, Clone, Debug, Default)]
 #[clap(group(ArgGroup::new("input_filtering").args(["directory", "filepath"]).required(true)))]
 pub struct InputOption {
     /// Directory of multiple gz/json files
@@ -46,6 +62,9 @@ pub struct InputOption {
     /// File path to one gz/json file
     #[arg(help_heading = Some("Input"), short = 'f', long = "file", value_name = "FILE", conflicts_with_all = ["directory"])]
     pub filepath: Option<PathBuf>,
+
+    #[clap(flatten)]
+    pub time_opt: TimeOption,
 }
 
 #[derive(Args, Clone, Debug, Default)]

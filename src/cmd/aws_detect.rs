@@ -5,6 +5,7 @@ use crate::core::scan::{get_content, load_json_from_file, process_events_from_di
 use crate::core::util::{get_json_writer, get_writer, output_path_info, p};
 use crate::option::cli::{AwsCtTimelineOptions, CommonOptions};
 use crate::option::geoip::GeoIPSearch;
+use crate::option::timefiler::filter_by_time;
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
@@ -293,6 +294,9 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
 
     let mut summary = DetectionSummary::default();
     let mut scan_by_all_rules = |json_value: &Value| {
+        if !filter_by_time(&options.input_opt.time_opt, json_value) {
+            return;
+        }
         let event: Event = match event_from_json(json_value.to_string().as_str()) {
             Ok(event) => event,
             Err(_) => return,

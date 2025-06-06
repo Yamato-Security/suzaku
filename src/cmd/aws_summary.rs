@@ -1,7 +1,9 @@
 use crate::core::color::SuzakuColor::Red;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::core::util::{get_writer, output_path_info, p};
+use crate::option::cli::InputOption;
 use crate::option::geoip::GeoIPSearch;
+use crate::option::timefiler::filter_by_time;
 use csv::ReaderBuilder;
 use itertools::Itertools;
 use num_format::{Locale, ToFormattedString};
@@ -113,14 +115,15 @@ impl CTSummary {
 }
 
 pub fn aws_summary(
-    directory: &Option<PathBuf>,
-    file: &Option<PathBuf>,
+    input_opt: &InputOption,
     output: &Path,
     no_color: bool,
     include_sts: &bool,
     hide_descriptions: &bool,
     geo_ip: &Option<PathBuf>,
 ) {
+    let directory = &input_opt.directory;
+    let file = &input_opt.filepath;
     let mut geo_search = None;
     if let Some(path) = geo_ip.as_ref() {
         let res = GeoIPSearch::new(path);
@@ -138,6 +141,9 @@ pub fn aws_summary(
     let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
     let mut summary_func = |json_value: &Value| {
+        if !filter_by_time(&input_opt.time_opt, json_value) {
+            return;
+        }
         let event: Event = match event_from_json(json_value.to_string().as_str()) {
             Ok(event) => event,
             Err(_) => return,
