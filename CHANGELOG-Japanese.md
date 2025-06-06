@@ -6,6 +6,7 @@
 
 - レベル名は`aws-ct-timeline`で省略されるようになった。(#68) (@fukusuket)
 - ルールが見つからない場合は、エラーメッセージを出力するようになった。 (#76) (@fukusuket)
+- `aws-ct-timeline`コマンドに`--timeline-offset`、`--timeline-start`、`--timeline-end`オプションを追加した。 (#58) (@fukusuket)
 
 ## 0.2.1 [2025/05/25] - AUSCERT/SINCON Release 2
 
