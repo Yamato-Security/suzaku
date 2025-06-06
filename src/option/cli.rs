@@ -92,7 +92,7 @@ pub struct AwsCtTimelineOptions {
     #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
     pub no_frequency: bool,
 
-    /// Do not display results summary
+    /// Do not display result summary
     #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
     pub no_summary: bool,
 
@@ -103,6 +103,10 @@ pub struct AwsCtTimelineOptions {
     /// Output the original JSON logs (only available in JSON formats)
     #[arg(help_heading = Some("Output"), short = 'R', long = "raw-output")]
     pub raw_output: bool,
+
+    /// Minimum level for rules to load (default: informational)
+    #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 1)]
+    pub min_level: String,
 }
 
 #[derive(Subcommand)]
