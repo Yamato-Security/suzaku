@@ -77,6 +77,25 @@ fn main() {
                 );
                 return;
             }
+            if options.min_level != "informational"
+                && options.min_level != "info"
+                && options.min_level != "low"
+                && options.min_level != "medium"
+                && options.min_level != "med"
+                && options.min_level != "high"
+                && options.min_level != "critical"
+                && options.min_level != "crit"
+            {
+                p(
+                    None,
+                    &format!(
+                        "Invalid minimum level: {}. Valid levels are: informational, low, medium, high, critical.",
+                        options.min_level
+                    ),
+                    true,
+                );
+                return;
+            }
             aws_detect(options, common_opt);
         }
         AwsCtMetrics {

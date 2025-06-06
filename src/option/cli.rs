@@ -103,6 +103,10 @@ pub struct AwsCtTimelineOptions {
     /// Output the original JSON logs (only available in JSON formats)
     #[arg(help_heading = Some("Output"), short = 'R', long = "raw-output")]
     pub raw_output: bool,
+
+    /// Minimum level for rules to load (default: informational)
+    #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 1)]
+    pub min_level: String,
 }
 
 #[derive(Subcommand)]
