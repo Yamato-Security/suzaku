@@ -92,7 +92,7 @@ pub struct AwsCtTimelineOptions {
     #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
     pub no_frequency: bool,
 
-    /// Do not display result summary
+    /// Do not display results summary
     #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
     pub no_summary: bool,
 
