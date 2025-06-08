@@ -85,7 +85,7 @@ pub struct AwsCtTimelineOptions {
     pub output_type: u8,
 
     /// Overwrite files when saving
-    #[arg(help_heading = Some("Output"), short='C', long = "clobber", requires = "output")]
+    #[arg(help_heading = Some("Output"), short='C', long = "clobber", requires = "output", display_order = 1)]
     pub clobber: bool,
 
     /// Disable event frequency timeline (terminal needs to support Unicode)
@@ -97,7 +97,7 @@ pub struct AwsCtTimelineOptions {
     pub no_summary: bool,
 
     /// Add GeoIP (ASN, city, country) info to IP addresses
-    #[arg(help_heading = Some("Output"), short = 'G', long = "GeoIP", value_name = "MAXMIND-DB-DIR")]
+    #[arg(help_heading = Some("Output"), short = 'G', long = "geo-ip", value_name = "MAXMIND-DB-DIR", display_order = 2)]
     pub geo_ip: Option<PathBuf>,
 
     /// Output the original JSON logs (only available in JSON formats)
@@ -105,7 +105,7 @@ pub struct AwsCtTimelineOptions {
     pub raw_output: bool,
 
     /// Minimum level for rules to load (default: informational)
-    #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 1)]
+    #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 3)]
     pub min_level: String,
 }
 
