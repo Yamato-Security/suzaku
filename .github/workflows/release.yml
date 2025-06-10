@@ -104,14 +104,14 @@ jobs:
           Remove-Item -Path ./suzaku-rules/*.md -Force
           Remove-Item -Path ./suzaku-rules/.github -Recurse -Force
           Copy-Item -Recurse -Path ./suzaku-rules/ -Destination release-binaries/rules -Force
-          switch ("${{ matrix.info.os }}") {
-              "windows-latest" { 
+          switch ("${{ matrix.info.target }}") {
+              "x86_64-pc-windows-msvc" { 
                   mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x64.exe 
               }
-              "windows-2022" { 
+              "i686-pc-windows-msvc" { 
                   mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-x86.exe 
               }
-              "windows-2019" { 
+              "aarch64-pc-windows-msvc" { 
                   mv release-binaries/suzaku.exe release-binaries/suzaku-${{ github.event.inputs.release_ver }}-win-aarch64.exe 
               }
           }
@@ -120,30 +120,23 @@ jobs:
         if: contains(matrix.info.os, 'windows') == false
         run: |
           mkdir -p release-binaries
+          cp ./target/${{ matrix.info.target }}/release/suzaku release-binaries/
           cp -r ./config release-binaries/config
           cp -r ./art release-binaries/art
           rm -f ./suzaku-rules/.gitignore
           rm -f ./suzaku-rules/*.md
           rm -rf ./suzaku-rules/.github
           cp -r ./suzaku-rules/. release-binaries/rules
-          case ${{ matrix.info.os }} in
-            'ubuntu-latest')
-                cp ./target/x86_64-unknown-linux-gnu/release/suzaku release-binaries/
+          case ${{ matrix.info.target }} in
+            'x86_64-unknown-linux-gnu')
                 mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-x64-gnu ;;
-            'ubuntu-latest')
-                cp ./target/x86_64-unknown-linux-musl/release/suzaku release-binaries/
+            'x86_64-unknown-linux-musl')
                 mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-x64-musl ;;
-            'ubuntu-latest')
-                cp ./target/aarch64-unknown-linux-gnu/release/suzaku release-binaries/
+            'aarch64-unknown-linux-gnu')
                 mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-gnu ;;
-            'ubuntu-latest')
-                cp ./target/aarch64-unknown-linux-musl/release/suzaku release-binaries/
-                mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-musl ;;
-            'macos-latest')
-                cp ./target/aarch64-apple-darwin/release/suzaku release-binaries/
+            'aarch64-apple-darwin')
                 mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-mac-aarch64 ;;
-            'macos-latest')
-                cp ./target/x86_64-apple-darwin/release/suzaku release-binaries/
+            'x86_64-apple-darwin')
                 mv release-binaries/suzaku release-binaries/suzaku-${{ github.event.inputs.release_ver }}-mac-x64 ;;
           esac
 
@@ -151,24 +144,22 @@ jobs:
         id: set_artifact_name
         shell: bash
         run: |
-          case "${{ matrix.info.os }}" in
-            'windows-latest')
+          case "${{ matrix.info.target }}" in
+            'x86_64-pc-windows-msvc')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-win-x64" >> $GITHUB_OUTPUT ;;
-            'windows-latest')
+            'i686-pc-windows-msvc')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-win-x86" >> $GITHUB_OUTPUT ;;
-            'windows-latest')
+            'aarch64-pc-windows-msvc')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-win-aarch64" >> $GITHUB_OUTPUT ;;
-            'ubuntu-latest')
+            'x86_64-unknown-linux-gnu')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-x64-gnu" >> $GITHUB_OUTPUT ;;
-            'ubuntu-latest')
+            'x86_64-unknown-linux-musl')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-x64-musl" >> $GITHUB_OUTPUT ;;
-            'ubuntu-latest')
+            'aarch64-unknown-linux-gnu')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-gnu" >> $GITHUB_OUTPUT ;;
-            'ubuntu-latest')
-              echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-lin-aarch64-musl" >> $GITHUB_OUTPUT ;;
-            'macos-latest')
+            'aarch64-apple-darwin')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-mac-aarch64" >> $GITHUB_OUTPUT ;;
-            'macos-latest')
+            'x86_64-apple-darwin')
               echo "artifact_name=suzaku-${{ github.event.inputs.release_ver }}-mac-x64" >> $GITHUB_OUTPUT ;;
           esac
 
@@ -180,13 +171,13 @@ jobs:
           include-hidden-files: true
 
       - name: Setup node
-        if: matrix.info.os == 'macos-latest'
+        if: matrix.info.target == 'aarch64-apple-darwin'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Create PDF
-        if: matrix.info.os == 'macos-latest'
+        if: matrix.info.target == 'aarch64-apple-darwin'
         run: |
           npm i -g md-to-pdf
           md-to-pdf ./*.md --md-file-encoding utf-8
@@ -194,7 +185,7 @@ jobs:
           mv ./README-Japanese.pdf ./README-${{ github.event.inputs.release_ver }}-Japanese.pdf
 
       - name: Upload Document Artifacts
-        if: matrix.info.os == 'macos-latest'
+        if: matrix.info.target == 'aarch64-apple-darwin'
         uses: actions/upload-artifact@v4
         with:
           name: suzaku-documents
