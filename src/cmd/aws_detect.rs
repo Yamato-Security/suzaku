@@ -462,8 +462,8 @@ fn scan_file(
 
     // If all the events are loaded at once, it can consume too much memory.
     // To avoid the problem, we split the events into chunks.
-    // Ideally, the chunk size should be calculated considering the rule count. 
-    // TODO take into account rule count for calculating chunk size.
+    // Ideally, the chunk size should be calculated considering the rule count.
+    // TODO take rule count into account for calculating chunk size.
     const CHUNK_SIZE: usize = 1000;
     for event_chunks in events.chunks(CHUNK_SIZE) {
         // convert loaded event into JSON
