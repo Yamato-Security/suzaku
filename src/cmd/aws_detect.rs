@@ -477,11 +477,9 @@ fn scan_file(
                     None
                 }
             })
-            .filter_map(|event| {
-                match event_from_json(event.to_string().as_str()) {
-                    Ok(json_event) => Some((event, json_event)),
-                    Err(_) => None,
-                }
+            .filter_map(|event| match event_from_json(event.to_string().as_str()) {
+                Ok(json_event) => Some((event, json_event)),
+                Err(_) => None,
             })
             .collect();
 
