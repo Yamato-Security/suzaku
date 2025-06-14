@@ -11,21 +11,17 @@ use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Cell, Table, TableComponent};
 use csv::Writer;
-use git2::Time;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use rayon::prelude::*;
-use serde_json::{Value, value};
+use serde_json::{Value};
 use sigma_rust::{Event, Rule, event_from_json};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::io::{BufWriter, Write};
-use std::ops::Index;
 use std::path::PathBuf;
-use std::sync::Arc;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use terminal_size::{Width, terminal_size};
 
@@ -457,7 +453,7 @@ fn scan_file(
     let log_contents = get_content(f);
     let events = match load_json_from_file(&log_contents) {
         Ok(value) => value,
-        Err(e) => return,
+        Err(_e) => return,
     };
 
     // If all the events are loaded at once, it can consume too much memory.
@@ -495,7 +491,7 @@ fn scan_file(
                     .par_iter()
                     .filter(move |rule| rule.is_match(json_event))
                     .collect();
-                return (*event, json_event, matched_rules);
+                return  (*event, json_event, matched_rules);
             })
             .collect();
 
