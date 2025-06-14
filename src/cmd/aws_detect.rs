@@ -440,12 +440,14 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     }
 }
 
+// TODO remove allow
+#[allow(clippy::too_many_arguments)]
 fn scan_file(
     f: &PathBuf,
     options: &AwsCtTimelineOptions,
     rules: &Vec<Rule>,
     summary: &mut DetectionSummary,
-    profile: &Vec<(String, String)>,
+    profile: &[(String, String)],
     wrt: &mut Writers,
     common_opt: &CommonOptions,
     geo: &mut Option<GeoIPSearch>,
@@ -469,17 +471,17 @@ fn scan_file(
             .par_iter()
             .zip(repeated_time_opt.into_par_iter())
             .filter_map(|(event, time_opt)| {
-                return if filter_by_time(&time_opt, event) {
+                if filter_by_time(time_opt, event) {
                     Some(event)
                 } else {
                     None
-                };
+                }
             })
             .filter_map(|event| {
-                return match event_from_json(event.to_string().as_str()) {
+                match event_from_json(event.to_string().as_str()) {
                     Ok(json_event) => Some((event, json_event)),
                     Err(_) => None,
-                };
+                }
             })
             .collect();
 
@@ -491,7 +493,7 @@ fn scan_file(
                     .par_iter()
                     .filter(move |rule| rule.is_match(json_event))
                     .collect();
-                return (*event, json_event, matched_rules);
+                (*event, json_event, matched_rules)
             })
             .collect();
 
