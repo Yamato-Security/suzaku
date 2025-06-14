@@ -1442,6 +1442,7 @@ dependencies = [
  "mimalloc",
  "num-format",
  "openssl",
+ "rayon",
  "serde_json",
  "sigma-rust",
  "termcolor",
