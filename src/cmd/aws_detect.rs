@@ -14,7 +14,7 @@ use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use rayon::prelude::*;
-use serde_json::{Value};
+use serde_json::Value;
 use sigma_rust::{Event, Rule, event_from_json};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -491,7 +491,7 @@ fn scan_file(
                     .par_iter()
                     .filter(move |rule| rule.is_match(json_event))
                     .collect();
-                return  (*event, json_event, matched_rules);
+                return (*event, json_event, matched_rules);
             })
             .collect();
 
