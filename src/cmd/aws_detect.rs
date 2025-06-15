@@ -15,7 +15,7 @@ use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use rayon::prelude::*;
 use serde_json::Value;
-use sigma_rust::{event_from_json, Event, Rule};
+use sigma_rust::{Event, Rule, event_from_json};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -23,7 +23,7 @@ use std::io::{BufRead, BufReader};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
-use terminal_size::{terminal_size, Width};
+use terminal_size::{Width, terminal_size};
 
 #[derive(Debug, Default)]
 struct DetectionSummary {
