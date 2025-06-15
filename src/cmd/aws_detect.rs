@@ -219,7 +219,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         }
     }
     let profile = load_profile("config/default_profile.yaml", &geo_search);
-    let rules = rules::load_rules_from_dir(&options.rules);
+    let rules: Vec<Rule> = rules::load_rules_from_dir(&options.rules);
     if rules.is_empty() {
         p(
             Red.rdg(no_color),
@@ -386,7 +386,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         scan_file(
             f,
             options,
-            &rules,
+            rules.as_ref(),
             &mut summary,
             &profile,
             &mut wrt,
@@ -460,8 +460,6 @@ fn scan_file(
 
     // If all the events are loaded at once, it can consume too much memory.
     // To avoid the problem, we split the events into chunks.
-    // Ideally, the chunk size should be calculated considering the rule count.
-    // TODO take rule count into account for calculating chunk size.
     const CHUNK_SIZE: usize = 1000;
     for event_chunks in events.chunks(CHUNK_SIZE) {
         // convert loaded event into JSON
@@ -502,6 +500,7 @@ fn scan_file(
             .count();
 
         // perform post-processing
+        // The post-processing contains codes that shouldn't be executed in parallel, like writing to console, so please don't use rayon here.
         for (event, json_event, matched_rules) in results {
             for rule in matched_rules {
                 // write to console
