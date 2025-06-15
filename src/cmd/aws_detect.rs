@@ -87,7 +87,7 @@ fn write_record(
         let level_index = profile.iter().position(|(k, _)| k == "Level");
         let level = if let Some(index) = level_index {
             let org = record[index].to_lowercase();
-            let abb = abbrivate_level(&org);
+            let abb = abbreviate_level(&org);
             record[index] = abb.to_string();
             abb.to_string()
         } else {
@@ -193,7 +193,7 @@ fn write_record(
     }
 }
 
-fn abbrivate_level(level: &str) -> &str {
+fn abbreviate_level(level: &str) -> &str {
     match level {
         "critical" => "crit",
         "medium" => "med",
@@ -228,6 +228,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         );
         return;
     }
+    let rules = rules::filter_rules_by_level(&rules, &options.min_level);
 
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
