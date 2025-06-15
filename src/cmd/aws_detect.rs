@@ -446,7 +446,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
 fn scan_file(
     f: &PathBuf,
     options: &AwsCtTimelineOptions,
-    rules: &Vec<Rule>,
+    rules: &Vec<&Rule>,
     summary: &mut DetectionSummary,
     profile: &[(String, String)],
     wrt: &mut Writers,
@@ -489,6 +489,7 @@ fn scan_file(
                 let matched_rules: Vec<&Rule> = rules
                     .par_iter()
                     .filter(move |rule| rule.is_match(json_event))
+                    .map(|rule| *rule)
                     .collect();
                 (*event, json_event, matched_rules)
             })
