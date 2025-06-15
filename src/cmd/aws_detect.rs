@@ -501,6 +501,7 @@ fn scan_file(
             .filter(|(_, _, matched_rules)| !matched_rules.is_empty())
             .count();
 
+        // perform post-processing
         for (event, json_event, matched_rules) in results {
             for rule in matched_rules {
                 // write to console
