@@ -383,11 +383,10 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         )
         .unwrap();
     } else if let Some(f) = &options.input_opt.filepath {
-        let ref_rules: &Vec<Rule> = &rules;
         scan_file(
             f,
             options,
-            ref_rules,
+            &rules,
             &mut summary,
             &profile,
             &mut wrt,

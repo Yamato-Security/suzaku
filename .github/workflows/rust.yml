@@ -15,27 +15,27 @@ jobs:
       matrix:
         info:
           - {
-              os: "ubuntu-latest",
-              target: "x86_64-unknown-linux-gnu",
-              cross: false,
-            }
+            os: "ubuntu-latest",
+            target: "x86_64-unknown-linux-gnu",
+            cross: false,
+          }
           - {
-              os: "ubuntu-latest",
-              target: "x86_64-unknown-linux-musl",
-              cross: true,
-            }
+            os: "ubuntu-latest",
+            target: "x86_64-unknown-linux-musl",
+            cross: true,
+          }
           # - { os: "macOS-latest", target: "x86_64-apple-darwin", cross: false }
           # - { os: "macOS-latest", target: "aarch64-apple-darwin", cross: false }
           - {
-              os: "windows-latest",
-              target: "x86_64-pc-windows-msvc",
-              cross: false,
-            }
+            os: "windows-latest",
+            target: "x86_64-pc-windows-msvc",
+            cross: false,
+          }
           - {
-              os: "windows-latest",
-              target: "i686-pc-windows-msvc",
-              cross: true,
-            }
+            os: "windows-latest",
+            target: "i686-pc-windows-msvc",
+            cross: true,
+          }
     runs-on: ${{ matrix.info.os }}
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +55,8 @@ jobs:
         run: cargo fmt -- --check
       - name: Prepare Clippy
         run: rustup component add clippy
+      - name: cargo clean
+        run: cargo clean
       - name: Run clippy action to produce annotations
         run: cargo clippy --all-targets -- -D warnings
       - name: Install dependencies for musl
