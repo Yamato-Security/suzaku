@@ -51,6 +51,8 @@ jobs:
       - name: Enable Rust cache
         if: ${{ steps.skip_check.outputs.should_skip != 'true' }}
         uses: Swatinem/rust-cache@6fd3edff6979b79f87531400ad694fb7f2c84b1f #2.1.0
+      - name: try build
+        run: cargo build
       - name: Fmt Check
         run: cargo fmt -- --check
       - name: Prepare Clippy
