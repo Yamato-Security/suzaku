@@ -15,7 +15,7 @@ use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use rayon::prelude::*;
 use serde_json::Value;
-use sigma_rust::{Event, Rule, event_from_json};
+use sigma_rust::{event_from_json, Event, Rule};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -23,7 +23,7 @@ use std::io::{BufRead, BufReader};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
-use terminal_size::{Width, terminal_size};
+use terminal_size::{terminal_size, Width};
 
 #[derive(Debug, Default)]
 struct DetectionSummary {
@@ -498,11 +498,12 @@ fn scan_file(
             .collect();
 
         // perform post-processing
-        // calculate hit number
+        // calculate some statistics values
         summary.event_with_hits += results
             .iter()
             .filter(|(_, _, matched_rules)| !matched_rules.is_empty())
             .count();
+        summary.total_events += json_events.len();
 
         // The post-processing contains codes that shouldn't be executed in parallel, like setting values to variable summary, so please don't use rayon here.
         for (event, json_event, matched_rules) in results {
