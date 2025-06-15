@@ -55,8 +55,6 @@ jobs:
         run: cargo fmt -- --check
       - name: Prepare Clippy
         run: rustup component add clippy
-      - name: cargo clean
-        run: cargo clean
       - name: Run clippy action to produce annotations
         run: cargo clippy --all-targets -- -D warnings
       - name: Install dependencies for musl
