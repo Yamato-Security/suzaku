@@ -296,85 +296,85 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
 
     let mut summary = DetectionSummary::default();
 
-    if let Some(d) = &options.input_opt.directory {
-        let scan_by_all_rules = |json_value: &Value| {
-            if !filter_by_time(&options.input_opt.time_opt, json_value) {
-                return;
-            }
-            let event: Event = match event_from_json(json_value.to_string().as_str()) {
-                Ok(event) => event,
-                Err(_) => return,
-            };
-            summary.total_events += 1;
-            let mut counted = false;
-            for rule in &rules {
-                if rule.is_match(&event) {
-                    if !counted {
-                        summary.event_with_hits += 1;
-                        counted = true;
-                    }
+    let scan_by_all_rules = |json_value: &Value| {
+        if !filter_by_time(&options.input_opt.time_opt, json_value) {
+            return;
+        }
+        let event: Event = match event_from_json(json_value.to_string().as_str()) {
+            Ok(event) => event,
+            Err(_) => return,
+        };
+        summary.total_events += 1;
+        let mut counted = false;
+        for rule in &rules {
+            if rule.is_match(&event) {
+                if !counted {
+                    summary.event_with_hits += 1;
+                    counted = true;
+                }
 
-                    write_record(
-                        &profile,
-                        &event,
-                        json_value,
-                        rule,
-                        &mut wrt,
-                        common_opt.no_color,
-                        &mut geo_search,
-                        options.raw_output,
-                    );
+                write_record(
+                    &profile,
+                    &event,
+                    json_value,
+                    rule,
+                    &mut wrt,
+                    common_opt.no_color,
+                    &mut geo_search,
+                    options.raw_output,
+                );
 
-                    if let Some(author) = &rule.author {
-                        summary
-                            .author_titles
-                            .entry(author.clone())
-                            .or_default()
-                            .insert(rule.title.clone());
-                    }
+                if let Some(author) = &rule.author {
+                    summary
+                        .author_titles
+                        .entry(author.clone())
+                        .or_default()
+                        .insert(rule.title.clone());
+                }
 
-                    if let Some(level) = &rule.level {
-                        let level = format!("{:?}", level).to_lowercase();
-                        summary
-                            .level_with_hits
-                            .entry(level)
-                            .or_default()
-                            .entry(rule.title.clone())
-                            .and_modify(|e| *e += 1)
-                            .or_insert(1);
-                    }
+                if let Some(level) = &rule.level {
+                    let level = format!("{:?}", level).to_lowercase();
+                    summary
+                        .level_with_hits
+                        .entry(level)
+                        .or_default()
+                        .entry(rule.title.clone())
+                        .and_modify(|e| *e += 1)
+                        .or_insert(1);
+                }
 
-                    if let Some(event_time) = event.get("eventTime") {
-                        let event_time_str = event_time.value_to_string();
-                        if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
-                            let unix_time = event_time.timestamp();
-                            summary.timestamps.push(unix_time);
-                            if summary.first_event_time.is_none()
-                                || event_time < summary.first_event_time.unwrap()
-                            {
-                                summary.first_event_time = Some(event_time);
-                            }
-                            if summary.last_event_time.is_none()
-                                || event_time > summary.last_event_time.unwrap()
-                            {
-                                summary.last_event_time = Some(event_time);
-                            }
-                            if let Some(level) = &rule.level {
-                                let level = format!("{:?}", level).to_lowercase();
-                                let date = event_time.date_naive().format("%Y-%m-%d").to_string();
-                                summary
-                                    .dates_with_hits
-                                    .entry(level)
-                                    .or_default()
-                                    .entry(date)
-                                    .and_modify(|e| *e += 1)
-                                    .or_insert(1);
-                            }
+                if let Some(event_time) = event.get("eventTime") {
+                    let event_time_str = event_time.value_to_string();
+                    if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+                        let unix_time = event_time.timestamp();
+                        summary.timestamps.push(unix_time);
+                        if summary.first_event_time.is_none()
+                            || event_time < summary.first_event_time.unwrap()
+                        {
+                            summary.first_event_time = Some(event_time);
+                        }
+                        if summary.last_event_time.is_none()
+                            || event_time > summary.last_event_time.unwrap()
+                        {
+                            summary.last_event_time = Some(event_time);
+                        }
+                        if let Some(level) = &rule.level {
+                            let level = format!("{:?}", level).to_lowercase();
+                            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                            summary
+                                .dates_with_hits
+                                .entry(level)
+                                .or_default()
+                                .entry(date)
+                                .and_modify(|e| *e += 1)
+                                .or_insert(1);
                         }
                     }
                 }
             }
-        };
+        }
+    };
+    if let Some(d) = &options.input_opt.directory {
         process_events_from_dir(
             scan_by_all_rules,
             d,
@@ -383,7 +383,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         )
         .unwrap();
     } else if let Some(f) = &options.input_opt.filepath {
-        let ref_rules: &Vec<Rule> = rules.as_ref();
+        let ref_rules: &Vec<Rule> = &rules;
         scan_file(
             f,
             options,
