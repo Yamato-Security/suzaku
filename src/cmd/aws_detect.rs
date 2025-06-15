@@ -3,7 +3,7 @@ use crate::core::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::core::rules;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::core::util::{get_json_writer, get_writer, output_path_info, p};
-use crate::option::cli::{AwsCtTimelineOptions, CommonOptions};
+use crate::option::cli::{AwsCtTimelineOptions, CommonOptions, TimeOption};
 use crate::option::geoip::GeoIPSearch;
 use crate::option::timefiler::filter_by_time;
 use chrono::{DateTime, Utc};
@@ -13,6 +13,7 @@ use comfy_table::{Cell, Table, TableComponent};
 use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
+use rayon::prelude::*;
 use serde_json::Value;
 use sigma_rust::{Event, Rule, event_from_json};
 use std::cmp::min;
@@ -20,6 +21,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::io::{BufWriter, Write};
+use std::path::PathBuf;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use terminal_size::{Width, terminal_size};
 
@@ -217,7 +219,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         }
     }
     let profile = load_profile("config/default_profile.yaml", &geo_search);
-    let rules = rules::load_rules_from_dir(&options.rules);
+    let rules: Vec<Rule> = rules::load_rules_from_dir(&options.rules);
     if rules.is_empty() {
         p(
             Red.rdg(no_color),
@@ -294,7 +296,8 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     };
 
     let mut summary = DetectionSummary::default();
-    let mut scan_by_all_rules = |json_value: &Value| {
+
+    let scan_by_all_rules = |json_value: &Value| {
         if !filter_by_time(&options.input_opt.time_opt, json_value) {
             return;
         }
@@ -372,7 +375,6 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
             }
         }
     };
-
     if let Some(d) = &options.input_opt.directory {
         process_events_from_dir(
             scan_by_all_rules,
@@ -382,12 +384,16 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         )
         .unwrap();
     } else if let Some(f) = &options.input_opt.filepath {
-        let log_contents = get_content(f);
-        if let Ok(events) = load_json_from_file(&log_contents) {
-            for event in events {
-                scan_by_all_rules(&event);
-            }
-        }
+        scan_file(
+            f,
+            options,
+            &rules,
+            &mut summary,
+            &profile,
+            &mut wrt,
+            common_opt,
+            &mut geo_search,
+        );
     }
     if let Some(ref mut writer) = wrt.csv {
         writer.flush().unwrap();
@@ -432,6 +438,138 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
 
     if !output_pathes.is_empty() {
         output_path_info(no_color, &output_pathes);
+    }
+}
+
+// TODO remove allow
+#[allow(clippy::too_many_arguments)]
+fn scan_file(
+    f: &PathBuf,
+    options: &AwsCtTimelineOptions,
+    rules: &Vec<&Rule>,
+    summary: &mut DetectionSummary,
+    profile: &[(String, String)],
+    wrt: &mut Writers,
+    common_opt: &CommonOptions,
+    geo: &mut Option<GeoIPSearch>,
+) {
+    let log_contents = get_content(f);
+    let events = match load_json_from_file(&log_contents) {
+        Ok(value) => value,
+        Err(_e) => return,
+    };
+
+    // If all the events are loaded at once, it can consume too much memory.
+    // To avoid the problem, we split the events into chunks.
+    const CHUNK_SIZE: usize = 1000;
+    for event_chunks in events.chunks(CHUNK_SIZE) {
+        // convert loaded event into JSON
+        // I call the collect() function at the end of this block due to a lifetime issue of json_event.
+        // The ownership of json_event's reference is going to be moved in the next code block, so I ensure that the lifetime of json_event is longer than the next code block.
+        let repeated_time_opt: rayon::iter::RepeatN<&TimeOption> =
+            rayon::iter::repeat(&options.input_opt.time_opt).take(events.len());
+        let json_events: Vec<(&Value, Event)> = event_chunks
+            .par_iter()
+            .zip(repeated_time_opt.into_par_iter())
+            .filter_map(|(event, time_opt)| {
+                if filter_by_time(time_opt, event) {
+                    Some(event)
+                } else {
+                    None
+                }
+            })
+            .filter_map(|event| match event_from_json(event.to_string().as_str()) {
+                Ok(json_event) => Some((event, json_event)),
+                Err(_) => None,
+            })
+            .collect();
+
+        // conduct rule's matches and return pairs of json_event and matched_rules
+        let results: Vec<(&Value, &Event, Vec<&Rule>)> = json_events
+            .par_iter()
+            .map(|(event, json_event)| {
+                let matched_rules: Vec<&Rule> = rules
+                    .par_iter()
+                    .filter(move |rule| rule.is_match(json_event))
+                    .map(|rule| *rule)
+                    .collect();
+                (*event, json_event, matched_rules)
+            })
+            .collect();
+
+        // perform post-processing
+        // calculate some statistics values
+        summary.event_with_hits += results
+            .iter()
+            .filter(|(_, _, matched_rules)| !matched_rules.is_empty())
+            .count();
+        summary.total_events += json_events.len();
+
+        // The post-processing contains codes that shouldn't be executed in parallel, like setting values to variable summary, so please don't use rayon here.
+        for (event, json_event, matched_rules) in results {
+            for rule in matched_rules {
+                // write to console
+                write_record(
+                    profile,
+                    json_event,
+                    event,
+                    rule,
+                    wrt,
+                    common_opt.no_color,
+                    geo,
+                    options.raw_output,
+                );
+
+                // add information to summary
+                if let Some(author) = &rule.author {
+                    summary
+                        .author_titles
+                        .entry(author.clone())
+                        .or_default()
+                        .insert(rule.title.clone());
+                }
+
+                if let Some(level) = &rule.level {
+                    let level = format!("{:?}", level).to_lowercase();
+                    summary
+                        .level_with_hits
+                        .entry(level)
+                        .or_default()
+                        .entry(rule.title.clone())
+                        .and_modify(|e| *e += 1)
+                        .or_insert(1);
+                }
+
+                if let Some(event_time) = json_event.get("eventTime") {
+                    let event_time_str = event_time.value_to_string();
+                    if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+                        let unix_time = event_time.timestamp();
+                        summary.timestamps.push(unix_time);
+                        if summary.first_event_time.is_none()
+                            || event_time < summary.first_event_time.unwrap()
+                        {
+                            summary.first_event_time = Some(event_time);
+                        }
+                        if summary.last_event_time.is_none()
+                            || event_time > summary.last_event_time.unwrap()
+                        {
+                            summary.last_event_time = Some(event_time);
+                        }
+                        if let Some(level) = &rule.level {
+                            let level = format!("{:?}", level).to_lowercase();
+                            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                            summary
+                                .dates_with_hits
+                                .entry(level)
+                                .or_default()
+                                .entry(date)
+                                .and_modify(|e| *e += 1)
+                                .or_insert(1);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
