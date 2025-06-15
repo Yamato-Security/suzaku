@@ -15,7 +15,7 @@ use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use rayon::prelude::*;
 use serde_json::Value;
-use sigma_rust::{Event, Rule, event_from_json};
+use sigma_rust::{event_from_json, Event, Rule};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -23,7 +23,7 @@ use std::io::{BufRead, BufReader};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
-use terminal_size::{Width, terminal_size};
+use terminal_size::{terminal_size, Width};
 
 #[derive(Debug, Default)]
 struct DetectionSummary {
@@ -464,6 +464,8 @@ fn scan_file(
     const CHUNK_SIZE: usize = 1000;
     for event_chunks in events.chunks(CHUNK_SIZE) {
         // convert loaded event into JSON
+        // I call the collect() function at the end of this block due to a lifetime issue of json_event.
+        // The ownership of json_event's reference is going to be moved in the next code block, so I ensure that the lifetime of json_event is longer than the next code block.
         let repeated_time_opt: rayon::iter::RepeatN<&TimeOption> =
             rayon::iter::repeat(&options.input_opt.time_opt).take(events.len());
         let json_events: Vec<(&Value, Event)> = event_chunks
