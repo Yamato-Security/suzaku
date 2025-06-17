@@ -7,7 +7,8 @@
 - Level names are now abbreviated in `aws-ct-timeline`. (#68) (@fukusuket)
 - Error message output when no rules are found. (#76) (@fukusuket)
 - Added `--timeline-offset`, `--timeline-start` and `--timeline-end` options to the `aws-ct-timeline` command. (#58) (@fukusuket)
-
+- `aws-ct-timeline` supports multi-threading for single file scans. (#32) (@hach1yon)
+ 
 ## 0.2.1 [2025/05/25] - AUSCERT/SINCON Release 2
 
 - Fixed the release name and updated the readme. (@yamatosecurity)
