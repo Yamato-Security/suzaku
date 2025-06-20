@@ -28,11 +28,11 @@ pub fn scan_file(
     f: &PathBuf,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    mut summary: &mut DetectionSummary,
+    summary: &mut DetectionSummary,
     profile: &[(String, String)],
-    mut wrt: &mut Writers,
+    wrt: &mut Writers,
     common_opt: &CommonOptions,
-    mut geo: &mut Option<GeoIPSearch>,
+    geo: &mut Option<GeoIPSearch>,
 ) {
     let log_contents = get_content(f);
     let events = match load_json_from_file(&log_contents) {
@@ -41,33 +41,50 @@ pub fn scan_file(
     };
 
     detect_events(
-        &events,
-        options,
-        &rules,
-        &mut summary,
-        &profile,
-        &mut wrt,
-        common_opt,
-        &mut geo,
+        &events, options, rules, summary, profile, wrt, common_opt, geo,
     );
 }
 
 // TODO remove allow
 #[allow(clippy::too_many_arguments)]
-pub fn process_events_from_dir(
-    directory: &PathBuf,
+pub fn scan_directory(
+    d: &PathBuf,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    mut summary: &mut crate::cmd::aws_detect::DetectionSummary,
+    summary: &mut DetectionSummary,
     profile: &[(String, String)],
-    mut wrt: &mut crate::cmd::aws_detect::Writers,
+    wrt: &mut Writers,
     common_opt: &CommonOptions,
-    mut geo: &mut Option<GeoIPSearch>,
-) -> Result<(), Box<dyn Error>> {
+    geo: &mut Option<GeoIPSearch>,
+) {
+    let process_events = |events: &[Value]| {
+        detect_events(
+            events, options, rules, summary, profile, wrt, common_opt, geo,
+        );
+    };
+    process_events_from_dir(
+        process_events,
+        d,
+        options.output.is_some(),
+        common_opt.no_color,
+    )
+    .unwrap();
+}
+
+// TODO remove allow
+#[allow(clippy::too_many_arguments)]
+pub fn process_events_from_dir<F>(
+    mut process_events: F,
+    directory: &PathBuf,
+    show_progress: bool,
+    no_color: bool,
+) -> Result<(), Box<dyn Error>>
+where
+    F: FnMut(&[Value]),
+{
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).display().to_string();
 
-    let no_color = common_opt.no_color;
     p(Green.rdg(no_color), "Total log files: ", false);
     p(None, count.to_string().as_str(), true);
     p(Green.rdg(no_color), "Total file size: ", false);
@@ -94,7 +111,6 @@ pub fn process_events_from_dir(
         ProgressBar::with_draw_target(Some(count as u64), ProgressDrawTarget::stdout_with_hz(10))
             .with_tab_width(55);
     pb.set_style(pb_style);
-    let show_progress = options.output.is_some();
     if show_progress {
         pb.enable_steady_tick(Duration::from_millis(300));
     }
@@ -116,16 +132,7 @@ pub fn process_events_from_dir(
         };
 
         let events = log_contents_to_events(&log_contents);
-        detect_events(
-            &events,
-            options,
-            &rules,
-            &mut summary,
-            &profile,
-            &mut wrt,
-            common_opt,
-            &mut geo,
-        );
+        process_events(&events);
 
         if show_progress {
             pb.inc(1);
@@ -142,7 +149,7 @@ pub fn process_events_from_dir(
 }
 
 fn log_contents_to_events(log_contents: &str) -> Vec<Value> {
-    let json_value: Result<Value, _> = serde_json::from_str(&log_contents);
+    let json_value: Result<Value, _> = serde_json::from_str(log_contents);
     match json_value {
         Ok(json_value) => {
             match json_value {

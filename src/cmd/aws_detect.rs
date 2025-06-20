@@ -1,11 +1,10 @@
 use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::core::rules;
-use crate::core::scan::{process_events_from_dir, scan_file};
+use crate::core::scan::{scan_directory, scan_file};
 use crate::core::util::{get_json_writer, get_writer, output_path_info, p};
 use crate::option::cli::{AwsCtTimelineOptions, CommonOptions};
 use crate::option::geoip::GeoIPSearch;
-use crate::option::timefiler::filter_by_time;
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
@@ -14,7 +13,7 @@ use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use serde_json::Value;
-use sigma_rust::{Event, Rule, event_from_json};
+use sigma_rust::{Event, Rule};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -295,7 +294,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
 
     let mut summary = DetectionSummary::default();
     if let Some(d) = &options.input_opt.directory {
-        process_events_from_dir(
+        scan_directory(
             d,
             options,
             &rules,
@@ -304,8 +303,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
             &mut wrt,
             common_opt,
             &mut geo_search,
-        )
-        .unwrap();
+        );
     } else if let Some(f) = &options.input_opt.filepath {
         scan_file(
             f,

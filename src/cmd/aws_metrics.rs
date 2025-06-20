@@ -21,19 +21,21 @@ pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf
     }
 
     let mut count_map = HashMap::new();
-    let mut stats_func = |json_value: &Value| {
-        if !filter_by_time(&input_opt.time_opt, json_value) {
-            return;
-        }
-        let event: Event = match event_from_json(json_value.to_string().as_str()) {
-            Ok(event) => event,
-            Err(_) => return,
-        };
-        let value = event.get(field);
-        if let Some(value) = value {
-            let event_name = value.value_to_string();
-            let count = count_map.entry(event_name).or_insert(0);
-            *count += 1;
+    let mut stats_func = |json_values: &[Value]| {
+        for json_value in json_values {
+            if !filter_by_time(&input_opt.time_opt, json_value) {
+                continue;
+            }
+            let event: Event = match event_from_json(json_value.to_string().as_str()) {
+                Ok(event) => event,
+                Err(_) => continue,
+            };
+            let value = event.get(field);
+            if let Some(value) = value {
+                let event_name = value.value_to_string();
+                let count = count_map.entry(event_name).or_insert(0);
+                *count += 1;
+            }
         }
     };
 
@@ -44,9 +46,7 @@ pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
-            for event in events {
-                stats_func(&event);
-            }
+            stats_func(&events);
             print_count_map_desc(csv_header, &count_map, wtr, output, no_color);
         }
     }
