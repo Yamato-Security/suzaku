@@ -1,11 +1,20 @@
+use crate::cmd::aws_detect::{DetectionSummary, Writers};
 use crate::core::color::SuzakuColor::{Green, Orange};
 use crate::core::util::p;
+use crate::option::cli::{AwsCtTimelineOptions, CommonOptions, TimeOption};
+use crate::option::geoip::GeoIPSearch;
+use crate::option::timefiler::filter_by_time;
 use bytesize::ByteSize;
+use chrono::{DateTime, Utc};
 use colored::Colorize;
 use console::style;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use rayon::iter::IndexedParallelIterator;
+use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 use serde_json::Value;
+use sigma_rust::{Event, Rule, event_from_json};
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -13,17 +22,52 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{fs, io};
 
-pub fn process_events_from_dir<F>(
-    mut process_event: F,
+// TODO remove allow
+#[allow(clippy::too_many_arguments)]
+pub fn scan_file(
+    f: &PathBuf,
+    options: &AwsCtTimelineOptions,
+    rules: &Vec<&Rule>,
+    mut summary: &mut DetectionSummary,
+    profile: &[(String, String)],
+    mut wrt: &mut Writers,
+    common_opt: &CommonOptions,
+    mut geo: &mut Option<GeoIPSearch>,
+) {
+    let log_contents = get_content(f);
+    let events = match load_json_from_file(&log_contents) {
+        Ok(value) => value,
+        Err(_e) => return,
+    };
+
+    detect_events(
+        &events,
+        options,
+        &rules,
+        &mut summary,
+        &profile,
+        &mut wrt,
+        common_opt,
+        &mut geo,
+    );
+}
+
+// TODO remove allow
+#[allow(clippy::too_many_arguments)]
+pub fn process_events_from_dir(
     directory: &PathBuf,
-    show_progress: bool,
-    no_color: bool,
-) -> Result<(), Box<dyn Error>>
-where
-    F: FnMut(&Value),
-{
+    options: &AwsCtTimelineOptions,
+    rules: &Vec<&Rule>,
+    mut summary: &mut crate::cmd::aws_detect::DetectionSummary,
+    profile: &[(String, String)],
+    mut wrt: &mut crate::cmd::aws_detect::Writers,
+    common_opt: &CommonOptions,
+    mut geo: &mut Option<GeoIPSearch>,
+) -> Result<(), Box<dyn Error>> {
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).display().to_string();
+
+    let no_color = common_opt.no_color;
     p(Green.rdg(no_color), "Total log files: ", false);
     p(None, count.to_string().as_str(), true);
     p(Green.rdg(no_color), "Total file size: ", false);
@@ -50,9 +94,11 @@ where
         ProgressBar::with_draw_target(Some(count as u64), ProgressDrawTarget::stdout_with_hz(10))
             .with_tab_width(55);
     pb.set_style(pb_style);
+    let show_progress = options.output.is_some();
     if show_progress {
         pb.enable_steady_tick(Duration::from_millis(300));
     }
+
     for path in file_paths {
         if show_progress {
             let size = fs::metadata(&path).unwrap().len();
@@ -68,31 +114,18 @@ where
             pb.inc(1);
             continue;
         };
-        let json_value: Result<Value, _> = serde_json::from_str(&log_contents);
-        match json_value {
-            Ok(json_value) => {
-                match json_value {
-                    Value::Array(json_array) => {
-                        for json_value in json_array {
-                            process_event(&json_value);
-                        }
-                    }
-                    Value::Object(json_map) => {
-                        if let Some(json_array) = json_map.get("Records") {
-                            for json_value in json_array.as_array().unwrap() {
-                                process_event(json_value);
-                            }
-                        }
-                    }
-                    _ => {
-                        // TODO: Handle unexpected JSON structure
-                    }
-                }
-            }
-            Err(_) => {
-                // TODO: Handle unexpected JSON structure
-            }
-        }
+
+        let events = log_contents_to_events(&log_contents);
+        detect_events(
+            &events,
+            options,
+            &rules,
+            &mut summary,
+            &profile,
+            &mut wrt,
+            common_opt,
+            &mut geo,
+        );
 
         if show_progress {
             pb.inc(1);
@@ -106,6 +139,162 @@ where
         }
     }
     Ok(())
+}
+
+fn log_contents_to_events(log_contents: &str) -> Vec<Value> {
+    let json_value: Result<Value, _> = serde_json::from_str(&log_contents);
+    match json_value {
+        Ok(json_value) => {
+            match json_value {
+                Value::Array(json_array) => json_array,
+                Value::Object(mut json_map) => {
+                    // use json_map.remove to get json_array
+                    if let Some(json_array) = json_map.remove("Records") {
+                        match json_array {
+                            Value::Array(json_array) => json_array,
+                            _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                _ => {
+                    // TODO: Handle unexpected JSON structure
+                    vec![]
+                }
+            }
+        }
+        Err(_) => {
+            // TODO: Handle unexpected JSON structure
+            vec![]
+        }
+    }
+}
+
+// TODO remove allow
+#[allow(clippy::too_many_arguments)]
+fn detect_events(
+    events: &[Value],
+    options: &AwsCtTimelineOptions,
+    rules: &Vec<&Rule>,
+    summary: &mut DetectionSummary,
+    profile: &[(String, String)],
+    wrt: &mut Writers,
+    common_opt: &CommonOptions,
+    geo: &mut Option<GeoIPSearch>,
+) {
+    // If all the events are loaded at once, it can consume too much memory.
+    // To avoid the problem, we split the events into chunks.
+    const CHUNK_SIZE: usize = 1000;
+    for event_chunks in events.chunks(CHUNK_SIZE) {
+        // convert loaded event into JSON
+        // I call the collect() function at the end of this block due to a lifetime issue of json_event.
+        // The ownership of json_event's reference is going to be moved in the next code block, so I ensure that the lifetime of json_event is longer than the next code block.
+        let repeated_time_opt: rayon::iter::RepeatN<&TimeOption> =
+            rayon::iter::repeat(&options.input_opt.time_opt).take(events.len());
+        let json_events: Vec<(&Value, Event)> = event_chunks
+            .par_iter()
+            .zip(repeated_time_opt.into_par_iter())
+            .filter_map(|(event, time_opt)| {
+                if filter_by_time(time_opt, event) {
+                    Some(event)
+                } else {
+                    None
+                }
+            })
+            .filter_map(|event| match event_from_json(event.to_string().as_str()) {
+                Ok(json_event) => Some((event, json_event)),
+                Err(_) => None,
+            })
+            .collect();
+
+        // conduct rule's matches and return pairs of json_event and matched_rules
+        let results: Vec<(&Value, &Event, Vec<&Rule>)> = json_events
+            .par_iter()
+            .map(|(event, json_event)| {
+                let matched_rules: Vec<&Rule> = rules
+                    .par_iter()
+                    .filter(move |rule| rule.is_match(json_event))
+                    .map(|rule| *rule)
+                    .collect();
+                (*event, json_event, matched_rules)
+            })
+            .collect();
+
+        // perform post-processing
+        // calculate some statistics values
+        summary.event_with_hits += results
+            .iter()
+            .filter(|(_, _, matched_rules)| !matched_rules.is_empty())
+            .count();
+        summary.total_events += json_events.len();
+
+        // The post-processing contains codes that shouldn't be executed in parallel, like setting values to variable summary, so please don't use rayon here.
+        for (event, json_event, matched_rules) in results {
+            for rule in matched_rules {
+                // write to console
+                crate::cmd::aws_detect::write_record(
+                    profile,
+                    json_event,
+                    event,
+                    rule,
+                    wrt,
+                    common_opt.no_color,
+                    geo,
+                    options.raw_output,
+                );
+
+                // add information to summary
+                if let Some(author) = &rule.author {
+                    summary
+                        .author_titles
+                        .entry(author.clone())
+                        .or_default()
+                        .insert(rule.title.clone());
+                }
+
+                if let Some(level) = &rule.level {
+                    let level = format!("{:?}", level).to_lowercase();
+                    summary
+                        .level_with_hits
+                        .entry(level)
+                        .or_default()
+                        .entry(rule.title.clone())
+                        .and_modify(|e| *e += 1)
+                        .or_insert(1);
+                }
+
+                if let Some(event_time) = json_event.get("eventTime") {
+                    let event_time_str = event_time.value_to_string();
+                    if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+                        let unix_time = event_time.timestamp();
+                        summary.timestamps.push(unix_time);
+                        if summary.first_event_time.is_none()
+                            || event_time < summary.first_event_time.unwrap()
+                        {
+                            summary.first_event_time = Some(event_time);
+                        }
+                        if summary.last_event_time.is_none()
+                            || event_time > summary.last_event_time.unwrap()
+                        {
+                            summary.last_event_time = Some(event_time);
+                        }
+                        if let Some(level) = &rule.level {
+                            let level = format!("{:?}", level).to_lowercase();
+                            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                            summary
+                                .dates_with_hits
+                                .entry(level)
+                                .or_default()
+                                .entry(date)
+                                .and_modify(|e| *e += 1)
+                                .or_insert(1);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>, u64), Box<dyn Error>> {
