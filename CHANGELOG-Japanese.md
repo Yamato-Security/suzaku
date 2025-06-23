@@ -7,7 +7,7 @@
 - レベル名は`aws-ct-timeline`で省略されるようになった。(#68) (@fukusuket)
 - ルールが見つからない場合は、エラーメッセージを出力するようになった。 (#76) (@fukusuket)
 - `aws-ct-timeline`コマンドに`--timeline-offset`、`--timeline-start`、`--timeline-end`オプションを追加した。 (#58) (@fukusuket)
-- `aws-ct-timeline`コマンドは、単一ファイルスキャンのマルチスレッドに対応した。 (#32) (@hach1yon)
+- `aws-ct-timeline`コマンドは、マルチスレッドに対応した。 (#32) (@hach1yon)
 
 ## 0.2.1 [2025/05/25] - AUSCERT/SINCON Release 2
 

@@ -140,7 +140,7 @@ pub fn aws_summary(
     }
     let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
-    let mut summary_func = |json_value: &Value| {
+    let mut single_summary_func = |json_value: &Value| {
         if !filter_by_time(&input_opt.time_opt, json_value) {
             return;
         }
@@ -245,6 +245,11 @@ pub fn aws_summary(
             other_api_failed,
         );
     };
+    let mut summary_func = |json_values: &[Value]| {
+        for json_value in json_values {
+            single_summary_func(json_value);
+        }
+    };
     let abused_aws_api_values: Vec<String> = abused_aws_api_calls.values().cloned().collect();
     if let Some(d) = directory {
         process_events_from_dir(summary_func, d, true, no_color).unwrap();
@@ -259,9 +264,7 @@ pub fn aws_summary(
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents);
         if let Ok(events) = events {
-            for event in events {
-                summary_func(&event);
-            }
+            summary_func(&events);
             output_summary(
                 &user_data,
                 output,
