@@ -16,6 +16,10 @@ This repository provides the Terraform configuration and execution steps to run 
 ## Configuration: `terraform.tfvars`
 Before running Terraform, create a `terraform.tfvars` file in the terraform directory with the following content:
 
+```bash
+cp terraform.tfvars.template terraform.tfvars
+```
+
 ```hcl
 suzaku_task_policy_resources = {
   get_object      = "arn:aws:s3:::suzaku-input-logs/*"
