@@ -52,7 +52,7 @@ pub fn filter_rules_by_level<'a>(rules: &'a [Rule], min_level: &'a str) -> Vec<&
         .filter(|rule| {
             rule.level
                 .as_ref()
-                .map(|lvl| level_to_int(&format!("{:?}", lvl)) >= min)
+                .map(|lvl| level_to_int(&format!("{lvl:?}")) >= min)
                 .unwrap_or(false)
         })
         .collect()

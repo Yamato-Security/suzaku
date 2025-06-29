@@ -28,14 +28,14 @@ pub fn get_json_writer(output: &Option<PathBuf>) -> BufWriter<Box<dyn Write>> {
 pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) -> bool {
     if let Some(file) = filepath {
         if !file.exists() {
-            println!("File {:?} does not exist.", file);
+            println!("File {file:?} does not exist.");
             return false;
         }
     }
 
     if let Some(dir) = dirpath {
         if !dir.exists() {
-            println!("Directory {:?} does not exist.", dir);
+            println!("Directory {dir:?} does not exist.");
             return false;
         }
     }

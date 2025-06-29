@@ -173,7 +173,7 @@ pub fn aws_summary(
                         let asn = geo.get_asn(ip);
                         let country = geo.get_country(ip);
                         let city = geo.get_city(ip);
-                        ip_str = format!("{} ({}, {}, {})", ip_str, asn, city, country);
+                        ip_str = format!("{ip_str} ({asn}, {city}, {country})");
                     }
                 }
                 ip_str
@@ -210,25 +210,25 @@ pub fn aws_summary(
         let mut abused_api_success = "".to_string();
         if let Some(desc) = abused_aws_api_calls.get(&event_name) {
             if error_code != "AccessDenied" {
-                abused_api_success = format!("{} ({}) - {}", event_name, event_source, desc);
+                abused_api_success = format!("{event_name} ({event_source}) - {desc}");
             }
         };
 
         let mut abused_api_failed = "".to_string();
         if let Some(desc) = abused_aws_api_calls.get(&event_name) {
             if error_code == "AccessDenied" {
-                abused_api_failed = format!("{} ({}) - {}", event_name, event_source, desc);
+                abused_api_failed = format!("{event_name} ({event_source}) - {desc}");
             }
         };
 
         let mut other_api_success = "".to_string();
         if !abused_aws_api_calls.contains_key(&event_name) && error_code != "AccessDenied" {
-            other_api_success = format!("{} ({})", event_name, event_source);
+            other_api_success = format!("{event_name} ({event_source})");
         };
 
         let mut other_api_failed = "".to_string();
         if !abused_aws_api_calls.contains_key(&event_name) && error_code == "AccessDenied" {
-            other_api_failed = format!("{} ({})", event_name, event_source);
+            other_api_failed = format!("{event_name} ({event_source})");
         };
 
         let entry = user_data.entry(user_identity_arn.clone()).or_default();
@@ -337,7 +337,7 @@ fn output_summary(
     let fmt_val_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
         let total: usize = map.values().map(|v| v.0).sum();
         let total = total.to_formatted_string(&Locale::en);
-        format!("| {} {}", msg, total)
+        format!("| {msg} {total}")
     };
 
     for (user_arn, summary) in sorted_user_data.iter() {
@@ -361,22 +361,22 @@ fn output_summary(
         let mut abused_suc = fmt_key_total("Unique APIs", &summary.abused_api_success);
         if let Some(pos) = abused_suc.find('\n') {
             let abused_suc_val = fmt_val_total("Total APIs", &summary.abused_api_success);
-            abused_suc.insert_str(pos, &format!(" {}", abused_suc_val));
+            abused_suc.insert_str(pos, &format!(" {abused_suc_val}"));
         }
         let mut abused_fai = fmt_key_total("Unique APIs", &summary.abused_api_failed);
         if let Some(pos) = abused_fai.find('\n') {
             let abused_fai_val = fmt_val_total("Total APIs", &summary.abused_api_failed);
-            abused_fai.insert_str(pos, &format!(" {}", abused_fai_val));
+            abused_fai.insert_str(pos, &format!(" {abused_fai_val}"));
         }
         let mut other_suc = fmt_key_total("Unique APIs", &summary.other_api_success);
         if let Some(pos) = other_suc.find('\n') {
             let other_suc_val = fmt_val_total("Total APIs", &summary.other_api_success);
-            other_suc.insert_str(pos, &format!(" {}", other_suc_val));
+            other_suc.insert_str(pos, &format!(" {other_suc_val}"));
         }
         let mut other_fai = fmt_key_total("Unique APIs", &summary.other_api_failed);
         if let Some(pos) = other_fai.find('\n') {
             let other_fai_val = fmt_val_total("Total APIs", &summary.other_api_failed);
-            other_fai.insert_str(pos, &format!(" {}", other_fai_val));
+            other_fai.insert_str(pos, &format!(" {other_fai_val}"));
         }
 
         if *hide_descriptions {
