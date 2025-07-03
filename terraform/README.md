@@ -1,6 +1,7 @@
 # Run Suzaku on AWS ECS Fargate
 
-This repository provides the Terraform configuration and execution steps to run [Suzaku](https://github.com/Yamato-Security/suzaku), a digital forensics and threat detection tool, on AWS ECS Fargate. The flow includes setting up infrastructure, running Suzaku against CloudTrail logs stored in S3, and tearing down the infrastructure afterwards.
+This repository provides the Terraform configuration and execution steps to run Suzaku on AWS ECS Fargate.
+The flow includes setting up the infrastructure, running Suzaku against CloudTrail logs stored in S3, and tearing down the infrastructure afterwards.
 
 ---
 
@@ -10,6 +11,7 @@ This repository provides the Terraform configuration and execution steps to run 
 - Terraform installed (`>= v1.0`)
 - An S3 bucket with CloudTrail logs uploaded
 - Permissions to create ECS resources, IAM roles, VPC, etc.
+- [SessionManagerPlugin installed](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
 
 ---
 
