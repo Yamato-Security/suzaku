@@ -1,0 +1,7 @@
+# terraform.tfvars.template
+suzaku_task_policy_resources = {
+  get_object      = "arn:aws:s3:::your-input-bucket-name/*"
+  list_bucket     = "arn:aws:s3:::your-input-bucket-name"
+  put_object      = "arn:aws:s3:::your-output-bucket-name/*"
+  cloudwatch_logs = "arn:aws:logs:*:*:log-group:/ecs/suzaku:*"
+}

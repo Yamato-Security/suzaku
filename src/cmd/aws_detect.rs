@@ -106,7 +106,7 @@ pub fn write_record(
         for (i, col) in record.iter().enumerate() {
             buf.set_color(ColorSpec::new().set_fg(color.rdg(no_color)))
                 .ok();
-            write!(buf, "{}", col).ok();
+            write!(buf, "{col}").ok();
             if i != record.len() - 1 {
                 if no_color {
                     buf.set_color(ColorSpec::new().set_fg(None)).ok();
@@ -427,7 +427,7 @@ fn print_summary_levels(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)
             );
             p(color.rdg(false), &msg, true);
         } else {
-            let msg = format!("Total | Unique {} detections: 0 (0%) | 0 (0%)", level);
+            let msg = format!("Total | Unique {level} detections: 0 (0%) | 0 (0%)");
             p(color.rdg(false), &msg, true);
         }
     }
@@ -460,7 +460,7 @@ fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, Suz
                 p(color.rdg(false), &msg, false);
             }
         } else {
-            p(color.rdg(false), &format!("{}: n/a", level), false);
+            p(color.rdg(false), &format!("{level}: n/a"), false);
         }
         if *level != "informational" {
             p(None, ", ", false);
@@ -500,7 +500,7 @@ fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)>
     for chunk in table_data.chunks(2) {
         let heads = chunk
             .iter()
-            .map(|(level, (color, _))| Cell::new(format!("Top {} alerts:", level)).fg(rgb(color)))
+            .map(|(level, (color, _))| Cell::new(format!("Top {level} alerts:")).fg(rgb(color)))
             .collect::<Vec<_>>();
         let columns = chunk
             .iter()

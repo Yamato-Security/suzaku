@@ -149,7 +149,7 @@ fn main() {
     p(Green.rdg(no_color), "Elapsed time: ", false);
     p(
         None,
-        &format!("{:02}:{:02}:{:02}\n", hours, minutes, seconds),
+        &format!("{hours:02}:{minutes:02}:{seconds:02}\n"),
         true,
     );
     let debug = match cmd {
@@ -195,11 +195,11 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
         p(None, msg.as_str(), true);
     }
     if help {
-        let msg = format!("Version: {} ({})", VERSION, RELEASE_NAME);
+        let msg = format!("Version: {VERSION} ({RELEASE_NAME})");
         p(None, msg.as_str(), true);
     } else {
         p(Green.rdg(no_color), "Version: ", false);
-        p(None, &format!("{} ({})\n", VERSION, RELEASE_NAME), false);
+        p(None, &format!("{VERSION} ({RELEASE_NAME})\n"), false);
     }
     println!()
 }

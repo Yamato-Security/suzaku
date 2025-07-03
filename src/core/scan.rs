@@ -119,7 +119,7 @@ where
         if show_progress {
             let size = fs::metadata(&path).unwrap().len();
             let size = ByteSize::b(size).display().to_string();
-            let pb_msg = format!("{} ({})", path, size);
+            let pb_msg = format!("{path} ({size})");
             pb.set_message(pb_msg);
         }
         let log_contents = if path.ends_with("json") {
@@ -261,7 +261,7 @@ fn detect_events(
                 }
 
                 if let Some(level) = &rule.level {
-                    let level = format!("{:?}", level).to_lowercase();
+                    let level = format!("{level:?}").to_lowercase();
                     summary
                         .level_with_hits
                         .entry(level)
@@ -287,7 +287,7 @@ fn detect_events(
                             summary.last_event_time = Some(event_time);
                         }
                         if let Some(level) = &rule.level {
-                            let level = format!("{:?}", level).to_lowercase();
+                            let level = format!("{level:?}").to_lowercase();
                             let date = event_time.date_naive().format("%Y-%m-%d").to_string();
                             summary
                                 .dates_with_hits

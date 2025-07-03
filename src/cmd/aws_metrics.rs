@@ -78,7 +78,7 @@ fn print_count_map_desc(
     for (event_name, count) in total_vec {
         let count = count.to_string();
         let rate = (count.parse::<f64>().unwrap() / total as f64) * 100.0;
-        let rate = format!("{:.2}%", rate);
+        let rate = format!("{rate:.2}%");
         let record = vec![event_name, rate.as_str(), count.as_str()];
         if output.is_none() {
             table.add_row(record.iter().map(Cell::new));
@@ -89,6 +89,6 @@ fn print_count_map_desc(
     wrt.flush().ok();
     match output {
         Some(csv) => output_path_info(no_color, [csv.clone()].as_slice()),
-        None => println!("{}", table),
+        None => println!("{table}"),
     }
 }
