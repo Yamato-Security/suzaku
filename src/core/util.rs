@@ -67,3 +67,18 @@ pub fn output_path_info(no_color: bool, output_paths: &[PathBuf]) {
     }
     println!();
 }
+
+/**
+ * Set the global thread number for rayon.
+ * @param val The number of threads.
+ */
+pub fn set_rayon_threat_number(val: usize) {
+    if val == 0 {
+        return;
+    }
+
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(val)
+        .build_global()
+        .unwrap();
+}
