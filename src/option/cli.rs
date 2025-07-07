@@ -107,8 +107,8 @@ pub struct AwsCtTimelineOptions {
     #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 3)]
     pub min_level: String,
 
-    /// the number of threads for detecting aws-ct-timeline commands
-    #[arg(help_heading = Some("Output"), long = "threads", default_value = "0", hide_default_value = true, value_name = "THREAT NUMBER",)]
+    /// Number of threads to use (default: same as CPU cores)
+    #[arg(help_heading = Some("Output"), long = "threads", default_value = "0", hide_default_value = true, value_name = "THREAD NUMBER",)]
     pub threat_num: usize,
 }
 
