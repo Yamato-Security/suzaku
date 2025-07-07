@@ -5,7 +5,7 @@ use cmd::aws_metrics::aws_metrics;
 use cmd::aws_summary::aws_summary;
 use cmd::update::start_update_rules;
 use core::color::SuzakuColor::Green;
-use core::util::{check_path_exists, p};
+use core::util::{check_path_exists, p, set_rayon_threat_number};
 use libmimalloc_sys::mi_stats_print_out;
 use mimalloc::MiMalloc;
 use option::cli::Commands::{AwsCtMetrics, AwsCtSummary, AwsCtTimeline, UpdateRules};
@@ -45,6 +45,8 @@ fn main() {
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
+
+            set_rayon_threat_number(options.threat_num);
 
             let dir = &options.input_opt.directory;
             let file = &options.input_opt.filepath;
