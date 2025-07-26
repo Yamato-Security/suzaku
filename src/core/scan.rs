@@ -72,8 +72,6 @@ pub fn scan_directory<'a>(
     process_events_from_dir(process_events, d, options.output.is_some(), no_color).unwrap();
 }
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
 pub fn process_events_from_dir<F>(
     mut process_events: F,
     directory: &PathBuf,
