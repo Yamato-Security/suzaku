@@ -57,7 +57,7 @@ pub fn scan_directory<'a>(
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
     correlation_engine: &'a CorrelationEngine,
 ) {
-    let no_color = &context.config.no_color;
+    let no_color = context.config.no_color;
     let process_events = |events: &[Value]| {
         detect_events(
             events,
@@ -76,7 +76,7 @@ pub fn process_events_from_dir<F>(
     mut process_events: F,
     directory: &PathBuf,
     show_progress: bool,
-    no_color: &bool,
+    no_color: bool,
 ) -> Result<(), Box<dyn Error>>
 where
     F: FnMut(&[Value]),
@@ -84,16 +84,16 @@ where
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).display().to_string();
 
-    p(Green.rdg(*no_color), "Total log files: ", false);
+    p(Green.rdg(no_color), "Total log files: ", false);
     p(None, count.to_string().as_str(), true);
-    p(Green.rdg(*no_color), "Total file size: ", false);
+    p(Green.rdg(no_color), "Total file size: ", false);
     p(None, size.to_string().as_str(), true);
     println!();
 
-    p(Orange.rdg(*no_color), "Scanning now. Please wait.", true);
+    p(Orange.rdg(no_color), "Scanning now. Please wait.", true);
     println!();
 
-    let template = if *no_color {
+    let template = if no_color {
         "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}"
             .to_string()
     } else {
@@ -138,7 +138,7 @@ where
         }
     }
     if show_progress {
-        if *no_color {
+        if no_color {
             pb.finish_with_message("Scanning finished.\n");
         } else {
             pb.finish_with_message(style("Scanning finished.\n").color256(214).to_string());

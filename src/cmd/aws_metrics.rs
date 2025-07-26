@@ -40,7 +40,7 @@ pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf
     };
 
     if let Some(d) = directory {
-        process_events_from_dir(stats_func, d, true, &no_color).unwrap();
+        process_events_from_dir(stats_func, d, true, no_color).unwrap();
         print_count_map_desc(csv_header, &count_map, wtr, output, no_color);
     } else if let Some(f) = file {
         let log_contents = get_content(f);
