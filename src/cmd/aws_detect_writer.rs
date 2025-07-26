@@ -308,10 +308,6 @@ fn get_value_from_correlation_event(
             && let Some(date) = &rule.date
         {
             date.to_string()
-        } else if key == "modified"
-            && let Some(modified) = &rule.date
-        {
-            modified.to_string()
         } else if key == "tags"
             && let Some(tag) = &rule.tags
         {

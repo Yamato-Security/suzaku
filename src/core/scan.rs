@@ -194,7 +194,7 @@ fn detect_events<'a>(
     // To avoid the problem, we split the events into chunks.
     const CHUNK_SIZE: usize = 1000;
     for event_chunks in events.chunks(CHUNK_SIZE) {
-        // Convert loaded event into JSON
+        // Convert loaded events into JSON
         // I call the collect() function at the end of this block due to a lifetime issue of json_event.
         // The ownership of json_event's reference is going to be moved in the next code block, so I ensure that the lifetime of json_event is longer than the next code block.
         let repeated_time_opt: rayon::iter::RepeatN<&TimeOption> =
