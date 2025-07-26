@@ -1,4 +1,6 @@
-use crate::cmd::aws_detect_writer::{OutputConfig, OutputContext, init_writers, write_record};
+use crate::cmd::aws_detect_writer::{
+    OutputConfig, OutputContext, init_writers, write_correlation_record, write_record,
+};
 use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::core::rules;
@@ -96,6 +98,7 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     let mut summary = DetectionSummary::default();
     let mut matched_correlation: Vec<TimestampedEvent> = Vec::new();
     context.write_header();
+
     if let Some(d) = &options.input_opt.directory {
         scan_directory(
             d,
@@ -183,7 +186,7 @@ fn process_correlation_events(
                         summary.event_with_hits += 1;
                         append_summary_data(summary, &event.event, event.rule, generate);
                     }
-                    //TODO output correlation results file
+                    write_correlation_record(&res.events, rule, context);
                     if let Some(author) = &rule.author {
                         summary
                             .author_titles

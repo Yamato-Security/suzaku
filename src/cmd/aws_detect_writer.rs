@@ -3,9 +3,10 @@ use crate::core::color::SuzakuColor::{Green, Orange, Red, White, Yellow};
 use crate::core::util::{get_json_writer, get_writer};
 use crate::option::geoip::GeoIPSearch;
 use csv::Writer;
+use itertools::Itertools;
 use serde_json::Value;
-use sigma_rust::{Event, Rule};
-use std::collections::BTreeMap;
+use sigma_rust::{Event, Rule, SigmaCorrelationRule, TimestampedEvent};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use termcolor::{BufferWriter, ColorChoice, ColorSpec, WriteColor};
@@ -38,8 +39,20 @@ pub fn write_record(event: &Event, json: &Value, rule: &Rule, context: &mut Outp
         .collect();
     write_to_stdout(&mut record, context);
     write_to_csv(&record, context);
-    write_to_json(&record, json, event, rule, context);
-    write_to_jsonl(&record, json, event, rule, context);
+    write_to_json(&record, json, Some(event), Some(rule), context);
+    write_to_jsonl(&record, json, Some(event), Some(rule), context);
+}
+
+pub fn write_correlation_record(
+    events: &Vec<&TimestampedEvent>,
+    rule: &SigmaCorrelationRule,
+    context: &mut OutputContext,
+) {
+    let mut record: Vec<String> = build_correlation_record(events, rule, context);
+    write_to_stdout(&mut record, context);
+    write_to_csv(&record, context);
+    write_to_json(&record, &Value::Null, None, None, context);
+    write_to_jsonl(&record, &Value::Null, None, None, context);
 }
 
 fn write_to_stdout(record: &mut [String], context: &mut OutputContext) {
@@ -85,8 +98,8 @@ fn write_to_csv(record: &[String], context: &mut OutputContext) {
 fn write_to_json(
     record: &[String],
     json: &Value,
-    event: &Event,
-    rule: &Rule,
+    event: Option<&Event>,
+    rule: Option<&Rule>,
     context: &mut OutputContext,
 ) {
     let raw_output = context.config.raw_output;
@@ -105,8 +118,10 @@ fn write_to_json(
                 .collect();
 
             for (k, v) in sigma_profile {
-                let value = get_value_from_event(&v, event, rule, geo);
-                json_record[k] = Value::String(value.to_string());
+                if event.is_some() && rule.is_some() {
+                    let value = get_value_from_event(&v, event.unwrap(), rule.unwrap(), geo);
+                    json_record[k] = Value::String(value.to_string());
+                }
             }
 
             if let Ok(json_string) = serde_json::to_string_pretty(&json_record) {
@@ -133,8 +148,8 @@ fn write_to_json(
 fn write_to_jsonl(
     record: &[String],
     json: &Value,
-    event: &Event,
-    rule: &Rule,
+    event: Option<&Event>,
+    rule: Option<&Rule>,
     context: &mut OutputContext,
 ) {
     let raw_output = context.config.raw_output;
@@ -154,8 +169,10 @@ fn write_to_jsonl(
                 .collect();
 
             for (k, v) in sigma_profile {
-                let value = get_value_from_event(&v, event, rule, geo);
-                json_record[k] = Value::String(value.to_string());
+                if event.is_some() && rule.is_some() {
+                    let value = get_value_from_event(&v, event.unwrap(), rule.unwrap(), geo);
+                    json_record[k] = Value::String(value.to_string());
+                }
             }
 
             if let Ok(json_string) = serde_json::to_string(&json_record) {
@@ -195,6 +212,123 @@ fn abbreviate_level(level: &str) -> &str {
         "medium" => "med",
         "informational" => "info",
         _ => level,
+    }
+}
+
+fn build_correlation_record(
+    events: &Vec<&TimestampedEvent>,
+    rule: &SigmaCorrelationRule,
+    context: &mut OutputContext,
+) -> Vec<String> {
+    let events: Vec<Event> = events.iter().map(|e| e.event.clone()).collect();
+    let profile = &context.profile;
+    let mut correlation_map: HashMap<String, String> = HashMap::new();
+    for (_, profile_value) in profile.iter() {
+        let mut values = HashSet::new();
+        for (i, event) in events.iter().enumerate() {
+            if profile_value == ".eventTime" && i < events.len() - 1 {
+                continue;
+            }
+            let value = get_value_from_correlation_event(profile_value, event, rule, context.geo);
+            values.insert(value);
+        }
+        let values: Vec<String> = values.into_iter().sorted().collect();
+        let concatenated = values.join(" ¦ ");
+        correlation_map.insert(profile_value.clone(), concatenated);
+    }
+    profile
+        .iter()
+        .map(|(_, profile_value)| {
+            correlation_map
+                .get(profile_value)
+                .cloned()
+                .unwrap_or_else(|| "-".to_string())
+        })
+        .collect()
+}
+
+fn get_value_from_correlation_event(
+    key: &str,
+    event: &Event,
+    rule: &SigmaCorrelationRule,
+    geo_ip: &mut Option<GeoIPSearch>,
+) -> String {
+    if let Some(geo) = geo_ip {
+        if let Some(ip) = event.get("sourceIPAddress") {
+            let ip = ip.value_to_string();
+            if let Some(ip) = geo.convert(ip.as_str()) {
+                if key == "SrcASN" {
+                    return geo.get_asn(ip);
+                } else if key == "SrcCity" {
+                    return geo.get_city(ip);
+                } else if key == "SrcCountry" {
+                    return geo.get_country(ip);
+                }
+            } else {
+                return ip;
+            }
+        }
+    }
+    if key.starts_with(".") {
+        let key = key.strip_prefix(".").unwrap();
+        if let Some(value) = event.get(key) {
+            if key == "eventTime" {
+                value.value_to_string().replace("T", " ").replace("Z", "")
+            } else {
+                value.value_to_string()
+            }
+        } else {
+            "-".to_string()
+        }
+    } else if key.starts_with("sigma.") {
+        let key = key.replace("sigma.", "");
+        if key == "title" {
+            rule.title.to_string()
+        } else if key == "id"
+            && let Some(id) = &rule.id
+        {
+            id.to_string()
+        } else if key == "status"
+            && let Some(status) = &rule.status
+        {
+            format!("{status:?}").to_lowercase()
+        } else if key == "author"
+            && let Some(author) = &rule.author
+        {
+            author.to_string()
+        } else if key == "description"
+            && let Some(desc) = &rule.description
+        {
+            desc.to_string()
+        } else if key == "references"
+            && let Some(reference) = &rule.references
+        {
+            format!("{reference:?}")
+        } else if key == "date"
+            && let Some(date) = &rule.date
+        {
+            date.to_string()
+        } else if key == "modified"
+            && let Some(modified) = &rule.date
+        {
+            modified.to_string()
+        } else if key == "tags"
+            && let Some(tag) = &rule.tags
+        {
+            format!("{tag:?}")
+        } else if key == "falsepositives"
+            && let Some(fp) = &rule.falsepositives
+        {
+            format!("{fp:?}")
+        } else if key == "level"
+            && let Some(level) = &rule.level
+        {
+            level.to_lowercase()
+        } else {
+            "-".to_string()
+        }
+    } else {
+        "-".to_string()
     }
 }
 
