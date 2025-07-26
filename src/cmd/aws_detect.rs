@@ -1,7 +1,7 @@
 use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::core::rules;
-use crate::core::scan::{scan_directory, scan_file};
+use crate::core::scan::{append_summary_data, scan_directory, scan_file};
 use crate::core::util::{get_json_writer, get_writer, output_path_info, p};
 use crate::option::cli::{AwsCtTimelineOptions, CommonOptions};
 use crate::option::geoip::GeoIPSearch;
@@ -13,7 +13,7 @@ use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use serde_json::Value;
-use sigma_rust::{Event, Rule};
+use sigma_rust::{CorrelationEngine, Event, Rule, TimestampedEvent, parse_rules_from_yaml};
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
@@ -217,7 +217,10 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     }
     let profile = load_profile("config/default_profile.yaml", &geo_search);
     let rules: Vec<Rule> = rules::load_rules_from_dir(&options.rules);
-    if rules.is_empty() {
+    let rules = rules::filter_rules_by_level(&rules, &options.min_level);
+    let mut correlation_engine = CorrelationEngine::new();
+    let correlation_rules = rules::load_correlation_yamls_from_dir(&options.rules);
+    if rules.is_empty() && correlation_rules.is_empty() {
         p(
             Red.rdg(no_color),
             "Suzaku could not load any rules. Please download the rules with the update-rules command.\n",
@@ -225,10 +228,32 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         );
         return;
     }
-    let rules = rules::filter_rules_by_level(&rules, &options.min_level);
+    for yaml in &correlation_rules {
+        match parse_rules_from_yaml(yaml.as_str()) {
+            Ok(rules) => {
+                let (correlation_rules, base_rules) = rules;
+                for (name, rule) in base_rules {
+                    correlation_engine.add_base_rule(name, rule);
+                }
+                for rule in correlation_rules {
+                    correlation_engine.add_correlation_rule(rule);
+                }
+            }
+            Err(e) => {
+                p(
+                    Red.rdg(no_color),
+                    &format!("Error parsing correlation rule: {e}"),
+                    true,
+                );
+                return;
+            }
+        }
+    }
 
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
+    p(Green.rdg(no_color), "Total correlation rules: ", false);
+    p(None, correlation_rules.len().to_string().as_str(), true);
 
     let mut std_writer = None;
     let mut csv_writer = None;
@@ -291,8 +316,8 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         jsonl: jsonl_writer,
         std: std_writer,
     };
-
     let mut summary = DetectionSummary::default();
+    let mut matched_correlation: Vec<TimestampedEvent> = Vec::new();
     if let Some(d) = &options.input_opt.directory {
         scan_directory(
             d,
@@ -303,6 +328,8 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
             &mut wrt,
             common_opt,
             &mut geo_search,
+            &correlation_engine,
+            &mut matched_correlation,
         );
     } else if let Some(f) = &options.input_opt.filepath {
         scan_file(
@@ -314,8 +341,21 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
             &mut wrt,
             common_opt,
             &mut geo_search,
+            &correlation_engine,
+            &mut matched_correlation,
         );
     }
+
+    process_correlation_events(
+        no_color,
+        &mut geo_search,
+        &profile,
+        &correlation_engine,
+        &mut wrt,
+        &mut summary,
+        &mut matched_correlation,
+    );
+
     if let Some(ref mut writer) = wrt.csv {
         writer.flush().unwrap();
     }
@@ -360,6 +400,85 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     if !output_pathes.is_empty() {
         output_path_info(no_color, &output_pathes);
     }
+}
+
+fn process_correlation_events(
+    no_color: bool,
+    geo_search: &mut Option<GeoIPSearch>,
+    profile: &[(String, String)],
+    correlation_engine: &CorrelationEngine,
+    wrt: &mut Writers,
+    summary: &mut DetectionSummary,
+    matched_correlation: &mut Vec<TimestampedEvent>,
+) -> bool {
+    let results = correlation_engine.process_events(matched_correlation);
+    match results {
+        Ok(results) => {
+            for res in results.iter() {
+                let rule = res.rule;
+                if res.matched {
+                    for event in &res.events {
+                        let generate = rule.correlation.generate.unwrap_or(false);
+                        if generate {
+                            write_record(
+                                profile,
+                                &event.event,
+                                &Value::Null,
+                                event.rule,
+                                wrt,
+                                no_color,
+                                geo_search,
+                                false,
+                            );
+                        }
+                        summary.event_with_hits += 1;
+                        append_summary_data(summary, &event.event, event.rule, generate);
+                    }
+                    //TODO output correlation results file
+                    if let Some(author) = &rule.author {
+                        summary
+                            .author_titles
+                            .entry(author.clone())
+                            .or_default()
+                            .insert(rule.title.clone());
+                    }
+                    if let Some(level) = &rule.level {
+                        let level = level.to_lowercase();
+                        summary
+                            .level_with_hits
+                            .entry(level.clone())
+                            .or_default()
+                            .entry(rule.title.clone())
+                            .and_modify(|e| *e += 1)
+                            .or_insert(1);
+                        let event = &res.events.last().unwrap().event;
+                        if let Some(event_time) = event.get("eventTime") {
+                            let event_time_str = event_time.value_to_string();
+                            if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+                                let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                                summary
+                                    .dates_with_hits
+                                    .entry(level)
+                                    .or_default()
+                                    .entry(date)
+                                    .and_modify(|e| *e += 1)
+                                    .or_insert(1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            p(
+                Red.rdg(no_color),
+                &format!("Error processing correlation events: {e}"),
+                true,
+            );
+            return true;
+        }
+    }
+    false
 }
 
 fn print_summary(sum: &DetectionSummary, no_color: bool) {
@@ -704,26 +823,46 @@ fn get_value_from_event(
         let key = key.replace("sigma.", "");
         if key == "title" {
             rule.title.to_string()
-        } else if key == "id" && rule.id.is_some() {
-            rule.id.as_ref().unwrap().to_string()
-        } else if key == "status" && rule.status.is_some() {
-            format!("{:?}", rule.status.as_ref().unwrap()).to_lowercase()
-        } else if key == "author" && rule.author.is_some() {
-            rule.author.as_ref().unwrap().to_string()
-        } else if key == "description" && rule.description.is_some() {
-            rule.description.as_ref().unwrap().to_string()
-        } else if key == "references" && rule.references.is_some() {
-            format!("{:?}", rule.references.as_ref().unwrap())
-        } else if key == "date" && rule.date.is_some() {
-            rule.date.as_ref().unwrap().to_string()
-        } else if key == "modified" && rule.modified.is_some() {
-            rule.modified.as_ref().unwrap().to_string()
-        } else if key == "tags" && rule.tags.is_some() {
-            format!("{:?}", rule.tags.as_ref().unwrap())
-        } else if key == "falsepositives" && rule.falsepositives.is_some() {
-            format!("{:?}", rule.falsepositives.as_ref().unwrap())
-        } else if key == "level" {
-            format!("{:?}", rule.level.as_ref().unwrap()).to_lowercase()
+        } else if key == "id"
+            && let Some(id) = &rule.id
+        {
+            id.to_string()
+        } else if key == "status"
+            && let Some(status) = &rule.status
+        {
+            format!("{status:?}").to_lowercase()
+        } else if key == "author"
+            && let Some(author) = &rule.author
+        {
+            author.to_string()
+        } else if key == "description"
+            && let Some(desc) = &rule.description
+        {
+            desc.to_string()
+        } else if key == "references"
+            && let Some(reference) = &rule.references
+        {
+            format!("{reference:?}")
+        } else if key == "date"
+            && let Some(date) = &rule.date
+        {
+            date.to_string()
+        } else if key == "modified"
+            && let Some(modified) = &rule.modified
+        {
+            modified.to_string()
+        } else if key == "tags"
+            && let Some(tag) = &rule.tags
+        {
+            format!("{tag:?}")
+        } else if key == "falsepositives"
+            && let Some(fp) = &rule.falsepositives
+        {
+            format!("{fp:?}")
+        } else if key == "level"
+            && let Some(level) = &rule.level
+        {
+            format!("{level:?}").to_lowercase()
         } else {
             "-".to_string()
         }

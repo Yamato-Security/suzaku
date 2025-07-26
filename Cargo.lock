@@ -1353,11 +1353,13 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 [[package]]
 name = "sigma-rust"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d1755b373cf9bfb8189f3fd89a8ab0bb4d25c7bcfd31d352ef1d27cf4d8df13"
+source = "git+https://github.com/Yamato-Security/sigma-rust?rev=ef18ad9bc0f0daf201046c5dc6f2d49eb854d25c#ef18ad9bc0f0daf201046c5dc6f2d49eb854d25c"
 dependencies = [
+ "anyhow",
  "base64",
+ "chrono",
  "cidr 0.3.1",
+ "rayon",
  "regex",
  "serde",
  "serde_json",
@@ -1439,6 +1441,7 @@ dependencies = [
  "rayon",
  "serde_json",
  "sigma-rust",
+ "tempfile",
  "termcolor",
  "terminal_size",
  "ureq",
