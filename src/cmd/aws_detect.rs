@@ -1,24 +1,26 @@
+use crate::cmd::aws_detect_writer::{
+    OutputConfig, OutputContext, init_writers, write_correlation_record, write_record,
+};
 use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Cyan, Green, Orange, Red, White, Yellow};
 use crate::core::rules;
-use crate::core::scan::{scan_directory, scan_file};
-use crate::core::util::{get_json_writer, get_writer, output_path_info, p};
+use crate::core::scan::{append_summary_data, scan_directory, scan_file};
+use crate::core::util::{output_path_info, p};
 use crate::option::cli::{AwsCtTimelineOptions, CommonOptions};
 use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Cell, Table, TableComponent};
-use csv::Writer;
 use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
 use serde_json::Value;
-use sigma_rust::{Event, Rule};
+use sigma_rust::{CorrelationEngine, Rule, TimestampedEvent, parse_rules_from_yaml};
 use std::cmp::min;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
+use std::io::Write;
 use std::io::{BufRead, BufReader};
-use std::io::{BufWriter, Write};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use terminal_size::{Width, terminal_size};
 
@@ -32,171 +34,6 @@ pub struct DetectionSummary {
     pub level_with_hits: HashMap<String, HashMap<String, usize>>,
     pub first_event_time: Option<DateTime<Utc>>,
     pub last_event_time: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug)]
-pub enum OutputType {
-    Csv,
-    Json,
-    Jsonl,
-    CsvAndJson,
-    CsvAndJsonl,
-}
-
-impl OutputType {
-    pub fn from_u8(value: u8) -> Option<Self> {
-        match value {
-            1 => Some(OutputType::Csv),
-            2 => Some(OutputType::Json),
-            3 => Some(OutputType::Jsonl),
-            4 => Some(OutputType::CsvAndJson),
-            5 => Some(OutputType::CsvAndJsonl),
-            _ => None,
-        }
-    }
-}
-
-pub struct Writers {
-    csv: Option<Writer<Box<dyn Write>>>,
-    json: Option<BufWriter<Box<dyn Write>>>,
-    jsonl: Option<BufWriter<Box<dyn Write>>>,
-    std: Option<BufferWriter>,
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn write_record(
-    profile: &[(String, String)],
-    event: &Event,
-    json: &Value,
-    rule: &Rule,
-    wrt: &mut Writers,
-    no_color: bool,
-    geo: &mut Option<GeoIPSearch>,
-    raw_output: bool,
-) {
-    let mut record: Vec<String> = profile
-        .iter()
-        .map(|(_k, v)| get_value_from_event(v, event, rule, geo))
-        .collect();
-
-    // 標準出力
-    if let Some(writer) = &mut wrt.std {
-        let level_index = profile.iter().position(|(k, _)| k == "Level");
-        let level = if let Some(index) = level_index {
-            let org = record[index].to_lowercase();
-            let abb = abbreviate_level(&org);
-            record[index] = abb.to_string();
-            abb.to_string()
-        } else {
-            "info".to_string()
-        };
-        let color = if level == "crit" {
-            Red
-        } else if level == "high" {
-            Orange
-        } else if level == "med" {
-            Yellow
-        } else if level == "low" {
-            Green
-        } else {
-            White
-        };
-
-        let mut buf = writer.buffer();
-        for (i, col) in record.iter().enumerate() {
-            buf.set_color(ColorSpec::new().set_fg(color.rdg(no_color)))
-                .ok();
-            write!(buf, "{col}").ok();
-            if i != record.len() - 1 {
-                if no_color {
-                    buf.set_color(ColorSpec::new().set_fg(None)).ok();
-                } else {
-                    buf.set_color(ColorSpec::new().set_fg(Orange.rdg(no_color)))
-                        .ok();
-                }
-                write!(buf, " · ").ok();
-            }
-        }
-        write!(buf, "\n\n").ok();
-        writer.print(&buf).ok();
-    }
-
-    // CSV出力
-    if let Some(writer) = &mut wrt.csv {
-        writer.write_record(&record).unwrap();
-    }
-
-    // JSON出力
-    if let Some(writer) = &mut wrt.json {
-        if raw_output {
-            let mut json_record = json.clone();
-            let sigma_profile: Vec<(String, String)> = profile
-                .iter()
-                .filter(|(_, value)| value.starts_with("sigma."))
-                .cloned()
-                .collect();
-            for (k, v) in sigma_profile {
-                let value = get_value_from_event(&v, event, rule, geo);
-                json_record[k] = Value::String(value.to_string());
-            }
-            let rec = serde_json::to_string_pretty(&json_record);
-            if let Ok(json_string) = rec {
-                writer.write_all(json_string.as_bytes()).unwrap();
-                writer.write_all(b"\n").unwrap();
-            }
-            return;
-        }
-        let mut json_record: BTreeMap<String, String> = BTreeMap::new();
-        for (k, v) in profile {
-            let value = get_value_from_event(v, event, rule, geo);
-            json_record.insert(k.clone(), value.to_string());
-        }
-        let rec = serde_json::to_string_pretty(&json_record);
-        if let Ok(json_string) = rec {
-            writer.write_all(json_string.as_bytes()).unwrap();
-            writer.write_all(b"\n").unwrap();
-        }
-    }
-
-    // JSONL出力
-    if let Some(writer) = &mut wrt.jsonl {
-        if raw_output {
-            let mut json_record = json.clone();
-            let sigma_profile: Vec<(String, String)> = profile
-                .iter()
-                .filter(|(_, value)| value.starts_with("sigma."))
-                .cloned()
-                .collect();
-            for (k, v) in sigma_profile {
-                let value = get_value_from_event(&v, event, rule, geo);
-                json_record[k] = Value::String(value.to_string());
-            }
-            let rec = serde_json::to_string(&json_record);
-            if let Ok(json_string) = rec {
-                writer.write_all(json_string.as_bytes()).unwrap();
-                writer.write_all(b"\n").unwrap();
-            }
-            return;
-        }
-        let mut json_record: BTreeMap<String, String> = BTreeMap::new();
-        for (k, v) in profile {
-            let value = get_value_from_event(v, event, rule, geo);
-            json_record.insert(k.clone(), value.to_string());
-        }
-        if let Ok(json_string) = serde_json::to_string(&json_record) {
-            writer.write_all(json_string.as_bytes()).unwrap();
-            writer.write_all(b"\n").unwrap();
-        }
-    }
-}
-
-fn abbreviate_level(level: &str) -> &str {
-    match level {
-        "critical" => "crit",
-        "medium" => "med",
-        "informational" => "info",
-        _ => level,
-    }
 }
 
 pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
@@ -217,7 +54,10 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     }
     let profile = load_profile("config/default_profile.yaml", &geo_search);
     let rules: Vec<Rule> = rules::load_rules_from_dir(&options.rules);
-    if rules.is_empty() {
+    let rules = rules::filter_rules_by_level(&rules, &options.min_level);
+    let mut correlation_engine = CorrelationEngine::new();
+    let correlation_rules = rules::load_correlation_yamls_from_dir(&options.rules);
+    if rules.is_empty() && correlation_rules.is_empty() {
         p(
             Red.rdg(no_color),
             "Suzaku could not load any rules. Please download the rules with the update-rules command.\n",
@@ -225,106 +65,70 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
         );
         return;
     }
-    let rules = rules::filter_rules_by_level(&rules, &options.min_level);
+    for yaml in &correlation_rules {
+        match parse_rules_from_yaml(yaml.as_str()) {
+            Ok(rules) => {
+                let (correlation_rules, base_rules) = rules;
+                for (name, rule) in base_rules {
+                    correlation_engine.add_base_rule(name, rule);
+                }
+                for rule in correlation_rules {
+                    correlation_engine.add_correlation_rule(rule);
+                }
+            }
+            Err(e) => {
+                p(
+                    Red.rdg(no_color),
+                    &format!("Error parsing correlation rule: {e}"),
+                    true,
+                );
+                return;
+            }
+        }
+    }
 
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
+    p(Green.rdg(no_color), "Total correlation rules: ", false);
+    p(None, correlation_rules.len().to_string().as_str(), true);
 
-    let mut std_writer = None;
-    let mut csv_writer = None;
-    let mut json_writer = None;
-    let mut jsonl_writer = None;
-    let mut output_pathes = vec![];
-
-    if let Some(output_path) = &options.output {
-        let output_type = OutputType::from_u8(options.output_type).unwrap_or(OutputType::Csv);
-        match output_type {
-            OutputType::Csv | OutputType::CsvAndJson | OutputType::CsvAndJsonl => {
-                let mut csv_path = output_path.clone();
-                if csv_path.extension().and_then(|ext| ext.to_str()) != Some("csv") {
-                    csv_path.set_extension("csv");
-                }
-                output_pathes.push(csv_path.clone());
-                csv_writer = Some(get_writer(&Some(csv_path)));
-            }
-            _ => {}
-        }
-        match output_type {
-            OutputType::Json | OutputType::CsvAndJson => {
-                let mut json_path = output_path.clone();
-                if json_path.extension().and_then(|ext| ext.to_str()) != Some("json") {
-                    json_path.set_extension("json");
-                }
-                output_pathes.push(json_path.clone());
-                json_writer = Some(get_json_writer(&Some(json_path)));
-            }
-            OutputType::Jsonl | OutputType::CsvAndJsonl => {
-                let mut jsonl_path = output_path.clone();
-                if jsonl_path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
-                    jsonl_path.set_extension("jsonl");
-                }
-                output_pathes.push(jsonl_path.clone());
-                jsonl_writer = Some(get_json_writer(&Some(jsonl_path)));
-            }
-            _ => {}
-        }
-    } else {
-        let disp_wtr = BufferWriter::stdout(ColorChoice::Always);
-        let mut disp_wtr_buf = disp_wtr.buffer();
-        disp_wtr_buf.set_color(ColorSpec::new().set_fg(None)).ok();
-        std_writer = Some(disp_wtr);
-    }
-
-    if let Some(ref mut std_out) = std_writer {
-        let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
-        let mut buf = std_out.buffer();
-        writeln!(buf, "{}", csv_header.join(" · ")).ok();
-    }
-
-    if let Some(ref mut writer) = csv_writer {
-        let csv_header: Vec<&str> = profile.iter().map(|(k, _v)| k.as_str()).collect();
-        writer.write_record(&csv_header).unwrap();
-    }
-    let mut wrt = Writers {
-        csv: csv_writer,
-        json: json_writer,
-        jsonl: jsonl_writer,
-        std: std_writer,
-    };
-
+    let (writers, output_pathes) = init_writers(options.output.as_ref(), options.output_type);
+    let config = OutputConfig::new(no_color, options.raw_output);
+    let mut context = OutputContext::new(&profile, &mut geo_search, &config, writers);
     let mut summary = DetectionSummary::default();
+    let mut matched_correlation: Vec<TimestampedEvent> = Vec::new();
+    context.write_header();
+
     if let Some(d) = &options.input_opt.directory {
         scan_directory(
             d,
+            &mut context,
+            &mut summary,
             options,
             &rules,
-            &mut summary,
-            &profile,
-            &mut wrt,
-            common_opt,
-            &mut geo_search,
+            &mut matched_correlation,
+            &correlation_engine,
         );
     } else if let Some(f) = &options.input_opt.filepath {
         scan_file(
             f,
+            &mut context,
+            &mut summary,
             options,
             &rules,
-            &mut summary,
-            &profile,
-            &mut wrt,
-            common_opt,
-            &mut geo_search,
+            &mut matched_correlation,
+            &correlation_engine,
         );
     }
-    if let Some(ref mut writer) = wrt.csv {
-        writer.flush().unwrap();
-    }
-    if let Some(ref mut writer) = wrt.json {
-        writer.flush().unwrap();
-    }
-    if let Some(ref mut writer) = wrt.jsonl {
-        writer.flush().unwrap();
-    }
+
+    process_correlation_events(
+        &mut context,
+        &mut summary,
+        &mut matched_correlation,
+        &correlation_engine,
+    );
+
+    context.flush_all();
     println!();
     let terminal_width = match terminal_size() {
         Some((Width(w), _)) => w as usize,
@@ -360,6 +164,73 @@ pub fn aws_detect(options: &AwsCtTimelineOptions, common_opt: &CommonOptions) {
     if !output_pathes.is_empty() {
         output_path_info(no_color, &output_pathes);
     }
+}
+
+fn process_correlation_events(
+    context: &mut OutputContext,
+    summary: &mut DetectionSummary,
+    matched_correlation: &mut Vec<TimestampedEvent>,
+    correlation_engine: &CorrelationEngine,
+) -> bool {
+    let results = correlation_engine.process_events(matched_correlation);
+    match results {
+        Ok(results) => {
+            for res in results.iter() {
+                let rule = res.rule;
+                if res.matched {
+                    for event in &res.events {
+                        let generate = rule.correlation.generate.unwrap_or(false);
+                        if generate {
+                            write_record(&event.event, &Value::Null, event.rule, context);
+                        }
+                        summary.event_with_hits += 1;
+                        append_summary_data(summary, &event.event, event.rule, generate);
+                    }
+                    write_correlation_record(&res.events, rule, context);
+                    if let Some(author) = &rule.author {
+                        summary
+                            .author_titles
+                            .entry(author.clone())
+                            .or_default()
+                            .insert(rule.title.clone());
+                    }
+                    if let Some(level) = &rule.level {
+                        let level = level.to_lowercase();
+                        summary
+                            .level_with_hits
+                            .entry(level.clone())
+                            .or_default()
+                            .entry(rule.title.clone())
+                            .and_modify(|e| *e += 1)
+                            .or_insert(1);
+                        let event = &res.events.last().unwrap().event;
+                        if let Some(event_time) = event.get("eventTime") {
+                            let event_time_str = event_time.value_to_string();
+                            if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+                                let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                                summary
+                                    .dates_with_hits
+                                    .entry(level)
+                                    .or_default()
+                                    .entry(date)
+                                    .and_modify(|e| *e += 1)
+                                    .or_insert(1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            p(
+                Red.rdg(context.config.no_color),
+                &format!("Error processing correlation events: {e}"),
+                true,
+            );
+            return true;
+        }
+    }
+    false
 }
 
 fn print_summary(sum: &DetectionSummary, no_color: bool) {
@@ -665,69 +536,4 @@ fn load_profile(file_path: &str, geo_search: &Option<GeoIPSearch>) -> Vec<(Strin
         }
     }
     profile
-}
-
-fn get_value_from_event(
-    key: &str,
-    event: &Event,
-    rule: &Rule,
-    geo_ip: &mut Option<GeoIPSearch>,
-) -> String {
-    if let Some(geo) = geo_ip {
-        if let Some(ip) = event.get("sourceIPAddress") {
-            let ip = ip.value_to_string();
-            if let Some(ip) = geo.convert(ip.as_str()) {
-                if key == "SrcASN" {
-                    return geo.get_asn(ip);
-                } else if key == "SrcCity" {
-                    return geo.get_city(ip);
-                } else if key == "SrcCountry" {
-                    return geo.get_country(ip);
-                }
-            } else {
-                return ip;
-            }
-        }
-    }
-    if key.starts_with(".") {
-        let key = key.strip_prefix(".").unwrap();
-        if let Some(value) = event.get(key) {
-            if key == "eventTime" {
-                value.value_to_string().replace("T", " ").replace("Z", "")
-            } else {
-                value.value_to_string()
-            }
-        } else {
-            "-".to_string()
-        }
-    } else if key.starts_with("sigma.") {
-        let key = key.replace("sigma.", "");
-        if key == "title" {
-            rule.title.to_string()
-        } else if key == "id" && rule.id.is_some() {
-            rule.id.as_ref().unwrap().to_string()
-        } else if key == "status" && rule.status.is_some() {
-            format!("{:?}", rule.status.as_ref().unwrap()).to_lowercase()
-        } else if key == "author" && rule.author.is_some() {
-            rule.author.as_ref().unwrap().to_string()
-        } else if key == "description" && rule.description.is_some() {
-            rule.description.as_ref().unwrap().to_string()
-        } else if key == "references" && rule.references.is_some() {
-            format!("{:?}", rule.references.as_ref().unwrap())
-        } else if key == "date" && rule.date.is_some() {
-            rule.date.as_ref().unwrap().to_string()
-        } else if key == "modified" && rule.modified.is_some() {
-            rule.modified.as_ref().unwrap().to_string()
-        } else if key == "tags" && rule.tags.is_some() {
-            format!("{:?}", rule.tags.as_ref().unwrap())
-        } else if key == "falsepositives" && rule.falsepositives.is_some() {
-            format!("{:?}", rule.falsepositives.as_ref().unwrap())
-        } else if key == "level" {
-            format!("{:?}", rule.level.as_ref().unwrap()).to_lowercase()
-        } else {
-            "-".to_string()
-        }
-    } else {
-        "-".to_string()
-    }
 }

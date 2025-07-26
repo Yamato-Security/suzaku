@@ -1,8 +1,8 @@
-use crate::cmd::aws_detect::{DetectionSummary, Writers};
+use crate::cmd::aws_detect::DetectionSummary;
+use crate::cmd::aws_detect_writer::{OutputContext, write_record};
 use crate::core::color::SuzakuColor::{Green, Orange};
 use crate::core::util::p;
-use crate::option::cli::{AwsCtTimelineOptions, CommonOptions, TimeOption};
-use crate::option::geoip::GeoIPSearch;
+use crate::option::cli::{AwsCtTimelineOptions, TimeOption};
 use crate::option::timefiler::filter_by_time;
 use bytesize::ByteSize;
 use chrono::{DateTime, Utc};
@@ -14,7 +14,7 @@ use rayon::iter::IndexedParallelIterator;
 use rayon::iter::ParallelIterator;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 use serde_json::Value;
-use sigma_rust::{Event, Rule, event_from_json};
+use sigma_rust::{CorrelationEngine, Event, Rule, TimestampedEvent, event_from_json};
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -22,17 +22,14 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{fs, io};
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
-pub fn scan_file(
+pub fn scan_file<'a>(
     f: &PathBuf,
+    context: &mut OutputContext<'a>,
+    summary: &mut DetectionSummary,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    summary: &mut DetectionSummary,
-    profile: &[(String, String)],
-    wrt: &mut Writers,
-    common_opt: &CommonOptions,
-    geo: &mut Option<GeoIPSearch>,
+    matched_correlation: &mut Vec<TimestampedEvent<'a>>,
+    correlation_engine: &'a CorrelationEngine,
 ) {
     let log_contents = get_content(f);
     let events = match load_json_from_file(&log_contents) {
@@ -41,38 +38,40 @@ pub fn scan_file(
     };
 
     detect_events(
-        &events, options, rules, summary, profile, wrt, common_opt, geo,
+        &events,
+        context,
+        summary,
+        options,
+        rules,
+        matched_correlation,
+        correlation_engine,
     );
 }
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
-pub fn scan_directory(
+pub fn scan_directory<'a>(
     d: &PathBuf,
+    context: &mut OutputContext<'a>,
+    summary: &mut DetectionSummary,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    summary: &mut DetectionSummary,
-    profile: &[(String, String)],
-    wrt: &mut Writers,
-    common_opt: &CommonOptions,
-    geo: &mut Option<GeoIPSearch>,
+    matched_correlation: &mut Vec<TimestampedEvent<'a>>,
+    correlation_engine: &'a CorrelationEngine,
 ) {
+    let no_color = context.config.no_color;
     let process_events = |events: &[Value]| {
         detect_events(
-            events, options, rules, summary, profile, wrt, common_opt, geo,
+            events,
+            context,
+            summary,
+            options,
+            rules,
+            matched_correlation,
+            correlation_engine,
         );
     };
-    process_events_from_dir(
-        process_events,
-        d,
-        options.output.is_some(),
-        common_opt.no_color,
-    )
-    .unwrap();
+    process_events_from_dir(process_events, d, options.output.is_some(), no_color).unwrap();
 }
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
 pub fn process_events_from_dir<F>(
     mut process_events: F,
     directory: &PathBuf,
@@ -178,23 +177,20 @@ fn log_contents_to_events(log_contents: &str) -> Vec<Value> {
     }
 }
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
-fn detect_events(
+fn detect_events<'a>(
     events: &[Value],
+    context: &mut OutputContext<'a>,
+    summary: &mut DetectionSummary,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    summary: &mut DetectionSummary,
-    profile: &[(String, String)],
-    wrt: &mut Writers,
-    common_opt: &CommonOptions,
-    geo: &mut Option<GeoIPSearch>,
+    matched_correlation: &mut Vec<TimestampedEvent<'a>>,
+    engine: &'a CorrelationEngine,
 ) {
     // If all the events are loaded at once, it can consume too much memory.
     // To avoid the problem, we split the events into chunks.
     const CHUNK_SIZE: usize = 1000;
     for event_chunks in events.chunks(CHUNK_SIZE) {
-        // convert loaded event into JSON
+        // Convert loaded events into JSON
         // I call the collect() function at the end of this block due to a lifetime issue of json_event.
         // The ownership of json_event's reference is going to be moved in the next code block, so I ensure that the lifetime of json_event is longer than the next code block.
         let repeated_time_opt: rayon::iter::RepeatN<&TimeOption> =
@@ -240,65 +236,100 @@ fn detect_events(
         for (event, json_event, matched_rules) in results {
             for rule in matched_rules {
                 // write to console
-                crate::cmd::aws_detect::write_record(
-                    profile,
-                    json_event,
-                    event,
-                    rule,
-                    wrt,
-                    common_opt.no_color,
-                    geo,
-                    options.raw_output,
-                );
+                write_record(json_event, event, rule, context);
+                append_summary_data(summary, json_event, rule, true);
+            }
+        }
 
-                // add information to summary
-                if let Some(author) = &rule.author {
-                    summary
-                        .author_titles
-                        .entry(author.clone())
-                        .or_default()
-                        .insert(rule.title.clone());
-                }
+        // process correlation base rules
+        let base_rule_matched: Vec<TimestampedEvent> =
+            process_correlation_base_rule(engine, json_events);
+        matched_correlation.extend(base_rule_matched);
+    }
+}
 
-                if let Some(level) = &rule.level {
-                    let level = format!("{level:?}").to_lowercase();
-                    summary
-                        .level_with_hits
-                        .entry(level)
-                        .or_default()
-                        .entry(rule.title.clone())
-                        .and_modify(|e| *e += 1)
-                        .or_insert(1);
-                }
-
-                if let Some(event_time) = json_event.get("eventTime") {
-                    let event_time_str = event_time.value_to_string();
-                    if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
-                        let unix_time = event_time.timestamp();
-                        summary.timestamps.push(unix_time);
-                        if summary.first_event_time.is_none()
-                            || event_time < summary.first_event_time.unwrap()
-                        {
-                            summary.first_event_time = Some(event_time);
-                        }
-                        if summary.last_event_time.is_none()
-                            || event_time > summary.last_event_time.unwrap()
-                        {
-                            summary.last_event_time = Some(event_time);
-                        }
-                        if let Some(level) = &rule.level {
-                            let level = format!("{level:?}").to_lowercase();
-                            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
-                            summary
-                                .dates_with_hits
-                                .entry(level)
-                                .or_default()
-                                .entry(date)
-                                .and_modify(|e| *e += 1)
-                                .or_insert(1);
+fn process_correlation_base_rule<'a>(
+    engine: &'a CorrelationEngine,
+    json_events: Vec<(&Value, Event)>,
+) -> Vec<TimestampedEvent<'a>> {
+    json_events
+        .par_iter()
+        .flat_map(|(_, event)| {
+            engine
+                .base_rules
+                .values()
+                .filter_map(|rule| {
+                    if rule.is_match(event) {
+                        if let Some(timestamp_field) = event.get("eventTime") {
+                            let ts = timestamp_field.value_to_string();
+                            if let Ok(parsed_time) = DateTime::parse_from_rfc3339(&ts) {
+                                let utc_time = parsed_time.with_timezone(&Utc);
+                                return Some(TimestampedEvent {
+                                    event: event.clone(),
+                                    timestamp: utc_time,
+                                    rule,
+                                });
+                            }
                         }
                     }
-                }
+                    None
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+pub fn append_summary_data(
+    summary: &mut DetectionSummary,
+    event: &Event,
+    rule: &Rule,
+    generate: bool,
+) {
+    // add information to summary
+    if generate {
+        if let Some(author) = &rule.author {
+            summary
+                .author_titles
+                .entry(author.clone())
+                .or_default()
+                .insert(rule.title.clone());
+        }
+
+        if let Some(level) = &rule.level {
+            let level = format!("{level:?}").to_lowercase();
+            summary
+                .level_with_hits
+                .entry(level)
+                .or_default()
+                .entry(rule.title.clone())
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+        }
+    }
+    if let Some(event_time) = event.get("eventTime") {
+        let event_time_str = event_time.value_to_string();
+        if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
+            let unix_time = event_time.timestamp();
+            summary.timestamps.push(unix_time);
+            if summary.first_event_time.is_none() || event_time < summary.first_event_time.unwrap()
+            {
+                summary.first_event_time = Some(event_time);
+            }
+            if summary.last_event_time.is_none() || event_time > summary.last_event_time.unwrap() {
+                summary.last_event_time = Some(event_time);
+            }
+            if let Some(level) = &rule.level
+                && generate
+            {
+                let level = format!("{level:?}").to_lowercase();
+                let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+                summary
+                    .dates_with_hits
+                    .entry(level)
+                    .or_default()
+                    .entry(date)
+                    .and_modify(|e| *e += 1)
+                    .or_insert(1);
             }
         }
     }
