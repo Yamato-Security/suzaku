@@ -1,8 +1,8 @@
-use crate::cmd::aws_detect::{DetectionSummary, Writers};
+use crate::cmd::aws_detect::DetectionSummary;
+use crate::cmd::aws_detect_writer::{OutputContext, write_record};
 use crate::core::color::SuzakuColor::{Green, Orange};
 use crate::core::util::p;
-use crate::option::cli::{AwsCtTimelineOptions, CommonOptions, TimeOption};
-use crate::option::geoip::GeoIPSearch;
+use crate::option::cli::{AwsCtTimelineOptions, TimeOption};
 use crate::option::timefiler::filter_by_time;
 use bytesize::ByteSize;
 use chrono::{DateTime, Utc};
@@ -22,19 +22,14 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{fs, io};
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
 pub fn scan_file<'a>(
     f: &PathBuf,
+    context: &mut OutputContext<'a>,
+    summary: &mut DetectionSummary,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    summary: &mut DetectionSummary,
-    profile: &[(String, String)],
-    wrt: &mut Writers,
-    common_opt: &CommonOptions,
-    geo: &mut Option<GeoIPSearch>,
-    engine: &'a CorrelationEngine,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
+    correlation_engine: &'a CorrelationEngine,
 ) {
     let log_contents = get_content(f);
     let events = match load_json_from_file(&log_contents) {
@@ -44,53 +39,37 @@ pub fn scan_file<'a>(
 
     detect_events(
         &events,
+        context,
+        summary,
         options,
         rules,
-        summary,
-        profile,
-        wrt,
-        common_opt,
-        geo,
-        engine,
         matched_correlation,
+        correlation_engine,
     );
 }
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
 pub fn scan_directory<'a>(
     d: &PathBuf,
+    context: &mut OutputContext<'a>,
+    summary: &mut DetectionSummary,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    summary: &mut DetectionSummary,
-    profile: &[(String, String)],
-    wrt: &mut Writers,
-    common_opt: &CommonOptions,
-    geo: &mut Option<GeoIPSearch>,
-    engine: &'a CorrelationEngine,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
+    correlation_engine: &'a CorrelationEngine,
 ) {
+    let no_color = &context.config.no_color;
     let process_events = |events: &[Value]| {
         detect_events(
             events,
+            context,
+            summary,
             options,
             rules,
-            summary,
-            profile,
-            wrt,
-            common_opt,
-            geo,
-            engine,
             matched_correlation,
+            correlation_engine,
         );
     };
-    process_events_from_dir(
-        process_events,
-        d,
-        options.output.is_some(),
-        common_opt.no_color,
-    )
-    .unwrap();
+    process_events_from_dir(process_events, d, options.output.is_some(), no_color).unwrap();
 }
 
 // TODO remove allow
@@ -99,7 +78,7 @@ pub fn process_events_from_dir<F>(
     mut process_events: F,
     directory: &PathBuf,
     show_progress: bool,
-    no_color: bool,
+    no_color: &bool,
 ) -> Result<(), Box<dyn Error>>
 where
     F: FnMut(&[Value]),
@@ -107,16 +86,16 @@ where
     let (count, file_paths, total_size) = count_files_recursive(directory)?;
     let size = ByteSize::b(total_size).display().to_string();
 
-    p(Green.rdg(no_color), "Total log files: ", false);
+    p(Green.rdg(*no_color), "Total log files: ", false);
     p(None, count.to_string().as_str(), true);
-    p(Green.rdg(no_color), "Total file size: ", false);
+    p(Green.rdg(*no_color), "Total file size: ", false);
     p(None, size.to_string().as_str(), true);
     println!();
 
-    p(Orange.rdg(no_color), "Scanning now. Please wait.", true);
+    p(Orange.rdg(*no_color), "Scanning now. Please wait.", true);
     println!();
 
-    let template = if no_color {
+    let template = if *no_color {
         "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}"
             .to_string()
     } else {
@@ -161,7 +140,7 @@ where
         }
     }
     if show_progress {
-        if no_color {
+        if *no_color {
             pb.finish_with_message("Scanning finished.\n");
         } else {
             pb.finish_with_message(style("Scanning finished.\n").color256(214).to_string());
@@ -204,21 +183,18 @@ fn log_contents_to_events(log_contents: &str) -> Vec<Value> {
 #[allow(clippy::too_many_arguments)]
 fn detect_events<'a>(
     events: &[Value],
+    context: &mut OutputContext<'a>,
+    summary: &mut DetectionSummary,
     options: &AwsCtTimelineOptions,
     rules: &Vec<&Rule>,
-    summary: &mut DetectionSummary,
-    profile: &[(String, String)],
-    wrt: &mut Writers,
-    common_opt: &CommonOptions,
-    geo: &mut Option<GeoIPSearch>,
-    engine: &'a CorrelationEngine,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
+    engine: &'a CorrelationEngine,
 ) {
     // If all the events are loaded at once, it can consume too much memory.
     // To avoid the problem, we split the events into chunks.
     const CHUNK_SIZE: usize = 1000;
     for event_chunks in events.chunks(CHUNK_SIZE) {
-        // convert loaded event into JSON
+        // Convert loaded event into JSON
         // I call the collect() function at the end of this block due to a lifetime issue of json_event.
         // The ownership of json_event's reference is going to be moved in the next code block, so I ensure that the lifetime of json_event is longer than the next code block.
         let repeated_time_opt: rayon::iter::RepeatN<&TimeOption> =
@@ -264,16 +240,7 @@ fn detect_events<'a>(
         for (event, json_event, matched_rules) in results {
             for rule in matched_rules {
                 // write to console
-                crate::cmd::aws_detect::write_record(
-                    profile,
-                    json_event,
-                    event,
-                    rule,
-                    wrt,
-                    common_opt.no_color,
-                    geo,
-                    options.raw_output,
-                );
+                write_record(json_event, event, rule, context);
                 append_summary_data(summary, json_event, rule, true);
             }
         }
