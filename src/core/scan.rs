@@ -179,8 +179,6 @@ fn log_contents_to_events(log_contents: &str) -> Vec<Value> {
     }
 }
 
-// TODO remove allow
-#[allow(clippy::too_many_arguments)]
 fn detect_events<'a>(
     events: &[Value],
     context: &mut OutputContext<'a>,
