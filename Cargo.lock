@@ -1353,7 +1353,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 [[package]]
 name = "sigma-rust"
 version = "0.6.0"
-source = "git+https://github.com/Yamato-Security/sigma-rust?rev=ef18ad9bc0f0daf201046c5dc6f2d49eb854d25c#ef18ad9bc0f0daf201046c5dc6f2d49eb854d25c"
+source = "git+https://github.com/Yamato-Security/sigma-rust?rev=5e6f58407f933af5271c252c3293aa845cf5c766#5e6f58407f933af5271c252c3293aa845cf5c766"
 dependencies = [
  "anyhow",
  "base64",
