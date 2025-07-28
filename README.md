@@ -8,6 +8,7 @@
 ---
 
 <p align="center">
+    <a href="https://www.blackhat.com/us-25/arsenal/schedule/index.html#cloud-log-fast-forensics-with-yamato-securitys-suzaku-45630"><img src="https://img.shields.io/badge/Black%20Hat%20Arsenal%20USA-2025-blue"></a>    
     <a href="https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d"><img src="https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen.svg" /></a>
     <a href="https://github.com/Yamato-Security/suzaku/commits/main/"><img src="https://img.shields.io/github/commit-activity/t/Yamato-Security/suzaku/main" /></a>
     <a href="https://twitter.com/SecurityYamato"><img src="https://img.shields.io/twitter/follow/SecurityYamato?style=social"/></a>
