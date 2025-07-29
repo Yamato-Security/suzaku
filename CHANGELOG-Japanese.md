@@ -1,6 +1,10 @@
 # 変更点
 
-## x.x.x [xxxx/xx/xx]
+## 1.0.0 [xxxx/xx/xx]
+
+**新機能:**
+
+- `aws-ct-timeline`コマンドで相関ルールに対応した。(#97) (@fukusuket)
 
 **改善:**
 

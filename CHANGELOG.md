@@ -1,6 +1,10 @@
 # Changes
 
-## x.x.x [xxxx/xx/xx]
+## 1.0.0 [xxxx/xx/xx]
+
+**New Features:**
+
+- Added support for correlation rules for the `aws-ct-timeline` command. (#97) (@fukusuket)
 
 **Enhancements:**
 
