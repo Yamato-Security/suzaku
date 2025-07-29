@@ -4,7 +4,7 @@
 
 **New Features:**
 
-- Added support for correlation rules for the `aws-ct-timeline` command. (#97) (@fukusuket)
+- Added support for correlation rules (`event_count`, `value_count`, `temporal`, `temporal_order`) for the `aws-ct-timeline` command. (#97) (@fukusuket)
 
 **Enhancements:**
 

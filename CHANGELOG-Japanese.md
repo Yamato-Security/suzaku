@@ -4,7 +4,7 @@
 
 **新機能:**
 
-- `aws-ct-timeline`コマンドで相関ルールに対応した。(#97) (@fukusuket)
+- `aws-ct-timeline`コマンドで相関ルール(`event_count`、`value_count`、`temporal`、`temporal_order`)に対応した。(#97) (@fukusuket)
 
 **改善:**
 
