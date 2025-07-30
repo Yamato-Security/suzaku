@@ -20,16 +20,17 @@
 Suzaku（朱雀）は、中国神話において、雲の上を飛び、南の天を支配する神である["Vermilion Bird"](https://en.wikipedia.org/wiki/Vermilion_Bird)を意味します。
 
 Suzakuは、クラウドログのための脅威ハンティングおよび高速フォレンジックタイムライン生成ツールです。
-（[Hayabusa](https://github.com/Yamato-Security/hayabusa)をWindowsイベントログではなくクラウドログ用にしたものを想像してください。） 
-現在、AWS CloudTrailログに対する基本的なネイティブの[sigma](https://github.com/SigmaHQ/sigma)サポートを備えた形で積極的に開発が進められています。 
-AWSの次には、AzureおよびGCPログのサポートを計画しています。
+（[Hayabusa](https://github.com/Yamato-Security/hayabusa)をWindowsイベントログではなくクラウドログ用にしたものを想像してください。）
+現在、このプロジェクトは活発に開発が進められており、AWS CloudTrailログに対するネイティブな[Sigma](https://github.com/SigmaHQ/sigma)検知機能をサポートしています。
+将来的には、AzureおよびGCPのログにも対応する予定です。
 
 クラウドログには、数千もの異なるAPI呼び出しがあり、手動で確認するには膨大なイベントが存在します。 
-Suzakuは、ノイズの中から攻撃を見つけるだけでなく、迅速なフォレンジック調査を行うために必要なイベントとデータのみを含むDFIRタイムラインを提供するよう設計されています。 
-また、高レベルで何が起こったのかを迅速に発見し、攻撃者が行ったイベントを見逃さないようにするための要約や検索機能なども作成する予定です。
+Suzakuは、ノイズの中から攻撃を見つけるだけでなく、迅速なフォレンジック調査を行うために必要なイベントとデータのみを含むDFIRタイムラインを提供するよう設計されています。
+また、サマリーを作成することで、高レベルで何が起きたかを素早く把握でき、シグネチャに依存せず異常な振る舞いを発見したり、IPアドレス、ユーザーエージェント、リージョン、位置情報などのキーワードを簡単に見つけてピボットすることができ、攻撃者の行動を見逃さずに追跡することが可能になります。
 
 # 関連プロジェクト
 
+* [sigma-rust](https://github.com/Yamato-Security/sigma-rust/) - [sigma-rust](https://github.com/jopohl/sigma-rust)クレートのフォークリポジトリで、相関ルールのサポートなどの更新が含まれています。
 * [suzaku-rules](https://github.com/Yamato-Security/suzaku-rules) - Suzakuのためのルールセット。Sigmaルールを使用して、Suzakuで検出できるようにします。
 * [suzaku-sample-data](https://github.com/Yamato-Security/suzaku-sample-data) - Suzakuのサンプルデータセット。Suzakuを使用して、サンプルデータを分析することができます。
 
@@ -114,9 +115,10 @@ Suzakuは、ノイズの中から攻撃を見つけるだけでなく、迅速�
 
 * クロスプラットフォームサポート: Windows、Linux、macOS
 * Rustで開発され、安全で高速。
-* `.json`または圧縮された`.json.gz`ファイルがスキャン可能。
-* 単一のタイムラインを作成し、フォレンジック調査やインシデントレスポンスを容易にします。
-* 読みやすく、作成や編集が簡単なYML形式の[Sigma](https://github.com/SigmaHQ/sigma)で記述されたIoCシグネチャに基づく脅威ハンティング。
+* `.json`または圧縮された`.json.gz`ファイルをマルチスレッドで高速スキャン
+* フォレンジック調査やインシデント対応に適した、分析しやすい単一のタイムラインを作成
+* 読み書きや編集が容易なYML形式の[Sigma](https://github.com/SigmaHQ/sigma)ルールで書かれたIoCシグネチャをネイティブに優れた形でサポート（相関ルールと、`expand`を除くすべてのフィールド修飾子に対応)
+* API使用状況の概要、攻撃者に関するメトリクス（送信元IPアドレス、ジオロケーション、使用リージョン、ユーザーエージェントなど）を集約し、シグネチャに依存せず異常な活動を検出
 * 結果をCSV、JSON、JSONL形式で保存可能。
 
 # ダウンロード
@@ -161,7 +163,7 @@ git clone https://github.com/Yamato-Security/suzaku.git --recursive
 
 # アドバンス: ソースからのコンパイル (任意)
 
-Rustがインストールされている場合、以下のコマンドでソースコードからコンパイルできます。
+[Rustをインストールした後](https://www.rust-lang.org/)、以下のコマンドでソースからコンパイルできます。
 
 注意: コンパイルには通常、最新バージョンのRustが必要です
 
@@ -214,9 +216,10 @@ Fedoraベースのディストリビューション:
 sudo yum install openssl-devel
 ```
 
-## LinuxのMUSLバイナリのクロスコンパイル
+## LinuxのIntel MUSLバイナリのクロスコンパイル
 
-Linux OSでは、まずターゲットをインストールします。
+Linuxの場合、上記のようにGNUバイナリをコンパイルすることを推奨しますが、より高い移植性を求める場合はMUSLバイナリを作成することもできます。
+その場合は、まず以下のようにターゲットをインストールしてください。
 
 ```bash
 rustup install stable-x86_64-unknown-linux-musl
@@ -233,6 +236,8 @@ cargo build --release --target=x86_64-unknown-linux-musl
 
 MUSLバイナリは、`./target/x86_64-unknown-linux-musl/release/`ディレクトリに作成されます。
 GNUバイナリよりも約15%遅くなりますが、Linuxの異なるバージョンやディストリビューション間での移植性が高くなります。
+
+> 注意：ARMベースのLinuxシステム向けのMUSLバイナリは、正しく動作しない可能性があります。
 
 # Suzakuの実行
 
@@ -323,6 +328,11 @@ Usage: suzaku aws-ct-metrics [OPTIONS] <--directory <DIR>|--file <FILE>>
 Input:
   -d, --directory <DIR>  複数gz/jsonファイルのディレクトリパス
   -f, --file <FILE>      gz/jsonファイルのパス
+
+Filtering:
+      --timeline-start <DATE>  読み込むイベントの開始時刻 (例: "2022-02-22T23:59:59Z)
+      --timeline-end <DATE>    読み込むイベントの終了時刻 (例: "2020-02-22T00:00:00Z")
+      --time-offset <OFFSET>   オフセットに基づいて直近のイベントをスキャン (例: 1y, 3M, 30d, 24h, 30m)
 
 Output:
   -F, --field-name <FIELD_NAME>  メトリクスを作成するフィールド [デフォルト: eventName]
@@ -422,6 +432,7 @@ Total regions: 16
 113,328 - us-east-1 (2019-08-23 06:00:07 ~ 2019-08-23 06:04:14)
 65,718 - ap-northeast-2 (2019-08-23 06:00:07 ~ 2019-08-23 06:22:55)
 64,787 - ap-northeast-1 (2019-08-23 06:00:07 ~ 2019-08-23 06:34:57)
+...
 ```
 
 #### `SrcIPs`の例
@@ -436,6 +447,7 @@ Total source IPs: 5,293
 5,138 - 84.252.252.117 (2019-01-08 20:30:01 ~ 2020-03-29 09:06:56)
 4,946 - 24.251.252.2 (2019-08-21 08:03:00 ~ 2019-09-30 06:36:13)
 4,225 - 211.111.151.81 (2019-08-21 08:03:00 ~ 2019-09-12 19:53:35)
+...
 ```
 
 #### `UserType`の例
@@ -451,6 +463,7 @@ Total access key ids: 629
 12,677 - AKIA1ZBTOEKWKVHP6GHZ (2017-02-12 21:15:12 ~ 2020-09-21 21:06:22)
 8,822 - ASIAGD2JRX0V6RJGWR59 (2018-04-17 10:09:00 ~ 2020-09-21 21:06:22)
 4,940 - ASIAUNHV6EHIK5MNPEKF (2019-08-21 08:03:00 ~ 2019-09-30 06:36:17)
+...
 ```
 
 >　一時的なAWS STSアクセスキーIDは大量に存在するため、デフォルトではフィルタリングしています。これらを含めたい場合は、`-s, --include-sts-keys`オプションを追加してください。
@@ -470,6 +483,7 @@ Total user agents: 7,760
 3,909 - Boto3/1.14.28 Python/3.8.5 Linux/5.7.0-kali1-amd64 Botocore/1.17.28 (2019-01-08 20:30:01 ~ 2020-09-11 17:35:39)
 3,450 - Boto3/1.4.2 Python/2.7.13+ Linux/4.9.0-3-amd64 Botocore/1.5.19 (2017-02-12 21:15:12 ~ 2020-09-21 21:06:22)
 3,198 - Boto3/1.4.2 Python/2.7.14 Linux/4.13.0-1-amd64 Botocore/1.5.19 (2017-02-12 21:15:12 ~ 2020-09-21 21:06:22)
+...
 ```
 
 > `aws`クライアントツールは、ユーザーエージェントにOS情報を含めるため、攻撃者のOS（例: `kali`）からのAPIコールを検出することが可能です。
@@ -484,6 +498,9 @@ Input:
   -f, --file <FILE>      gz/jsonファイルのパス
 
 Filtering:
+      --timeline-start <DATE>  読み込むイベントの開始時刻 (例: "2022-02-22T23:59:59Z)
+      --timeline-end <DATE>    読み込むイベントの終了時刻 (例: "2020-02-22T00:00:00Z")
+      --time-offset <OFFSET>   オフセットに基づいて直近のイベントをスキャン (例: 1y, 3M, 30d, 24h, 30m)
   -s, --include-sts-keys  一時的なAWS STSアクセスキーIDを結果に含める
 
 Output:
@@ -521,12 +538,19 @@ Input:
   -d, --directory <DIR>  複数gz/jsonファイルのディレクトリパス
   -f, --file <FILE>      gz/jsonファイルのパス
 
+Filtering:
+      --timeline-start <DATE>  読み込むイベントの開始時刻 (例: "2022-02-22T23:59:59Z)
+      --timeline-end <DATE>    読み込むイベントの終了時刻 (例: "2020-02-22T00:00:00Z")
+      --time-offset <OFFSET>   オフセットに基づいて直近のイベントをスキャン (例: 1y, 3M, 30d, 24h, 30m)
+
 Output:
-  -o, --output <FILE>              ファイルに結果を保存
-  -t, --output-type <OUTPUT_TYPE>  ファイルタイプ 1: CSV (デフォルト), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [デフォルト: 1]
   -C, --clobber                    結果ファイルを上書きする
   -G, --GeoIP <MAXMIND-DB-DIR>     IPアドレスにGeoIP (ASN、都市、国)情報を追加する
+  -m, --min-level <LEVEL>          読み込むルールの最小レベル (規定値: informational)
+  -o, --output <FILE>              ファイルに結果を保存
+  -t, --output-type <OUTPUT_TYPE>  ファイルタイプ 1: CSV (デフォルト), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [デフォルト: 1]
   -R, --raw-output                 元のJSONログを出力する（JSON形式のみ利用可能）
+      --threads <THREAD NUMBER>    使用するスレッド数 (規定値: same as CPU cores)
 
 Display Settings:
   -K, --no-color               カラーで出力しない
@@ -568,6 +592,232 @@ RuleID: 'sigma.id'
 * `sigma.`（例: `sigma.title`）で始まるフィールド値は、Sigmaルールから取得されます。
 * 現在は文字列のみをサポートしていますが、将来的には他の型のフィールド値にも対応する予定です。
 
+> 注意：元のJSONデータを出力し、フィールド情報を失わないようにしたい場合は、`aws-ct-timeline`コマンドに`-R, --raw-output`オプションを追加してください。
+
+# ネイティブSigmaサポート
+
+SuzakuはSigma仕様に対して非常に優れたネイティブサポートを提供しており、[expand](https://sigmahq.io/docs/basics/modifiers.html#expand) を除くすべてのフィールド修飾子に対応しています。
+
+バージョン1.0.0以降では、Suzakuはクラウドログにおける攻撃検出に重要な相関ルール（Correlation Rules）にも対応しています。
+
+> 注意：現在のところ、相関ルールは1つのファイル内に作成する必要があります。
+
+## EventCountルール
+
+これは、特定のイベントをカウントし、一定の期間内にその数が多すぎる、または少なすぎる場合にアラートを出すルールです。
+一定時間内に多数のイベントを検出する一般的な例としては、パスワード推測攻撃、パスワードスプレー攻撃、サービス拒否（DoS）攻撃の検出があります。
+また、これらのルールは、特定のイベントの発生数がしきい値を下回る場合など、ログソースの信頼性に関する問題の検出にも使用できます。
+
+### EventCountルールの例
+
+```yml
+title: Correlation Test
+id: 49d15187-4203-4e11-8acd-8736f25b6609
+status: test
+author: TEST
+correlation:
+    type: event_count
+    rules:
+        - Console Login With MFA
+    group-by:
+        - sourceIPAddress
+    timespan: 3d
+    condition:
+        gte: 3
+        field: sourceIPAddress
+    generate: true 
+level: high
+---
+title: Console Login With MFA
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'Yes'
+    condition: selection
+level: informational
+```
+
+## ValueCountルール
+
+これらのルールは、指定された時間枠内で **異なる**値 を持つ特定のフィールドに基づいて、同じ種類のイベントをカウントします。
+
+例：
+- 単一の送信元IPアドレスが多数の異なる宛先IPアドレスやポートに接続を試みるネットワークスキャン
+- 単一の送信元が多数の異なるユーザーに対して認証に失敗するパスワードスプレー攻撃
+- 短時間で多くの高権限のActive Directoryグループを列挙するBloodHoundのようなツールの検出
+
+### ValueCountルールの例
+
+```yml
+title: Correlation value_count Test
+id: 49d15187-4203-4e11-8acd-8736f25b66xx
+status: test
+author: TEST
+correlation:
+    type: value_count
+    rules:
+        - Console Login Without MFA
+    group-by:
+        - sourceIPAddress
+    timespan: 3d
+    condition:
+        gte: 2
+        field: sourceIPAddress
+    generate: true 
+level: high
+---
+title: Console Login Without MFA
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'No'
+    condition: selection
+level: medium
+```
+
+## Temporalルール
+
+`rule`フィールドで参照されるルールによって定義されたすべてのイベントは、timespan で定義された時間枠内に発生している必要があります。
+また、`group-by`で定義されたフィールドの値はすべて同じでなければなりません（例：同じホスト、同じユーザーなど）。
+
+例としては、同一の送信元IPアドレスから、3つのSigmaルールで定義された偵察用API呼び出しが5分以内に任意の順序で実行されたケースが挙げられます。
+
+### Temporalルールの例
+
+```yml
+title: Correlation temporal Test
+id: 49d15187-4203-4e11-8acd-8736f25b66xx
+status: test
+author: TEST
+correlation:
+    type: temporal
+    rules:
+        - CloudTrail Log Settings Modified
+        - Console Login Without MFA
+        - Role Enumeration
+    timespan: 3d
+    generate: true
+level: high
+---
+title: CloudTrail Log Settings Modified
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-23
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'cloudtrail.amazonaws.com'
+        eventName: 'UpdateTrail'
+    filter:
+        errorCode: 'AccessDenied'
+    condition: selection and not filter
+level: high
+---
+title: Console Login Without MFA
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-13
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'No'
+    condition: selection
+level: medium
+---
+title: Role Enumeration 
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-24
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'iam.amazonaws.com'
+        eventName: 'ListRoles'
+    condition: selection
+falsepositives:
+level: low
+```
+
+## Temporal Orderedルール
+
+`temporal_ordered`相関タイプは`temporal`と同様に動作しますが、加えて`rules`属性で指定された順序でイベントが発生する必要があります。
+
+例としては、複数回のログイン失敗の後にログイン成功が続く場合などが挙げられます。
+
+### Temporal Orderedルールの例
+
+```yml
+title: Correlation temporal_ordered Test
+id: 49d15187-4203-4e11-8acd-8736f25b66xx
+status: test
+author: TEST
+correlation:
+    type: temporal_ordered
+    rules:
+        - Console Login Without MFA
+        - Role Enumeration
+        - CloudTrail Log Settings Modified
+    timespan: 1d
+    generate: true
+level: high
+---
+title: CloudTrail Log Settings Modified
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-23
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'cloudtrail.amazonaws.com'
+        eventName: 'UpdateTrail'
+    filter:
+        errorCode: 'AccessDenied'
+    condition: selection and not filter
+level: high
+---
+title: Console Login Without MFA
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-13
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'No'
+    condition: selection
+level: medium
+---
+title: Role Enumeration 
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-24
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'iam.amazonaws.com'
+        eventName: 'ListRoles'
+    condition: selection
+falsepositives:
+level: low
+```
+
 # 貢献
 
 私たちは、あらゆる形での貢献を歓迎しています。
@@ -586,12 +836,14 @@ RuleID: 'sigma.id'
 
 * Suzakuは[AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html)の下でリリースされており、すべてのルールは[Detection Rule License (DRL) 1.1](https://github.com/SigmaHQ/sigma/blob/master/LICENSE.Detection.Rules.md)の下でリリースされています。
 * Suzakuは、社内利用、SaaSソリューション、コンサルティング業務などで自由に使用できます。
-  ただし、SaaSソリューションの一環としてSuzakuを使用し、それに改良を加えた場合は、その改良をオープンソース化し、プロジェクトに還元することをお願いしています
+もし改善を加えた場合は、その改善をオープンソースとして公開し、本プロジェクトに還元していただくようお願いします。
 
 # コントリビューター
 
-* DustInDark (コア開発者)
-* Fukusuke Takahashi (コア開発者)
+* Akira Nishikawa (SuzakuをAWS ECS Fargate 上で実行するためのガイドの作成) (@nishikawaakira)
+* DustInDark (コア開発者) (@hitenkoku)
+* Fukusuke Takahashi (リード開発者) (@fukusuket)
+* James Takai (コア開発者) (@hach1yon)
 * Zach Mathis (プロジェクトリーダー, ツールデザイン, ルール作成, テスト,　など...) (@yamatosecurity)
 
 # 謝辞

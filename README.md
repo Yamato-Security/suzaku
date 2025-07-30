@@ -488,7 +488,6 @@ Total user agents: 7,760
 
 > Note that the `aws` client tool will include the OS information in the user agent so it is possible to detect if there were API calls made from attacker OSes like `kali`.
 
-
 ### Command usage
 ```
 Usage:
