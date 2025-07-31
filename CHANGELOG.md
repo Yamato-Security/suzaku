@@ -1,6 +1,6 @@
 # Changes
 
-## 1.0.0 [2025/07/31] - Black Hat Arsenal USA 2025 Release RC1
+## 1.0.0 [2025/07/31] - Black Hat Arsenal USA 2025 Release
 
 **New Features:**
 
