@@ -21,15 +21,16 @@ Suzaku (朱雀) means ["Vermilion Bird"](https://en.wikipedia.org/wiki/Vermilion
 
 Suzaku is a threat hunting and fast forensics timeline generator for cloud logs.
 (Imagine [Hayabusa](https://github.com/Yamato-Security/hayabusa) but for cloud logs instead of Windows event logs.)
-It is currently under active development with basic native [Sigma](https://github.com/SigmaHQ/sigma) detection support for AWS CloudTrail logs.
-After AWS, we plan on supporting Azure and GCP logs.
+It is currently under active development with native [Sigma](https://github.com/SigmaHQ/sigma) detection support for AWS CloudTrail logs.
+We plan on supporting Azure and GCP logs as well.
 
 With cloud logs, there are thousands of different API calls and more events then anyone could sift through manually.
 Suzaku is designed to not just find the attacks amongst the noise, but also to provide you with a DFIR timeline that contains only the events and data you need to perform a fast-forensics investigation.
-We also plan on creating summaries, search capabilities, etc... in order to quickly discover what happened at a high level as well as not miss any events that an attacker performed after you discover them. 
+You can also create summaries in order to quickly discover what happened at a high level, discover abnormal behavior not relying on signatures and easily find keywords such as IP addresses, user agents, regions, geo-location, etc... to pivot on and not miss any events that an attacker performed after you discover them. 
 
 # Companion Projects
 
+* [sigma-rust](https://github.com/Yamato-Security/sigma-rust/) - our forked repository of the [sigma-rust](https://github.com/jopohl/sigma-rust) crate with updates like support for correlation rules, etc...
 * [suzaku-rules](https://github.com/Yamato-Security/suzaku-rules) - our repository of Sigma rules. New upstream Sigma rules are added automatically. We also host our own rules here.
 * [suzaku-sample-data](https://github.com/Yamato-Security/suzaku-sample-data) - a repository of various cloud logs with attack evidence inside them used for testing Suzaku as well as for writing new detection rules.
 
@@ -113,10 +114,11 @@ We also plan on creating summaries, search capabilities, etc... in order to quic
 # Features
 
 * Cross-platform support: Windows, Linux, macOS.
-* Developed in Rust to be memory safe and fast.
-* Scans `.json` or compressed `.json.gz` files.
-* Creates single easy-to-analyze timelines for forensic investigations and incident response.
-* Threat hunting based on IoC signatures written in easy to read/create/edit YML-based [Sigma](https://github.com/SigmaHQ/sigma) rules.
+* Developed in Rust to be memory safe, fast and standalone.
+* Scan `.json` or compressed `.json.gz` files with multi-thread performance.
+* Create single easy-to-analyze timelines for forensic investigations and incident response.
+* Execllent native support for IoC signatures written in easy to read/create/edit YML-based [Sigma](https://github.com/SigmaHQ/sigma) rules. (Correlation rules and all field modifiers except [expand](https://sigmahq.io/docs/basics/modifiers.html#expand) are supported.)
+* Create a summary of all the API usage, metrics about the attacker (source IP addresses, geo-location, regions used, user agents, etc...) to discover abnormal activity without relying on signatures.
 * Save results to CSV, JSON and JSONL.
 
 # Downloads
@@ -145,7 +147,7 @@ You can `git clone` the repository with the following command and compile binary
 git clone https://github.com/Yamato-Security/suzaku.git --recursive
 ```
 
-> **Note:** If you forget to use --recursive option, the `rules` folder, which is managed as a git submodule, will not be cloned.
+> **Note:** If you forget to use `--recursive` option, the `rules` folder, which is managed as a git submodule, will not be cloned.
 
 You can sync the `rules` folder and get latest Suzaku rules with `git pull --recurse-submodules` or use the following command:
 
@@ -161,7 +163,7 @@ If the update fails, you may need to rename the `rules` folder and try again.
 
 # Advanced: Compiling From Source (Optional)
 
-If you have Rust installed, you can compile from source with the following command:
+[After installing Rust](https://www.rust-lang.org/), you can compile from source with the following command:
 
 Note: To compile, you usually need the latest version of Rust.
 
@@ -214,9 +216,10 @@ Fedora-based distros:
 sudo yum install openssl-devel
 ```
 
-## Cross-compiling Linux MUSL Binaries
+## Cross-compiling Linux Intel MUSL Binaries
 
-On a Linux OS, first install the target.
+For Linux, we recommend to compile GNU binaries as explained above but you may want to create MUSL binaries for better protability.
+In that case, first install the target:
 
 ```bash
 rustup install stable-x86_64-unknown-linux-musl
@@ -233,6 +236,8 @@ cargo build --release --target=x86_64-unknown-linux-musl
 
 The MUSL binary will be created in the `./target/x86_64-unknown-linux-musl/release/` directory.
 MUSL binaries are are about 15% slower than the GNU binaries, however, they are more portable accross different versions and distributions of linux.
+
+> Note: MUSL binaries for ARM-based Linux systems will probaby not run correctly.
 
 # Running Suzaku
 
@@ -323,6 +328,11 @@ Usage: suzaku aws-ct-metrics [OPTIONS] <--directory <DIR>|--file <FILE>>
 Input:
   -d, --directory <DIR>  Directory of multiple gz/json files
   -f, --file <FILE>      File path to one gz/json file
+
+Filtering:
+      --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
+      --timeline-end <DATE>    End time of the events to load (ex: "2020-02-22T00:00:00Z")
+      --time-offset <OFFSET>   Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
 
 Output:
   -F, --field-name <FIELD_NAME>  The field to generate metrics for [default: eventName]
@@ -478,7 +488,6 @@ Total user agents: 7,760
 
 > Note that the `aws` client tool will include the OS information in the user agent so it is possible to detect if there were API calls made from attacker OSes like `kali`.
 
-
 ### Command usage
 ```
 Usage:
@@ -489,7 +498,10 @@ Input:
   -f, --file <FILE>      File path to one gz/json file
 
 Filtering:
-  -s, --include-sts-keys  Include temporary AWS STS access key IDs
+      --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
+      --timeline-end <DATE>    End time of the events to load (ex: "2020-02-22T00:00:00Z")
+      --time-offset <OFFSET>   Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
+  -s, --include-sts-keys       Include temporary AWS STS access key IDs
 
 Output:
   -o, --output <FILE>           Output results to a CSV file
@@ -526,12 +538,19 @@ Input:
   -d, --directory <DIR>  Directory of multiple gz/json files
   -f, --file <FILE>      File path to one gz/json file
 
+Filtering:
+      --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
+      --timeline-end <DATE>    End time of the events to load (ex: "2020-02-22T00:00:00Z")
+      --time-offset <OFFSET>   Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
+
 Output:
+  -C, --clobber                    Overwrite files when saving
+  -G, --geo-ip <MAXMIND-DB-DIR>    Add GeoIP (ASN, city, country) info to IP addresses
+  -m, --min-level <LEVEL>          Minimum level for rules to load (default: informational)
   -o, --output <FILE>              Save the results to a file
   -t, --output-type <OUTPUT_TYPE>  Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [default: 1]
-  -C, --clobber                    Overwrite files when saving
-  -G, --GeoIP <MAXMIND-DB-DIR>     Add GeoIP (ASN, city, country) info to IP addresses
   -R, --raw-output                 Output the original JSON logs (only available in JSON formats)
+      --threads <THREAD NUMBER>    Number of threads to use (default: same as CPU cores)
 
 Display Settings:
   -K, --no-color               Disable color output
@@ -573,6 +592,232 @@ RuleID: 'sigma.id'
 * Any field value that starts with `sigma.` (ex: `sigma.title`) will be taken from the Sigma rule.
 * Currently we only support strings but plan on supporting other types of field values.
 
+> Note: If you want to output the original JSON data and make sure you do not loose any field information, just add the `-R, --raw-output` option to `aws-ct-timeline` command.
+
+# Native Sigma Support
+
+Suzaku has very good native support for the Sigma specification and supports all field modifiers except for [expand](https://sigmahq.io/docs/basics/modifiers.html#expand) which requires some pre-configuration.
+
+As of version 1.0.0, Suzaku also supports correlation rules which are important for detecting attacks in cloud logs.
+
+> Note: Currently, you need to create correlation rules in single files.
+
+## Event Count Rules
+
+These are rules that count certain events and alert if too many or not enough number of these events occur within a timeframe.
+Common examples of detecting many events within a certain time period are for detecting password guessing attacks, password spray attacks and denial of service attacks.
+You could also use these rules to detect log source reliability issues, such as when certain events fall below a certain threshold.
+
+### Event Count Rule Example
+
+```yml
+title: Correlation Test
+id: 49d15187-4203-4e11-8acd-8736f25b6609
+status: test
+author: TEST
+correlation:
+    type: event_count
+    rules:
+        - Console Login With MFA
+    group-by:
+        - sourceIPAddress
+    timespan: 3d
+    condition:
+        gte: 3
+        field: sourceIPAddress
+    generate: true 
+level: high
+---
+title: Console Login With MFA
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'Yes'
+    condition: selection
+level: informational
+```
+
+## Value Count Rules
+
+These rules counts the same events within a time frame with  **different** values of a given field.
+
+Examples:
+- Network scans where a single source IP address tries to connect to many different destination IP addresses and/or ports.
+- Password spraying attacks where a single source fails to authenticate with many different users.
+- Detect tools like BloodHound that enumerate many high-privilege AD groups within a short time frame.
+
+### Value Count Rule Example
+
+```yml
+title: Correlation value_count Test
+id: 49d15187-4203-4e11-8acd-8736f25b66xx
+status: test
+author: TEST
+correlation:
+    type: value_count
+    rules:
+        - Console Login Without MFA
+    group-by:
+        - sourceIPAddress
+    timespan: 3d
+    condition:
+        gte: 2
+        field: sourceIPAddress
+    generate: true 
+level: high
+---
+title: Console Login Without MFA
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'No'
+    condition: selection
+level: medium
+```
+
+## Temporal Proximity Rules
+
+All events defined by the rules referred by the rule field must occur in the time frame defined by timespan.
+The values of fields defined in `group-by` must all have the same value (ex: same host, user, etc...).
+
+An example is reconnaissance API calls defined in three Sigma rules invoked in arbitrary order within 5 minutes from the same source IP address.
+
+### Temporal Proximity Rule Example
+
+```yml
+title: Correlation temporal Test
+id: 49d15187-4203-4e11-8acd-8736f25b66xx
+status: test
+author: TEST
+correlation:
+    type: temporal
+    rules:
+        - CloudTrail Log Settings Modified
+        - Console Login Without MFA
+        - Role Enumeration
+    timespan: 3d
+    generate: true
+level: high
+---
+title: CloudTrail Log Settings Modified
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-23
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'cloudtrail.amazonaws.com'
+        eventName: 'UpdateTrail'
+    filter:
+        errorCode: 'AccessDenied'
+    condition: selection and not filter
+level: high
+---
+title: Console Login Without MFA
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-13
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'No'
+    condition: selection
+level: medium
+---
+title: Role Enumeration 
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-24
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'iam.amazonaws.com'
+        eventName: 'ListRoles'
+    condition: selection
+falsepositives:
+level: low
+```
+
+## Temporal Ordered Rules
+
+The `temporal_ordered` correlation type behaves like `temporal` and requires in addition that the events appear in the order provided in the `rules` attribute.
+
+An example is many failed logins followed by a successful login.
+
+### Temporal Ordered Rule Example
+
+```yml
+title: Correlation temporal_ordered Test
+id: 49d15187-4203-4e11-8acd-8736f25b66xx
+status: test
+author: TEST
+correlation:
+    type: temporal_ordered
+    rules:
+        - Console Login Without MFA
+        - Role Enumeration
+        - CloudTrail Log Settings Modified
+    timespan: 1d
+    generate: true
+level: high
+---
+title: CloudTrail Log Settings Modified
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-23
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'cloudtrail.amazonaws.com'
+        eventName: 'UpdateTrail'
+    filter:
+        errorCode: 'AccessDenied'
+    condition: selection and not filter
+level: high
+---
+title: Console Login Without MFA
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-13
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: signin.amazonaws.com
+        eventName: 'ConsoleLogin'
+        additionalEventData.MFAUsed: 'No'
+    condition: selection
+level: medium
+---
+title: Role Enumeration 
+author: Zach Mathis (@yamatosecurity)
+date: 2025-04-24
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventSource: 'iam.amazonaws.com'
+        eventName: 'ListRoles'
+    condition: selection
+falsepositives:
+level: low
+```
+
 # Contribution
 
 We would love any form of contribution.
@@ -591,13 +836,15 @@ At the least, **if you like our tools and resources then please give us a star o
 
 * Suzaku is released under [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html) and all rules are released under the [Detection Rule License (DRL) 1.1](https://github.com/SigmaHQ/sigma/blob/master/LICENSE.Detection.Rules.md).
 * You may freely use Suzaku internally, SaaS solutions, for consulting work, etc...
-However, if you use Suzaku in a type of SaaS solution and make improvements to it, we ask you to open-source those improvements and give back to the project.
+However, if you make improvements to it, we ask you to open-source those improvements and give back to the project.
 
 # Contributors
 
-* DustInDark (core developer)
-* Fukusuke Takahashi (core developer)
-* Zach Mathis (project leader, tool design, rules, testing, etc...) (@yamatosecurity)
+* Akira Nishikawa (Guide for running Suzaku on AWS ECS Fargate) (@nishikawaakira)
+* DustInDark (Developer) (@hitenkoku)
+* Fukusuke Takahashi (Lead developer) (@fukusuket)
+* James Takai (Developer) (@hach1yon)
+* Zach Mathis (Project leader, tool design, rules, testing, etc...) (@yamatosecurity)
 
 # Acknowledgements
 
