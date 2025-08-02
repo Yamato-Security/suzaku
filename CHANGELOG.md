@@ -1,5 +1,11 @@
 # Changes
 
+## 1.0.1 [xxxx/xx/xx] - Black Hat Arsenal USA 2025 Release
+
+**Bug Fixes:**
+
+- Better error handling for invalid file and directory input. (#99) (@fukusuket)
+
 ## 1.0.0 [2025/07/31] - Black Hat Arsenal USA 2025 Release
 
 **New Features:**
