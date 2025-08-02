@@ -31,11 +31,19 @@ pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) ->
             println!("File {file:?} does not exist.");
             return false;
         }
+        if !file.is_file() {
+            println!("Path {file:?} is not a file (it may be a directory or special file type).");
+            return false;
+        }
     }
 
     if let Some(dir) = dirpath {
         if !dir.exists() {
             println!("Directory {dir:?} does not exist.");
+            return false;
+        }
+        if !dir.is_dir() {
+            println!("Path {dir:?} is not a directory (it may be a file or special file type).");
             return false;
         }
     }

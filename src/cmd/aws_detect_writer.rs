@@ -95,21 +95,27 @@ fn write_to_csv(record: &[String], context: &mut OutputContext) {
     }
 }
 
-fn write_to_json(
+fn write_to_json_format(
     record: &[String],
     json: &Value,
     event: Option<&Event>,
     rule: Option<&Rule>,
     context: &mut OutputContext,
+    pretty: bool,
 ) {
     let raw_output = context.config.raw_output;
-    // writerの借用を分離してスコープを限定
+
     if raw_output {
-        // raw_outputの場合、contextを分割借用
         let profile = context.profile;
         let geo = &mut context.geo;
 
-        if let Some(writer) = &mut context.writers.json {
+        let writer = if pretty {
+            &mut context.writers.json
+        } else {
+            &mut context.writers.jsonl
+        };
+
+        if let Some(writer) = writer {
             let mut json_record = json.clone();
             let sigma_profile: Vec<(String, String)> = profile
                 .iter()
@@ -124,25 +130,52 @@ fn write_to_json(
                 }
             }
 
-            if let Ok(json_string) = serde_json::to_string_pretty(&json_record) {
+            let json_string = if pretty {
+                serde_json::to_string_pretty(&json_record)
+            } else {
+                serde_json::to_string(&json_record)
+            };
+
+            if let Ok(json_string) = json_string {
                 writer.write_all(json_string.as_bytes()).unwrap();
                 writer.write_all(b"\n").unwrap();
             }
         }
     } else {
-        // formatted outputの場合
-        if let Some(writer) = &mut context.writers.json {
+        let writer = if pretty {
+            &mut context.writers.json
+        } else {
+            &mut context.writers.jsonl
+        };
+
+        if let Some(writer) = writer {
             let mut json_record: BTreeMap<String, String> = BTreeMap::new();
             for ((k, _), value) in context.profile.iter().zip(record.iter()) {
                 json_record.insert(k.clone(), value.clone());
             }
 
-            if let Ok(json_string) = serde_json::to_string_pretty(&json_record) {
+            let json_string = if pretty {
+                serde_json::to_string_pretty(&json_record)
+            } else {
+                serde_json::to_string(&json_record)
+            };
+
+            if let Ok(json_string) = json_string {
                 writer.write_all(json_string.as_bytes()).unwrap();
                 writer.write_all(b"\n").unwrap();
             }
         }
     }
+}
+
+fn write_to_json(
+    record: &[String],
+    json: &Value,
+    event: Option<&Event>,
+    rule: Option<&Rule>,
+    context: &mut OutputContext,
+) {
+    write_to_json_format(record, json, event, rule, context, true);
 }
 
 fn write_to_jsonl(
@@ -152,48 +185,7 @@ fn write_to_jsonl(
     rule: Option<&Rule>,
     context: &mut OutputContext,
 ) {
-    let raw_output = context.config.raw_output;
-
-    // writerの借用を分離してスコープを限定
-    if raw_output {
-        // raw_outputの場合、contextを分割借用
-        let profile = context.profile;
-        let geo = &mut context.geo;
-
-        if let Some(writer) = &mut context.writers.jsonl {
-            let mut json_record = json.clone();
-            let sigma_profile: Vec<(String, String)> = profile
-                .iter()
-                .filter(|(_, value)| value.starts_with("sigma."))
-                .cloned()
-                .collect();
-
-            for (k, v) in sigma_profile {
-                if event.is_some() && rule.is_some() {
-                    let value = get_value_from_event(&v, event.unwrap(), rule.unwrap(), geo);
-                    json_record[k] = Value::String(value.to_string());
-                }
-            }
-
-            if let Ok(json_string) = serde_json::to_string(&json_record) {
-                writer.write_all(json_string.as_bytes()).unwrap();
-                writer.write_all(b"\n").unwrap();
-            }
-        }
-    } else {
-        // formatted outputの場合
-        if let Some(writer) = &mut context.writers.jsonl {
-            let mut json_record: BTreeMap<String, String> = BTreeMap::new();
-            for ((k, _), value) in context.profile.iter().zip(record.iter()) {
-                json_record.insert(k.clone(), value.clone());
-            }
-
-            if let Ok(json_string) = serde_json::to_string(&json_record) {
-                writer.write_all(json_string.as_bytes()).unwrap();
-                writer.write_all(b"\n").unwrap();
-            }
-        }
-    }
+    write_to_json_format(record, json, event, rule, context, false);
 }
 
 fn get_level_color(level: &str) -> SuzakuColor {
@@ -247,12 +239,13 @@ fn build_correlation_record(
         .collect()
 }
 
-fn get_value_from_correlation_event(
+fn get_value_from_event_common(
     key: &str,
     event: &Event,
-    rule: &SigmaCorrelationRule,
+    rule_info: RuleInfo,
     geo_ip: &mut Option<GeoIPSearch>,
 ) -> String {
+    // GeoIP処理部分（共通）
     if let Some(geo) = geo_ip {
         if let Some(ip) = event.get("sourceIPAddress") {
             let ip = ip.value_to_string();
@@ -269,6 +262,8 @@ fn get_value_from_correlation_event(
             }
         }
     }
+
+    // イベントフィールド処理（共通）
     if key.starts_with(".") {
         let key = key.strip_prefix(".").unwrap();
         if let Some(value) = event.get(key) {
@@ -282,50 +277,126 @@ fn get_value_from_correlation_event(
         }
     } else if key.starts_with("sigma.") {
         let key = key.replace("sigma.", "");
-        if key == "title" {
-            rule.title.to_string()
-        } else if key == "id"
-            && let Some(id) = &rule.id
-        {
-            id.to_string()
-        } else if key == "status"
-            && let Some(status) = &rule.status
-        {
-            format!("{status:?}").to_lowercase()
-        } else if key == "author"
-            && let Some(author) = &rule.author
-        {
-            author.to_string()
-        } else if key == "description"
-            && let Some(desc) = &rule.description
-        {
-            desc.to_string()
-        } else if key == "references"
-            && let Some(reference) = &rule.references
-        {
-            format!("{reference:?}")
-        } else if key == "date"
-            && let Some(date) = &rule.date
-        {
-            date.to_string()
-        } else if key == "tags"
-            && let Some(tag) = &rule.tags
-        {
-            format!("{tag:?}")
-        } else if key == "falsepositives"
-            && let Some(fp) = &rule.falsepositives
-        {
-            format!("{fp:?}")
-        } else if key == "level"
-            && let Some(level) = &rule.level
-        {
-            level.to_lowercase()
-        } else {
-            "-".to_string()
+        match key.as_str() {
+            "title" => rule_info.title(),
+            "id" => rule_info.id().unwrap_or_else(|| "-".to_string()),
+            "status" => rule_info.status().unwrap_or_else(|| "-".to_string()),
+            "author" => rule_info.author().unwrap_or_else(|| "-".to_string()),
+            "description" => rule_info.description().unwrap_or_else(|| "-".to_string()),
+            "references" => rule_info.references().unwrap_or_else(|| "-".to_string()),
+            "date" => rule_info.date().unwrap_or_else(|| "-".to_string()),
+            "modified" => rule_info.modified().unwrap_or_else(|| "-".to_string()),
+            "tags" => rule_info.tags().unwrap_or_else(|| "-".to_string()),
+            "falsepositives" => rule_info
+                .falsepositives()
+                .unwrap_or_else(|| "-".to_string()),
+            "level" => rule_info.level().unwrap_or_else(|| "-".to_string()),
+            _ => "-".to_string(),
         }
     } else {
         "-".to_string()
     }
+}
+
+enum RuleInfo<'a> {
+    Rule(&'a Rule),
+    CorrelationRule(&'a SigmaCorrelationRule),
+}
+impl<'a> RuleInfo<'a> {
+    fn title(&self) -> String {
+        match self {
+            RuleInfo::Rule(rule) => rule.title.to_string(),
+            RuleInfo::CorrelationRule(rule) => rule.title.to_string(),
+        }
+    }
+
+    fn id(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.id.as_ref().map(|id| id.to_string()),
+            RuleInfo::CorrelationRule(rule) => rule.id.as_ref().map(|id| id.to_string()),
+        }
+    }
+
+    fn status(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.status.as_ref().map(|status| format!("{status:?}")),
+            RuleInfo::CorrelationRule(rule) => {
+                rule.status.as_ref().map(|status| status.to_string())
+            }
+        }
+    }
+
+    fn author(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.author.as_ref().map(|author| author.to_string()),
+            RuleInfo::CorrelationRule(rule) => {
+                rule.author.as_ref().map(|author| author.to_string())
+            }
+        }
+    }
+
+    fn description(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.description.as_ref().map(|desc| desc.to_string()),
+            RuleInfo::CorrelationRule(rule) => {
+                rule.description.as_ref().map(|desc| desc.to_string())
+            }
+        }
+    }
+
+    fn references(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.references.as_ref().map(|refs| refs.join(", ")),
+            RuleInfo::CorrelationRule(rule) => rule.references.as_ref().map(|refs| refs.join(", ")),
+        }
+    }
+
+    fn date(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.date.as_ref().map(|date| date.to_string()),
+            RuleInfo::CorrelationRule(rule) => rule.date.as_ref().map(|date| date.to_string()),
+        }
+    }
+
+    fn modified(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.modified.as_ref().map(|date| date.to_string()),
+            RuleInfo::CorrelationRule(_) => None,
+        }
+    }
+
+    fn tags(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.tags.as_ref().map(|tags| tags.join(", ")),
+            RuleInfo::CorrelationRule(rule) => rule.tags.as_ref().map(|tags| tags.join(", ")),
+        }
+    }
+
+    fn falsepositives(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule.falsepositives.as_ref().map(|fp| fp.join(", ")),
+            RuleInfo::CorrelationRule(rule) => rule.falsepositives.as_ref().map(|fp| fp.join(", ")),
+        }
+    }
+
+    fn level(&self) -> Option<String> {
+        match self {
+            RuleInfo::Rule(rule) => rule
+                .level
+                .as_ref()
+                .map(|level| format!("{level:?}").to_lowercase()),
+            RuleInfo::CorrelationRule(rule) => rule.level.as_ref().map(|level| level.to_string()),
+        }
+    }
+}
+
+fn get_value_from_correlation_event(
+    key: &str,
+    event: &Event,
+    rule: &SigmaCorrelationRule,
+    geo_ip: &mut Option<GeoIPSearch>,
+) -> String {
+    get_value_from_event_common(key, event, RuleInfo::CorrelationRule(rule), geo_ip)
 }
 
 fn get_value_from_event(
@@ -334,83 +405,7 @@ fn get_value_from_event(
     rule: &Rule,
     geo_ip: &mut Option<GeoIPSearch>,
 ) -> String {
-    if let Some(geo) = geo_ip {
-        if let Some(ip) = event.get("sourceIPAddress") {
-            let ip = ip.value_to_string();
-            if let Some(ip) = geo.convert(ip.as_str()) {
-                if key == "SrcASN" {
-                    return geo.get_asn(ip);
-                } else if key == "SrcCity" {
-                    return geo.get_city(ip);
-                } else if key == "SrcCountry" {
-                    return geo.get_country(ip);
-                }
-            } else {
-                return ip;
-            }
-        }
-    }
-    if key.starts_with(".") {
-        let key = key.strip_prefix(".").unwrap();
-        if let Some(value) = event.get(key) {
-            if key == "eventTime" {
-                value.value_to_string().replace("T", " ").replace("Z", "")
-            } else {
-                value.value_to_string()
-            }
-        } else {
-            "-".to_string()
-        }
-    } else if key.starts_with("sigma.") {
-        let key = key.replace("sigma.", "");
-        if key == "title" {
-            rule.title.to_string()
-        } else if key == "id"
-            && let Some(id) = &rule.id
-        {
-            id.to_string()
-        } else if key == "status"
-            && let Some(status) = &rule.status
-        {
-            format!("{status:?}").to_lowercase()
-        } else if key == "author"
-            && let Some(author) = &rule.author
-        {
-            author.to_string()
-        } else if key == "description"
-            && let Some(desc) = &rule.description
-        {
-            desc.to_string()
-        } else if key == "references"
-            && let Some(reference) = &rule.references
-        {
-            format!("{reference:?}")
-        } else if key == "date"
-            && let Some(date) = &rule.date
-        {
-            date.to_string()
-        } else if key == "modified"
-            && let Some(modified) = &rule.modified
-        {
-            modified.to_string()
-        } else if key == "tags"
-            && let Some(tag) = &rule.tags
-        {
-            format!("{tag:?}")
-        } else if key == "falsepositives"
-            && let Some(fp) = &rule.falsepositives
-        {
-            format!("{fp:?}")
-        } else if key == "level"
-            && let Some(level) = &rule.level
-        {
-            format!("{level:?}").to_lowercase()
-        } else {
-            "-".to_string()
-        }
-    } else {
-        "-".to_string()
-    }
+    get_value_from_event_common(key, event, RuleInfo::Rule(rule), geo_ip)
 }
 
 // 使用例
