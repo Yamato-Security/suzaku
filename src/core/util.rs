@@ -43,7 +43,7 @@ pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) ->
             return false;
         }
         if !dir.is_dir() {
-            println!("Path {dir:?} is not a valid directory.");
+            println!("Path {dir:?} is not a directory (it may be a file or special file type).");
             return false;
         }
     }
