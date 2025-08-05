@@ -86,7 +86,7 @@ where
     let size = ByteSize::b(total_size).display().to_string();
 
     p(Green.rdg(no_color), "Total log files: ", false);
-    p(None, count.to_formatted_string(&Locale::en).as_str(), true);
+    p(None, &count.to_formatted_string(&Locale::en), true);
     p(Green.rdg(no_color), "Total file size: ", false);
     p(None, size.to_string().as_str(), true);
     println!();
