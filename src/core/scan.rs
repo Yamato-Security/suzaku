@@ -10,6 +10,7 @@ use colored::Colorize;
 use console::style;
 use flate2::read::GzDecoder;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use num_format::{Locale, ToFormattedString};
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::ParallelIterator;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
@@ -85,7 +86,7 @@ where
     let size = ByteSize::b(total_size).display().to_string();
 
     p(Green.rdg(no_color), "Total log files: ", false);
-    p(None, count.to_string().as_str(), true);
+    p(None, count.to_formatted_string(&Locale::en).as_str(), true);
     p(Green.rdg(no_color), "Total file size: ", false);
     p(None, size.to_string().as_str(), true);
     println!();
