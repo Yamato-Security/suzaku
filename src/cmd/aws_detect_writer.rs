@@ -124,8 +124,8 @@ fn write_to_json_format(
                 .collect();
 
             for (k, v) in sigma_profile {
-                if event.is_some() && rule.is_some() {
-                    let value = get_value_from_event(&v, event.unwrap(), rule.unwrap(), geo);
+                if let (Some(event), Some(rule)) = (event, rule) {
+                    let value = get_value_from_event(&v, event, rule, geo);
                     json_record[k] = Value::String(value.to_string());
                 }
             }
