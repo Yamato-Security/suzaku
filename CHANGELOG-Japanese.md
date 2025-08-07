@@ -1,6 +1,6 @@
 # 変更点
 
-## 1.0.1 [xxxx/xx/xx] - Black Hat Arsenal USA 2025 Release
+## 1.0.1 [2025/08/07] - Black Hat Arsenal USA 2025 Release
 
 **バグ修正:**
 

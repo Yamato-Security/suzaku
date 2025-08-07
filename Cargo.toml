@@ -1,6 +1,6 @@
 [package]
 name = "suzaku"
-version = "1.0.1-dev"
+version = "1.0.1"
 repository = "https://github.com/Yamato-Security/suzaku"
 authors = ["Yamato Security @SecurityYamato"]
 edition = "2024"
