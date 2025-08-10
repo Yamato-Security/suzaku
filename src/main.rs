@@ -71,7 +71,7 @@ fn main() {
                 );
                 return;
             }
-            if options.raw_output && options.output_type == 1 {
+            if options.raw_output && options.output_type == 1 && options.output.is_none() {
                 p(
                     None,
                     "--raw-output option is only available in JSON formats. Please specify an output type of 2-5.",
