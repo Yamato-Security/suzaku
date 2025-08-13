@@ -278,20 +278,20 @@ fn get_value_from_event_common(
     geo_ip: &mut Option<GeoIPSearch>,
 ) -> String {
     // GeoIP処理部分（共通）
-    if let Some(geo) = geo_ip {
-        if let Some(ip) = event.get("sourceIPAddress") {
-            let ip = ip.value_to_string();
-            if let Some(ip) = geo.convert(ip.as_str()) {
-                if key == "SrcASN" {
-                    return geo.get_asn(ip);
-                } else if key == "SrcCity" {
-                    return geo.get_city(ip);
-                } else if key == "SrcCountry" {
-                    return geo.get_country(ip);
-                }
-            } else {
-                return ip;
+    if let Some(geo) = geo_ip
+        && let Some(ip) = event.get("sourceIPAddress")
+    {
+        let ip = ip.value_to_string();
+        if let Some(ip) = geo.convert(ip.as_str()) {
+            if key == "SrcASN" {
+                return geo.get_asn(ip);
+            } else if key == "SrcCity" {
+                return geo.get_city(ip);
+            } else if key == "SrcCountry" {
+                return geo.get_country(ip);
             }
+        } else {
+            return ip;
         }
     }
 

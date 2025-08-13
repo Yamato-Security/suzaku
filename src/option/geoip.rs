@@ -97,10 +97,10 @@ impl GeoIPSearch {
         match self.country.lookup::<geoip2::Country>(ip) {
             Ok(Some(country)) => {
                 let mut ret = "-";
-                if let Some(country) = country.country {
-                    if let Some(name_tree) = country.names {
-                        ret = name_tree.get("en").unwrap_or(&"-")
-                    }
+                if let Some(country) = country.country
+                    && let Some(name_tree) = country.names
+                {
+                    ret = name_tree.get("en").unwrap_or(&"-")
                 }
                 ret.to_string()
             }
@@ -118,10 +118,10 @@ impl GeoIPSearch {
         match self.city.lookup::<geoip2::City>(ip) {
             Ok(Some(city)) => {
                 let mut ret = "-";
-                if let Some(city) = city.city {
-                    if let Some(name_tree) = city.names {
-                        ret = name_tree.get("en").unwrap_or(&"-")
-                    }
+                if let Some(city) = city.city
+                    && let Some(name_tree) = city.names
+                {
+                    ret = name_tree.get("en").unwrap_or(&"-")
                 }
                 ret.to_string()
             }

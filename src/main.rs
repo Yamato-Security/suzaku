@@ -53,15 +53,16 @@ fn main() {
             if !check_path_exists(file.clone(), dir.clone()) {
                 return;
             }
-            if let Some(output) = &options.output {
-                if !options.clobber && output.exists() {
-                    let msg = format!(
-                        "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
-                        output.display()
-                    );
-                    p(None, msg.as_str(), true);
-                    return;
-                }
+            if let Some(output) = &options.output
+                && !options.clobber
+                && output.exists()
+            {
+                let msg = format!(
+                    "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
+                    output.display()
+                );
+                p(None, msg.as_str(), true);
+                return;
             }
             if !options.rules.exists() {
                 p(
