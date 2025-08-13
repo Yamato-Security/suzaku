@@ -1,5 +1,11 @@
 # Changes
 
+## 1.1.0 [2025/08/14] - Obon Release
+
+**Enhancements:**
+
+- `-R, --raw-output` now outputs raw logs to the terminal when `-o` is not specified. (#101) (@fukusuket)
+
 ## 1.0.1 [2025/08/07] - Black Hat Arsenal USA 2025 Release
 
 **Bug Fixes:**

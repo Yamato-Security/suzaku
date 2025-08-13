@@ -558,7 +558,7 @@ Output:
   -m, --min-level <LEVEL>          読み込むルールの最小レベル (規定値: informational)
   -o, --output <FILE>              ファイルに結果を保存
   -t, --output-type <OUTPUT_TYPE>  ファイルタイプ 1: CSV (デフォルト), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [デフォルト: 1]
-  -R, --raw-output                 元のJSONログを出力する（JSON形式のみ利用可能）
+  -R, --raw-output                 元のJSONログを出力する（JSON形式または標準出力のみ利用可能）
       --threads <THREAD NUMBER>    使用するスレッド数 (規定値: same as CPU cores)
 
 Display Settings:
