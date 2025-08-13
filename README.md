@@ -558,7 +558,7 @@ Output:
   -m, --min-level <LEVEL>          Minimum level for rules to load (default: informational)
   -o, --output <FILE>              Save the results to a file
   -t, --output-type <OUTPUT_TYPE>  Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [default: 1]
-  -R, --raw-output                 Output the original JSON logs (only available in JSON formats)
+  -R, --raw-output                 Output the original JSON logs (only available in JSON formats or stdout)
       --threads <THREAD NUMBER>    Number of threads to use (default: same as CPU cores)
 
 Display Settings:
