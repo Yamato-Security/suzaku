@@ -260,17 +260,17 @@ fn process_correlation_base_rule<'a>(
                 .base_rules
                 .values()
                 .filter_map(|rule| {
-                    if rule.is_match(event) {
-                        if let Some(timestamp_field) = event.get("eventTime") {
-                            let ts = timestamp_field.value_to_string();
-                            if let Ok(parsed_time) = DateTime::parse_from_rfc3339(&ts) {
-                                let utc_time = parsed_time.with_timezone(&Utc);
-                                return Some(TimestampedEvent {
-                                    event: event.clone(),
-                                    timestamp: utc_time,
-                                    rule,
-                                });
-                            }
+                    if rule.is_match(event)
+                        && let Some(timestamp_field) = event.get("eventTime")
+                    {
+                        let ts = timestamp_field.value_to_string();
+                        if let Ok(parsed_time) = DateTime::parse_from_rfc3339(&ts) {
+                            let utc_time = parsed_time.with_timezone(&Utc);
+                            return Some(TimestampedEvent {
+                                event: event.clone(),
+                                timestamp: utc_time,
+                                rule,
+                            });
                         }
                     }
                     None
@@ -344,12 +344,12 @@ fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>, u64
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {
-            if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                if ext == "json" || ext == "gz" {
-                    count += 1;
-                    total_size += fs::metadata(&path)?.len();
-                    paths.push(path.to_str().unwrap().to_string());
-                }
+            if let Some(ext) = path.extension().and_then(|s| s.to_str())
+                && (ext == "json" || ext == "gz")
+            {
+                count += 1;
+                total_size += fs::metadata(&path)?.len();
+                paths.push(path.to_str().unwrap().to_string());
             }
         } else if path.is_dir() {
             let (sub_count, sub_paths, sub_size) = count_files_recursive(&path)?;

@@ -1,6 +1,12 @@
 # 変更点
 
-## 1.0.1 [xxxx/xx/xx] - Black Hat Arsenal USA 2025 Release
+## 1.1.0 [2025/08/14] - Obon Release
+
+**改善:**
+
+- `-R, --raw-output` は、`-o` が指定されていない場合に、ターミナルに生のログを出力する。(#101) (@fukusuket)
+
+## 1.0.1 [2025/08/07] - Black Hat Arsenal USA 2025 Release
 
 **バグ修正:**
 

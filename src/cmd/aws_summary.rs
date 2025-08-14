@@ -168,13 +168,13 @@ pub fn aws_summary(
         let source_ipaddress = match event.get("sourceIPAddress") {
             Some(ip) => {
                 let mut ip_str = ip.value_to_string();
-                if let Some(geo) = geo_search.as_mut() {
-                    if let Some(ip) = geo.convert(ip_str.as_str()) {
-                        let asn = geo.get_asn(ip);
-                        let country = geo.get_country(ip);
-                        let city = geo.get_city(ip);
-                        ip_str = format!("{ip_str} ({asn}, {city}, {country})");
-                    }
+                if let Some(geo) = geo_search.as_mut()
+                    && let Some(ip) = geo.convert(ip_str.as_str())
+                {
+                    let asn = geo.get_asn(ip);
+                    let country = geo.get_country(ip);
+                    let city = geo.get_city(ip);
+                    ip_str = format!("{ip_str} ({asn}, {city}, {country})");
                 }
                 ip_str
             }
@@ -208,17 +208,17 @@ pub fn aws_summary(
             None => "-".to_string(),
         };
         let mut abused_api_success = "".to_string();
-        if let Some(desc) = abused_aws_api_calls.get(&event_name) {
-            if error_code != "AccessDenied" {
-                abused_api_success = format!("{event_name} ({event_source}) - {desc}");
-            }
+        if let Some(desc) = abused_aws_api_calls.get(&event_name)
+            && error_code != "AccessDenied"
+        {
+            abused_api_success = format!("{event_name} ({event_source}) - {desc}");
         };
 
         let mut abused_api_failed = "".to_string();
-        if let Some(desc) = abused_aws_api_calls.get(&event_name) {
-            if error_code == "AccessDenied" {
-                abused_api_failed = format!("{event_name} ({event_source}) - {desc}");
-            }
+        if let Some(desc) = abused_aws_api_calls.get(&event_name)
+            && error_code == "AccessDenied"
+        {
+            abused_api_failed = format!("{event_name} ({event_source}) - {desc}");
         };
 
         let mut other_api_success = "".to_string();
@@ -418,10 +418,10 @@ fn read_abused_aws_api_calls(file_path: &str) -> HashMap<String, String> {
             let reader = BufReader::new(file);
             let mut csv_reader = ReaderBuilder::new().has_headers(true).from_reader(reader);
             for record in csv_reader.records().flatten() {
-                if let Some(event_name) = record.get(0) {
-                    if let Some(description) = record.get(1) {
-                        map.insert(event_name.to_string(), description.to_string());
-                    }
+                if let Some(event_name) = record.get(0)
+                    && let Some(description) = record.get(1)
+                {
+                    map.insert(event_name.to_string(), description.to_string());
                 }
             }
             map

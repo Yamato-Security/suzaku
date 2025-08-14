@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use const_format::concatcp;
 
-pub const RELEASE_NAME: &str = "Black Hat Arsenal USA 2025 Release";
+pub const RELEASE_NAME: &str = "Obon Release";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
 
@@ -80,7 +80,7 @@ pub struct AwsCtTimelineOptions {
     pub output: Option<PathBuf>,
 
     /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
-    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", requires = "output", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1")]
+    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1")]
     pub output_type: u8,
 
     /// Overwrite files when saving
@@ -99,7 +99,7 @@ pub struct AwsCtTimelineOptions {
     #[arg(help_heading = Some("Output"), short = 'G', long = "geo-ip", value_name = "MAXMIND-DB-DIR", display_order = 2)]
     pub geo_ip: Option<PathBuf>,
 
-    /// Output the original JSON logs (only available in JSON formats)
+    /// Output the original JSON logs (only available in JSON formats or stdout)
     #[arg(help_heading = Some("Output"), short = 'R', long = "raw-output")]
     pub raw_output: bool,
 

@@ -37,7 +37,7 @@ pub fn write_record(event: &Event, json: &Value, rule: &Rule, context: &mut Outp
         .iter()
         .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo))
         .collect();
-    write_to_stdout(&mut record, context);
+    write_to_stdout(&mut record, context, json, Some(event), Some(rule));
     write_to_csv(&record, context);
     write_to_json(&record, json, Some(event), Some(rule), context);
     write_to_jsonl(&record, json, Some(event), Some(rule), context);
@@ -49,13 +49,19 @@ pub fn write_correlation_record(
     context: &mut OutputContext,
 ) {
     let mut record: Vec<String> = build_correlation_record(events, rule, context);
-    write_to_stdout(&mut record, context);
+    write_to_stdout(&mut record, context, &Value::Null, None, None);
     write_to_csv(&record, context);
     write_to_json(&record, &Value::Null, None, None, context);
     write_to_jsonl(&record, &Value::Null, None, None, context);
 }
 
-fn write_to_stdout(record: &mut [String], context: &mut OutputContext) {
+fn write_to_stdout(
+    record: &mut [String],
+    context: &mut OutputContext,
+    json: &Value,
+    event: Option<&Event>,
+    rule: Option<&Rule>,
+) {
     if let Some(writer) = &mut context.writers.std {
         let level_index = context.profile.iter().position(|(k, _)| k == "Level");
         let level = if let Some(index) = level_index {
@@ -70,22 +76,48 @@ fn write_to_stdout(record: &mut [String], context: &mut OutputContext) {
         let color = get_level_color(&level);
         let mut buf = writer.buffer();
 
-        for (i, col) in record.iter().enumerate() {
+        if context.config.raw_output {
             buf.set_color(ColorSpec::new().set_fg(color.rdg(context.config.no_color)))
                 .ok();
-            write!(buf, "{col}").ok();
-            if i != record.len() - 1 {
-                if context.config.no_color {
-                    buf.set_color(ColorSpec::new().set_fg(None)).ok();
-                } else {
-                    buf.set_color(ColorSpec::new().set_fg(Orange.rdg(context.config.no_color)))
-                        .ok();
+            let profile = context.profile;
+            let geo = &mut context.geo;
+            let mut json_record = json.clone();
+            let sigma_profile: Vec<(String, String)> = profile
+                .iter()
+                .filter(|(_, value)| value.starts_with("sigma."))
+                .cloned()
+                .collect();
+
+            for (k, v) in sigma_profile {
+                if let (Some(event), Some(rule)) = (event, rule) {
+                    let value = get_value_from_event(&v, event, rule, geo);
+                    json_record[k] = Value::String(value.to_string());
                 }
-                write!(buf, " · ").ok();
             }
+
+            let json_string = serde_json::to_string_pretty(&json_record);
+            if let Ok(json_string) = json_string {
+                write!(buf, "{}\n\n", json_string).ok();
+                writer.print(&buf).ok();
+            }
+        } else {
+            for (i, col) in record.iter().enumerate() {
+                buf.set_color(ColorSpec::new().set_fg(color.rdg(context.config.no_color)))
+                    .ok();
+                write!(buf, "{col}").ok();
+                if i != record.len() - 1 {
+                    if context.config.no_color {
+                        buf.set_color(ColorSpec::new().set_fg(None)).ok();
+                    } else {
+                        buf.set_color(ColorSpec::new().set_fg(Orange.rdg(context.config.no_color)))
+                            .ok();
+                    }
+                    write!(buf, " · ").ok();
+                }
+            }
+            write!(buf, "\n\n").ok();
+            writer.print(&buf).ok();
         }
-        write!(buf, "\n\n").ok();
-        writer.print(&buf).ok();
     }
 }
 
@@ -124,8 +156,8 @@ fn write_to_json_format(
                 .collect();
 
             for (k, v) in sigma_profile {
-                if event.is_some() && rule.is_some() {
-                    let value = get_value_from_event(&v, event.unwrap(), rule.unwrap(), geo);
+                if let (Some(event), Some(rule)) = (event, rule) {
+                    let value = get_value_from_event(&v, event, rule, geo);
                     json_record[k] = Value::String(value.to_string());
                 }
             }
@@ -246,20 +278,20 @@ fn get_value_from_event_common(
     geo_ip: &mut Option<GeoIPSearch>,
 ) -> String {
     // GeoIP処理部分（共通）
-    if let Some(geo) = geo_ip {
-        if let Some(ip) = event.get("sourceIPAddress") {
-            let ip = ip.value_to_string();
-            if let Some(ip) = geo.convert(ip.as_str()) {
-                if key == "SrcASN" {
-                    return geo.get_asn(ip);
-                } else if key == "SrcCity" {
-                    return geo.get_city(ip);
-                } else if key == "SrcCountry" {
-                    return geo.get_country(ip);
-                }
-            } else {
-                return ip;
+    if let Some(geo) = geo_ip
+        && let Some(ip) = event.get("sourceIPAddress")
+    {
+        let ip = ip.value_to_string();
+        if let Some(ip) = geo.convert(ip.as_str()) {
+            if key == "SrcASN" {
+                return geo.get_asn(ip);
+            } else if key == "SrcCity" {
+                return geo.get_city(ip);
+            } else if key == "SrcCountry" {
+                return geo.get_country(ip);
             }
+        } else {
+            return ip;
         }
     }
 
