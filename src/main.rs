@@ -1,18 +1,23 @@
-use chrono::Local;
+use chrono::{DateTime, Local};
 use clap::{CommandFactory, Parser};
 use cmd::aws_detect::aws_detect;
 use cmd::aws_metrics::aws_metrics;
 use cmd::aws_summary::aws_summary;
 use cmd::update::start_update_rules;
+use itertools::Itertools;
+use nested::Nested;
 use core::color::SuzakuColor::Green;
 use core::util::{check_path_exists, p, set_rayon_threat_number};
 use libmimalloc_sys::mi_stats_print_out;
 use mimalloc::MiMalloc;
 use option::cli::Commands::{AwsCtMetrics, AwsCtSummary, AwsCtTimeline, UpdateRules};
 use option::cli::{Cli, RELEASE_NAME, VERSION};
+use option::htmlreporter;
 use std::ptr::null_mut;
 use std::time::Instant;
 use std::{env, fs};
+
+use crate::option::htmlreporter::HTML_REPORTER;
 
 mod cmd;
 mod core;
@@ -39,11 +44,19 @@ fn main() {
         AwsCtSummary { common_opt, .. } => common_opt.no_color,
         UpdateRules { common_opt } => common_opt.no_color,
     };
+    let html_report_path = match cmd {
+        AwsCtTimeline { options, .. } => options.html_report,
+        _ => None,
+    };
+
     match cmd {
         AwsCtTimeline {
             options,
             common_opt,
         } => {
+            if html_report_flag.is_some() {
+                add_cmd_and_time_to_html();
+            }
             display_logo(common_opt.quiet, no_color, true, false);
 
             set_rayon_threat_number(options.threat_num);
@@ -155,6 +168,19 @@ fn main() {
         &format!("{hours:02}:{minutes:02}:{seconds:02}\n"),
         true,
     );
+    if html_report_path.is_some() {
+        htmlreporter::add_md_data("## General Overview {#general_overview}", Nested::from_iter(
+            vec![format!("- Elapsed time: {hours:02}:{minutes:02}:{seconds:02}\n")],
+        ));
+        let html_str = HTML_REPORTER.read().unwrap().to_owned().convert_md_to_html();
+        htmlreporter::create_html_file(
+            html_str,
+            html_report_path.unwrap()
+            .to_str()
+            .unwrap_or(""),
+            no_color,
+        )
+    }
     let debug = match cmd {
         AwsCtTimeline { common_opt, .. } => common_opt.debug,
         AwsCtMetrics { common_opt, .. } => common_opt.debug,
@@ -205,4 +231,18 @@ fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
         p(None, &format!("{VERSION} ({RELEASE_NAME})\n"), false);
     }
     println!()
+}
+
+fn add_cmd_and_time_to_html() {
+    let analysis_start_time: DateTime<Local> = Local::now();
+    let mut output_data = Nested::<String>::new();
+    output_data.extend(vec![
+        format!("- Command line: {}", env::args().join(" ")),
+        format!(
+            "- Start time: {}",
+            analysis_start_time.format("%Y/%m/%d %H:%M")
+        ),
+    ]);
+    htmlreporter::add_md_data("General Overview {#general_overview}", output_data);
+
 }

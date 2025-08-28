@@ -110,6 +110,10 @@ pub struct AwsCtTimelineOptions {
     /// Number of threads to use (default: same as CPU cores)
     #[arg(help_heading = Some("Output"), long = "threads", default_value = "0", hide_default_value = true, value_name = "THREAD NUMBER",)]
     pub threat_num: usize,
+
+    /// Save Results Summary details to an HTML report (ex: results.html)
+    #[clap(short='H', long = "HTML-report", global = true)]
+    pub html_report: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
