@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use const_format::concatcp;
 
-pub const RELEASE_NAME: &str = "Obon Release";
+pub const RELEASE_NAME: &str = "Dev Build";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
 
@@ -67,7 +67,7 @@ pub struct InputOption {
 }
 
 #[derive(Args, Clone, Debug, Default)]
-pub struct AwsCtTimelineOptions {
+pub struct TimelineOptions {
     /// Specify a custom rule directory or file (default: ./rules)
     #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE")]
     pub rules: PathBuf,
@@ -124,7 +124,7 @@ pub enum Commands {
     /// Creates an AWS CloudTrail DFIR timeline
     AwsCtTimeline {
         #[clap(flatten)]
-        options: AwsCtTimelineOptions,
+        options: TimelineOptions,
 
         #[clap(flatten)]
         common_opt: CommonOptions,
