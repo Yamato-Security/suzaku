@@ -24,3 +24,25 @@ impl SuzakuColor {
         }
     }
 }
+
+pub fn rgb(color: &Option<Color>) -> comfy_table::Color {
+    match color {
+        Some(Color::Rgb(255, 0, 0)) => comfy_table::Color::Rgb { r: 255, g: 0, b: 0 },
+        Some(Color::Rgb(255, 175, 0)) => comfy_table::Color::Rgb {
+            r: 255,
+            g: 175,
+            b: 0,
+        },
+        Some(Color::Rgb(255, 255, 0)) => comfy_table::Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 0,
+        },
+        Some(Color::Rgb(0, 255, 0)) => comfy_table::Color::Rgb { r: 0, g: 255, b: 0 },
+        _ => comfy_table::Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 255,
+        },
+    }
+}

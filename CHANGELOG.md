@@ -1,5 +1,11 @@
 # Changes
 
+## x.x.x [xxxx/xx/xx]
+
+**Enhancements:**
+
+- Code refactored for easier handling of different log sources. (@fukusuket)
+
 ## 1.1.0 [2025/08/14] - Obon Release
 
 **Enhancements:**

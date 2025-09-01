@@ -1,0 +1,57 @@
+name: Integration Test
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  integration-test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: ['ubuntu-24.04', 'windows-2025']
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          path: main
+
+      - name: Checkout suzaku-sample-data repo
+        uses: actions/checkout@v4
+        with:
+          repository: Yamato-Security/suzaku-sample-data
+          path: suzaku-sample-data
+
+      - name: Set up Rust toolchain
+        if: ${{ steps.skip_check.outputs.should_skip != 'true' }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: help
+        run: cd main && cargo run --release -- help
+
+      - name: update-rules
+        run: cd main && cargo run --release -- update-rules -q
+
+      - name: aws-ct-metrics
+        run: cd main && cargo run --release -- aws-ct-metrics -d ../suzaku-sample-data/SANS-504-S3-ransomware-lab -q
+
+      - name: aws-ct-metrics(-o)
+        run: cd main && cargo run --release -- aws-ct-metrics -d ../suzaku-sample-data/SANS-504-S3-ransomware-lab -q -o metrics.csv -C
+
+      - name: aws-ct-summary
+        run: cd main && cargo run --release -- aws-ct-summary -d ../suzaku-sample-data/SANS-504-S3-ransomware-lab -q
+
+      - name: aws-ct-summary(-o)
+        run: cd main && cargo run --release -- aws-ct-summary -d ../suzaku-sample-data/SANS-504-S3-ransomware-lab -q -o summary.csv -C
+
+      - name: aws-ct-timeline
+        run: cd main && cargo run --release -- aws-ct-timeline -d ../suzaku-sample-data/SANS-504-S3-ransomware-lab -q
+
+      - name: aws-ct-timeline(-o)
+        run: cd main && cargo run --release -- aws-ct-timeline -d ../suzaku-sample-data/SANS-504-S3-ransomware-lab -q -o timeline.csv -C

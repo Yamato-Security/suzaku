@@ -26,6 +26,7 @@ pub struct Writers {
 
 pub struct OutputContext<'a> {
     pub profile: &'a [(String, String)],
+    pub prof_ts_key: &'a str,
     pub geo: &'a mut Option<GeoIPSearch>,
     pub config: &'a OutputConfig,
     pub writers: Writers,
@@ -488,8 +489,14 @@ impl<'a> OutputContext<'a> {
         config: &'a OutputConfig,
         writers: Writers,
     ) -> Self {
+        let prof_ts_key = profile
+            .iter()
+            .find(|(k, _)| k == "Timestamp")
+            .map(|(_k, v)| v.as_str())
+            .unwrap_or(".eventTime");
         Self {
             profile,
+            prof_ts_key,
             geo,
             config,
             writers,

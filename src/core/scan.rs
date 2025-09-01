@@ -1,8 +1,8 @@
-use crate::cmd::aws_detect::DetectionSummary;
-use crate::cmd::aws_detect_writer::{OutputContext, write_record};
 use crate::core::color::SuzakuColor::{Green, Orange};
+use crate::core::summary::DetectionSummary;
+use crate::core::timeline_writer::{OutputContext, write_record};
 use crate::core::util::p;
-use crate::option::cli::{AwsCtTimelineOptions, TimeOption};
+use crate::option::cli::{TimeOption, TimelineOptions};
 use crate::option::timefiler::filter_by_time;
 use bytesize::ByteSize;
 use chrono::{DateTime, Utc};
@@ -27,7 +27,7 @@ pub fn scan_file<'a>(
     f: &PathBuf,
     context: &mut OutputContext<'a>,
     summary: &mut DetectionSummary,
-    options: &AwsCtTimelineOptions,
+    options: &TimelineOptions,
     rules: &Vec<&Rule>,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
     correlation_engine: &'a CorrelationEngine,
@@ -53,7 +53,7 @@ pub fn scan_directory<'a>(
     d: &PathBuf,
     context: &mut OutputContext<'a>,
     summary: &mut DetectionSummary,
-    options: &AwsCtTimelineOptions,
+    options: &TimelineOptions,
     rules: &Vec<&Rule>,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
     correlation_engine: &'a CorrelationEngine,
@@ -182,7 +182,7 @@ fn detect_events<'a>(
     events: &[Value],
     context: &mut OutputContext<'a>,
     summary: &mut DetectionSummary,
-    options: &AwsCtTimelineOptions,
+    options: &TimelineOptions,
     rules: &Vec<&Rule>,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
     engine: &'a CorrelationEngine,
@@ -238,13 +238,13 @@ fn detect_events<'a>(
             for rule in matched_rules {
                 // write to console
                 write_record(json_event, event, rule, context);
-                append_summary_data(summary, json_event, rule, true);
+                append_summary_data(summary, json_event, rule, true, context);
             }
         }
 
         // process correlation base rules
         let base_rule_matched: Vec<TimestampedEvent> =
-            process_correlation_base_rule(engine, json_events);
+            process_correlation_base_rule(engine, json_events, context);
         matched_correlation.extend(base_rule_matched);
     }
 }
@@ -252,6 +252,7 @@ fn detect_events<'a>(
 fn process_correlation_base_rule<'a>(
     engine: &'a CorrelationEngine,
     json_events: Vec<(&Value, Event)>,
+    context: &mut OutputContext,
 ) -> Vec<TimestampedEvent<'a>> {
     json_events
         .par_iter()
@@ -261,7 +262,7 @@ fn process_correlation_base_rule<'a>(
                 .values()
                 .filter_map(|rule| {
                     if rule.is_match(event)
-                        && let Some(timestamp_field) = event.get("eventTime")
+                        && let Some(timestamp_field) = event.get(context.prof_ts_key)
                     {
                         let ts = timestamp_field.value_to_string();
                         if let Ok(parsed_time) = DateTime::parse_from_rfc3339(&ts) {
@@ -285,6 +286,7 @@ pub fn append_summary_data(
     event: &Event,
     rule: &Rule,
     generate: bool,
+    context: &mut OutputContext,
 ) {
     // add information to summary
     if generate {
@@ -307,7 +309,7 @@ pub fn append_summary_data(
                 .or_insert(1);
         }
     }
-    if let Some(event_time) = event.get("eventTime") {
+    if let Some(event_time) = event.get(context.prof_ts_key) {
         let event_time_str = event_time.value_to_string();
         if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
             let unix_time = event_time.timestamp();
