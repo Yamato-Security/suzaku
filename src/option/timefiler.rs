@@ -2,14 +2,24 @@ use crate::option::cli::TimeOption;
 use chrono::{DateTime, Duration, Utc};
 use serde_json::Value;
 
-pub fn filter_by_time(opt: &TimeOption, value: &Value) -> bool {
-    let event_time_str = match value.get("eventTime").and_then(|v| v.as_str()) {
+pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
+    let event_time_str = match value.get(ts_key).and_then(|v| v.as_str()) {
         Some(s) => s,
         None => return false,
     };
-    let event_time = match DateTime::parse_from_rfc3339(event_time_str) {
-        Ok(dt) => dt.with_timezone(&Utc),
-        Err(_) => return false,
+    let event_time = match ts_key {
+        "eventTime" => {
+            // "2023-07-10T11:42:36Z" フォーマット
+            match DateTime::parse_from_rfc3339(event_time_str) {
+                Ok(dt) => dt.with_timezone(&Utc),
+                Err(_) => return false,
+            }
+        }
+        "time" => match event_time_str.parse::<DateTime<Utc>>() {
+            Ok(dt) => dt,
+            Err(_) => return false,
+        },
+        _ => return false,
     };
     if let Some(start) = &opt.timeline_start {
         let start_time = match DateTime::parse_from_rfc3339(start) {
@@ -67,7 +77,7 @@ mod tests {
             time_offset: None,
         };
         let value = json!({ "eventTime": "2024-08-18T13:00:00Z" });
-        assert!(filter_by_time(&opt, &value));
+        assert!(filter_by_time(&opt, &value, "eventTime"));
     }
 
     #[test]
@@ -78,7 +88,7 @@ mod tests {
             time_offset: None,
         };
         let value = json!({ "eventTime": "2024-08-18T15:00:00Z" });
-        assert!(!filter_by_time(&opt, &value));
+        assert!(!filter_by_time(&opt, &value, "eventTime"));
     }
 
     #[test]
@@ -89,7 +99,7 @@ mod tests {
             time_offset: Some("1h".to_string()),
         };
         let value = json!({ "eventTime": (Utc::now() - Duration::minutes(30)).to_rfc3339() });
-        assert!(filter_by_time(&opt, &value));
+        assert!(filter_by_time(&opt, &value, "eventTime"));
     }
 
     #[test]
@@ -100,6 +110,6 @@ mod tests {
             time_offset: None,
         };
         let value = json!({ "eventTime": "invalid-date" });
-        assert!(!filter_by_time(&opt, &value));
+        assert!(!filter_by_time(&opt, &value, "eventTime"));
     }
 }

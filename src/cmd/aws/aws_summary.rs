@@ -1,4 +1,5 @@
 use crate::core::color::SuzakuColor::Red;
+use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::core::util::{get_writer, output_path_info, p};
 use crate::option::cli::InputOption;
@@ -141,7 +142,7 @@ pub fn aws_summary(
     let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
     let mut single_summary_func = |json_value: &Value| {
-        if !filter_by_time(&input_opt.time_opt, json_value) {
+        if !filter_by_time(&input_opt.time_opt, json_value, "eventTime") {
             return;
         }
         let event: Event = match event_from_json(json_value.to_string().as_str()) {
@@ -252,7 +253,7 @@ pub fn aws_summary(
     };
     let abused_aws_api_values: Vec<String> = abused_aws_api_calls.values().cloned().collect();
     if let Some(d) = directory {
-        process_events_from_dir(summary_func, d, true, no_color).unwrap();
+        process_events_from_dir(summary_func, d, true, no_color, &LogSource::Aws).unwrap();
         output_summary(
             &user_data,
             output,
@@ -262,7 +263,7 @@ pub fn aws_summary(
         );
     } else if let Some(f) = file {
         let log_contents = get_content(f);
-        let events = load_json_from_file(&log_contents);
+        let events = load_json_from_file(&log_contents, &LogSource::Aws);
         if let Ok(events) = events {
             summary_func(&events);
             output_summary(

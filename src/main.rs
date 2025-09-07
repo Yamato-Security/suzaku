@@ -1,6 +1,8 @@
-use crate::cmd::aws::aws_detect::aws_detect;
 use crate::cmd::aws::aws_metrics::aws_metrics;
 use crate::cmd::aws::aws_summary::aws_summary;
+use crate::cmd::aws::aws_timeline::aws_timeline;
+
+use crate::cmd::azure::azure_timeline::azure_timeline;
 use chrono::Local;
 use clap::{CommandFactory, Parser};
 use cmd::update::start_update_rules;
@@ -8,7 +10,9 @@ use core::color::SuzakuColor::Green;
 use core::util::{check_path_exists, p, set_rayon_threat_number};
 use libmimalloc_sys::mi_stats_print_out;
 use mimalloc::MiMalloc;
-use option::cli::Commands::{AwsCtMetrics, AwsCtSummary, AwsCtTimeline, UpdateRules};
+use option::cli::Commands::{
+    AwsCtMetrics, AwsCtSummary, AwsCtTimeline, AzureTimeline, UpdateRules,
+};
 use option::cli::{Cli, RELEASE_NAME, VERSION};
 use std::ptr::null_mut;
 use std::time::Instant;
@@ -31,39 +35,52 @@ fn main() {
         Cli::command().print_help().unwrap();
         return;
     }
+
     let start = Instant::now();
     let cmd = &Cli::parse().cmd;
     let no_color = match cmd {
-        AwsCtTimeline { common_opt, .. } => common_opt.no_color,
-        AwsCtMetrics { common_opt, .. } => common_opt.no_color,
-        AwsCtSummary { common_opt, .. } => common_opt.no_color,
-        UpdateRules { common_opt } => common_opt.no_color,
+        AwsCtTimeline { common_opt, .. }
+        | AwsCtMetrics { common_opt, .. }
+        | AwsCtSummary { common_opt, .. }
+        | UpdateRules { common_opt }
+        | AzureTimeline { common_opt, .. } => common_opt.no_color,
     };
+
     match cmd {
-        AwsCtTimeline {
+        AzureTimeline {
+            options,
+            common_opt,
+        }
+        | AwsCtTimeline {
             options,
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
-
             set_rayon_threat_number(options.threat_num);
 
-            let dir = &options.input_opt.directory;
-            let file = &options.input_opt.filepath;
-            if !check_path_exists(file.clone(), dir.clone()) {
+            // Common validation for timeline commands
+            if !check_path_exists(
+                options.input_opt.filepath.clone(),
+                options.input_opt.directory.clone(),
+            ) {
                 return;
             }
+
             if let Some(output) = &options.output
                 && !options.clobber
                 && output.exists()
             {
-                let msg = format!(
-                    "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
-                    output.display()
+                p(
+                    None,
+                    &format!(
+                        "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
+                        output.display()
+                    ),
+                    true,
                 );
-                p(None, msg.as_str(), true);
                 return;
             }
+
             if !options.rules.exists() {
                 p(
                     None,
@@ -72,6 +89,7 @@ fn main() {
                 );
                 return;
             }
+
             if options.raw_output && options.output_type == 1 && options.output.is_some() {
                 p(
                     None,
@@ -80,26 +98,17 @@ fn main() {
                 );
                 return;
             }
-            if options.min_level != "informational"
-                && options.min_level != "info"
-                && options.min_level != "low"
-                && options.min_level != "medium"
-                && options.min_level != "med"
-                && options.min_level != "high"
-                && options.min_level != "critical"
-                && options.min_level != "crit"
-            {
-                p(
-                    None,
-                    &format!(
-                        "Invalid minimum level: {}. Valid levels are: informational, low, medium, high, critical.",
-                        options.min_level
-                    ),
-                    true,
-                );
+
+            if !validate_min_level(&options.min_level) {
                 return;
             }
-            aws_detect(options, common_opt);
+
+            // Execute appropriate timeline function
+            match cmd {
+                AzureTimeline { .. } => azure_timeline(options, common_opt),
+                AwsCtTimeline { .. } => aws_timeline(options, common_opt),
+                _ => unreachable!(),
+            }
         }
         AwsCtMetrics {
             input_opt,
@@ -108,13 +117,10 @@ fn main() {
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
-            let dir = &input_opt.directory;
-            let file = &input_opt.filepath;
-            let field_name = field_name.as_ref();
-            if !check_path_exists(file.clone(), dir.clone()) {
+            if !check_path_exists(input_opt.filepath.clone(), input_opt.directory.clone()) {
                 return;
             }
-            aws_metrics(input_opt, field_name, output, no_color);
+            aws_metrics(input_opt, field_name.as_ref(), output, no_color);
         }
         AwsCtSummary {
             input_opt,
@@ -125,9 +131,7 @@ fn main() {
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
-            let dir = &input_opt.directory;
-            let file = &input_opt.filepath;
-            if !check_path_exists(file.clone(), dir.clone()) {
+            if !check_path_exists(input_opt.filepath.clone(), input_opt.directory.clone()) {
                 return;
             }
             aws_summary(
@@ -145,6 +149,7 @@ fn main() {
         }
     }
 
+    // Print elapsed time
     let duration = start.elapsed();
     let hours = duration.as_secs() / 3600;
     let minutes = (duration.as_secs() % 3600) / 60;
@@ -155,27 +160,18 @@ fn main() {
         &format!("{hours:02}:{minutes:02}:{seconds:02}\n"),
         true,
     );
+
     let debug = match cmd {
-        AwsCtTimeline { common_opt, .. } => common_opt.debug,
-        AwsCtMetrics { common_opt, .. } => common_opt.debug,
-        AwsCtSummary { common_opt, .. } => common_opt.debug,
-        UpdateRules { common_opt } => common_opt.debug,
+        AwsCtTimeline { common_opt, .. }
+        | AwsCtMetrics { common_opt, .. }
+        | AwsCtSummary { common_opt, .. }
+        | AzureTimeline { common_opt, .. }
+        | UpdateRules { common_opt } => common_opt.debug,
     };
 
-    if matches!(cmd, AwsCtTimeline { .. }) {
-        let mut msg = "Please report any issues with Suzaku rules to: ";
-        p(Green.rdg(no_color), msg, false);
-        msg = "https://github.com/Yamato-Security/suzaku-rules/issues";
-        p(None, msg, true);
-        msg = "Please report any false positives with Sigma rules to: ";
-        p(Green.rdg(no_color), msg, false);
-        msg = "https://github.com/SigmaHQ/sigma/issues";
-        p(None, msg, true);
-        msg = "Please submit new Sigma rules with pull requests to: ";
-        p(Green.rdg(no_color), msg, false);
-        msg = "https://github.com/SigmaHQ/sigma/pulls";
-        p(None, msg, true);
-        println!()
+    // Print issue reporting info for timeline commands
+    if matches!(cmd, AwsCtTimeline { .. } | AzureTimeline { .. }) && !debug {
+        print_issue_reporting_info(no_color);
     }
 
     if debug {
@@ -186,17 +182,68 @@ fn main() {
     }
 }
 
+fn validate_min_level(min_level: &str) -> bool {
+    const VALID_LEVELS: &[&str] = &[
+        "informational",
+        "info",
+        "low",
+        "medium",
+        "med",
+        "high",
+        "critical",
+        "crit",
+    ];
+
+    if !VALID_LEVELS.contains(&min_level) {
+        p(
+            None,
+            &format!(
+                "Invalid minimum level: {}. Valid levels are: informational, low, medium, high, critical.",
+                min_level
+            ),
+            true,
+        );
+        return false;
+    }
+    true
+}
+
+fn print_issue_reporting_info(no_color: bool) {
+    let messages = [
+        (
+            "Please report any issues with Suzaku rules to: ",
+            "https://github.com/Yamato-Security/suzaku-rules/issues",
+        ),
+        (
+            "Please report any false positives with Sigma rules to: ",
+            "https://github.com/SigmaHQ/sigma/issues",
+        ),
+        (
+            "Please submit new Sigma rules with pull requests to: ",
+            "https://github.com/SigmaHQ/sigma/pulls",
+        ),
+    ];
+
+    for (prefix, url) in &messages {
+        p(Green.rdg(no_color), prefix, false);
+        p(None, url, true);
+    }
+    println!();
+}
+
 fn display_logo(quiet: bool, no_color: bool, time: bool, help: bool) {
     if !quiet {
         let logo = fs::read_to_string("art/logo.txt").unwrap_or_default();
         p(Green.rdg(no_color), &logo, true);
         println!();
     }
+
     if time {
         let msg = Local::now().format("%Y/%m/%d %H:%M").to_string();
         p(Green.rdg(no_color), "Start time: ", false);
         p(None, msg.as_str(), true);
     }
+
     if help {
         let msg = format!("Version: {VERSION} ({RELEASE_NAME})");
         p(None, msg.as_str(), true);

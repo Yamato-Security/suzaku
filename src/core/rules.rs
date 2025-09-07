@@ -1,3 +1,4 @@
+use crate::core::log_source::LogSource;
 use sigma_rust::Rule;
 use sigma_rust::rule_from_yaml;
 use std::fs;
@@ -43,32 +44,36 @@ fn contains_correlation_key(yaml_content: &str) -> bool {
     })
 }
 
-pub fn load_rules_from_dir(path: &PathBuf) -> Vec<Rule> {
+pub fn load_rules_from_dir(path: &PathBuf, log: &LogSource) -> Vec<Rule> {
     let mut rules = Vec::new();
     if path.is_file() {
         if let Ok(contents) = fs::read_to_string(path)
             && let Ok(rule) = rule_from_yaml(&contents)
+            && let Some(service) = &rule.logsource.service
+            && log.supported_services().contains(&service.as_str())
         {
             rules.push(rule);
         }
         return rules;
     }
-    load_rules_recursive(path, &mut rules);
+    load_rules_recursive(path, &mut rules, log);
     rules
 }
 
-fn load_rules_recursive(directory: &PathBuf, rules: &mut Vec<Rule>) {
+fn load_rules_recursive(directory: &PathBuf, rules: &mut Vec<Rule>, log: &LogSource) {
     if let Ok(entries) = fs::read_dir(directory) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("yml") {
                 if let Ok(contents) = fs::read_to_string(&path)
                     && let Ok(rule) = rule_from_yaml(&contents)
+                    && let Some(service) = &rule.logsource.service
+                    && log.supported_services().contains(&service.as_str())
                 {
                     rules.push(rule);
                 }
             } else if path.is_dir() {
-                load_rules_recursive(&path, rules);
+                load_rules_recursive(&path, rules, log);
             }
         }
     }
@@ -132,8 +137,8 @@ id: test-rule-001
 description: A test rule for unit testing
 level: medium
 logsource:
-  product: windows
-  service: sysmon
+  product: aws
+  service: cloudtrail
 detection:
   selection:
     EventID: 1
@@ -150,7 +155,7 @@ detection:
 
         fs::write(&file_path, create_test_rule_yaml()).unwrap();
 
-        let rules = load_rules_from_dir(&file_path);
+        let rules = load_rules_from_dir(&file_path, &LogSource::All);
 
         assert_eq!(rules.len(), 1);
         assert_eq!(rules[0].title.as_str(), "Test Rule");
@@ -166,7 +171,7 @@ detection:
         fs::write(dir_path.join("rule2.yml"), create_test_rule_yaml()).unwrap();
         fs::write(dir_path.join("not_a_rule.txt"), "not a yaml file").unwrap();
 
-        let rules = load_rules_from_dir(&dir_path);
+        let rules = load_rules_from_dir(&dir_path, &LogSource::All);
 
         assert_eq!(rules.len(), 2);
     }
@@ -181,7 +186,7 @@ detection:
         fs::write(dir_path.join("rule1.yml"), create_test_rule_yaml()).unwrap();
         fs::write(sub_dir.join("rule2.yml"), create_test_rule_yaml()).unwrap();
 
-        let rules = load_rules_from_dir(&dir_path);
+        let rules = load_rules_from_dir(&dir_path, &LogSource::All);
 
         assert_eq!(rules.len(), 2);
     }
@@ -190,7 +195,7 @@ detection:
     fn test_load_rules_from_nonexistent_path() {
         let nonexistent_path = PathBuf::from("/nonexistent/path");
 
-        let rules = load_rules_from_dir(&nonexistent_path);
+        let rules = load_rules_from_dir(&nonexistent_path, &LogSource::All);
 
         assert_eq!(rules.len(), 0);
     }
@@ -205,7 +210,7 @@ detection:
         fs::write(dir_path.join("rule.txt"), create_test_rule_yaml()).unwrap();
         fs::write(dir_path.join("rule.json"), "{}").unwrap();
 
-        let rules = load_rules_from_dir(&dir_path);
+        let rules = load_rules_from_dir(&dir_path, &LogSource::All);
 
         assert_eq!(rules.len(), 1); // Only .yml file should be loaded
     }
