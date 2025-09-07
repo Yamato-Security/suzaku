@@ -205,7 +205,7 @@ fn detect_events<'a>(
     // If all the events are loaded at once, it can consume too much memory.
     // To avoid the problem, we split the events into chunks.
     const CHUNK_SIZE: usize = 1000;
-    let ts_key = context.prof_ts_key.strip_prefix(".").unwrap();
+    let ts_key = context.prof_ts_key.strip_prefix(".").unwrap_or(context.prof_ts_key.as_str());
     for event_chunks in events.chunks(CHUNK_SIZE) {
         // Convert loaded events into JSON
         // I call the collect() function at the end of this block due to a lifetime issue of json_event.
