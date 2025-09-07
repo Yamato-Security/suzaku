@@ -493,7 +493,7 @@ impl<'a> OutputContext<'a> {
             .iter()
             .find(|(k, _)| k == "Timestamp")
             .map(|(_k, v)| v.as_str())
-            .unwrap_or(".eventTime");
+            .unwrap_or("eventTime");
         Self {
             profile,
             prof_ts_key,

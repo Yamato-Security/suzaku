@@ -1,4 +1,5 @@
 use crate::core::color::SuzakuColor::{Green, Red};
+use crate::core::log_source::LogSource;
 use crate::core::rules;
 use crate::core::scan::{append_summary_data, scan_directory, scan_file};
 use crate::core::summary::{
@@ -11,6 +12,7 @@ use crate::core::util::{output_path_info, p};
 use crate::option::cli::{CommonOptions, TimelineOptions};
 use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Utc};
+use num_format::{Locale, ToFormattedString};
 use serde_json::Value;
 use sigma_rust::{CorrelationEngine, Rule, TimestampedEvent, parse_rules_from_yaml};
 use std::collections::HashMap;
@@ -18,7 +20,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use terminal_size::{Width, terminal_size};
 
-pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, profile_path: &str) {
+pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log: LogSource) {
     let no_color = common_opt.no_color;
     let mut geo_search = None;
     if let Some(path) = options.geo_ip.as_ref() {
@@ -34,8 +36,8 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, prof
             return;
         }
     }
-    let profile = load_profile(profile_path, &geo_search);
-    let rules: Vec<Rule> = rules::load_rules_from_dir(&options.rules);
+    let profile = load_profile(&log, &geo_search);
+    let rules: Vec<Rule> = rules::load_rules_from_dir(&options.rules, &log);
     let rules = rules::filter_rules_by_level(&rules, &options.min_level);
     let correlation_rules = rules::load_correlation_yamls_from_dir(&options.rules);
     if rules.is_empty() && correlation_rules.is_empty() {
@@ -47,15 +49,26 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, prof
         return;
     }
     let mut correlation_engine = CorrelationEngine::new();
+    let mut total_correlation_rules = 0;
     for yaml in &correlation_rules {
         match parse_rules_from_yaml(yaml.as_str()) {
             Ok(rules) => {
                 let (correlation_rules, base_rules) = rules;
+                let total_base_rules = base_rules.len();
+                let mut added_base_rules = 0;
                 for (name, rule) in base_rules {
-                    correlation_engine.add_base_rule(name, rule);
+                    if let Some(ref service) = rule.logsource.service
+                        && log.supported_services().contains(&service.as_str())
+                    {
+                        correlation_engine.add_base_rule(name, rule);
+                        added_base_rules += 1;
+                    }
                 }
                 for rule in correlation_rules {
-                    correlation_engine.add_correlation_rule(rule);
+                    if added_base_rules == total_base_rules {
+                        correlation_engine.add_correlation_rule(rule);
+                        total_correlation_rules += 1;
+                    }
                 }
             }
             Err(e) => {
@@ -72,7 +85,11 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, prof
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
     p(Green.rdg(no_color), "Total correlation rules: ", false);
-    p(None, correlation_rules.len().to_string().as_str(), true);
+    p(
+        None,
+        &total_correlation_rules.to_formatted_string(&Locale::en),
+        true,
+    );
 
     let (writers, output_pathes) = init_writers(options.output.as_ref(), options.output_type);
     let config = OutputConfig::new(no_color, options.raw_output);
@@ -90,6 +107,7 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, prof
             &rules,
             &mut matched_correlation,
             &correlation_engine,
+            &log,
         );
     } else if let Some(f) = &options.input_opt.filepath {
         scan_file(
@@ -100,6 +118,7 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, prof
             &rules,
             &mut matched_correlation,
             &correlation_engine,
+            &log,
         );
     }
 
@@ -186,7 +205,7 @@ fn process_correlation_events(
                             .and_modify(|e| *e += 1)
                             .or_insert(1);
                         let event = &res.events.last().unwrap().event;
-                        if let Some(event_time) = event.get("eventTime") {
+                        if let Some(event_time) = event.get(context.prof_ts_key) {
                             let event_time_str = event_time.value_to_string();
                             if let Ok(event_time) = event_time_str.parse::<DateTime<Utc>>() {
                                 let date = event_time.date_naive().format("%Y-%m-%d").to_string();
@@ -215,8 +234,8 @@ fn process_correlation_events(
     false
 }
 
-fn load_profile(file_path: &str, geo_search: &Option<GeoIPSearch>) -> Vec<(String, String)> {
-    let file = File::open(file_path).expect("Unable to open profile file");
+fn load_profile(log: &LogSource, geo_search: &Option<GeoIPSearch>) -> Vec<(String, String)> {
+    let file = File::open(log.profile_path()).expect("Unable to open profile file");
     let reader = BufReader::new(file);
     let mut profile = vec![];
 
