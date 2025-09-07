@@ -11,7 +11,9 @@ impl LogSource {
         match self {
             LogSource::Aws => "config/aws_profile.yaml",
             LogSource::Azure => "config/azure_profile.yaml",
-            LogSource::All => todo!(),
+            // The 'All' variant does not have a specific profile path.
+            // Return an empty string to indicate no profile is available.
+            LogSource::All => "",
         }
     }
 
