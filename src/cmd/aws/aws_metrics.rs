@@ -1,3 +1,4 @@
+use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::core::util::{get_writer, output_path_info, p};
 use crate::option::cli::InputOption;
@@ -23,7 +24,7 @@ pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf
     let mut count_map = HashMap::new();
     let mut stats_func = |json_values: &[Value]| {
         for json_value in json_values {
-            if !filter_by_time(&input_opt.time_opt, json_value) {
+            if !filter_by_time(&input_opt.time_opt, json_value, "eventTime") {
                 continue;
             }
             let event: Event = match event_from_json(json_value.to_string().as_str()) {
@@ -40,11 +41,11 @@ pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf
     };
 
     if let Some(d) = directory {
-        process_events_from_dir(stats_func, d, true, no_color).unwrap();
+        process_events_from_dir(stats_func, d, true, no_color, &LogSource::Aws).unwrap();
         print_count_map_desc(csv_header, &count_map, wtr, output, no_color);
     } else if let Some(f) = file {
         let log_contents = get_content(f);
-        let events = load_json_from_file(&log_contents);
+        let events = load_json_from_file(&log_contents, &LogSource::Aws);
         if let Ok(events) = events {
             stats_func(&events);
             print_count_map_desc(csv_header, &count_map, wtr, output, no_color);

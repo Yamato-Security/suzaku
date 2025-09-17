@@ -1,6 +1,10 @@
 # Changes
 
-## x.x.x [xxxx/xx/xx]
+## 2.0.0 [xxxx/xx/xx]
+
+**New Features:**
+
+- Added the `azure-timeline` command to create a DFIR timeline for Azure logs. (#109) (@fukusuket)
 
 **Enhancements:**
 

@@ -1,6 +1,10 @@
 # 変更点
 
-## x.x.x [xxxx/xx/xx]
+## 2.0.0 [xxxx/xx/xx]
+
+**新機能:**
+
+- Azureログ用のDFIRタイムラインを作成する`azure-timeline`コマンドを追加した。 (#109) (@fukusuket)
 
 **改善:**
 

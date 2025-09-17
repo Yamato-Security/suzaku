@@ -1,4 +1,5 @@
 use crate::core::color::SuzakuColor::{Green, Orange};
+use crate::core::log_source::{LogSource, is_match_service};
 use crate::core::summary::DetectionSummary;
 use crate::core::timeline_writer::{OutputContext, write_record};
 use crate::core::util::p;
@@ -23,6 +24,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{fs, io};
 
+#[allow(clippy::too_many_arguments)]
 pub fn scan_file<'a>(
     f: &PathBuf,
     context: &mut OutputContext<'a>,
@@ -31,9 +33,10 @@ pub fn scan_file<'a>(
     rules: &Vec<&Rule>,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
     correlation_engine: &'a CorrelationEngine,
+    log: &LogSource,
 ) {
     let log_contents = get_content(f);
-    let events = match load_json_from_file(&log_contents) {
+    let events = match load_json_from_file(&log_contents, log) {
         Ok(value) => value,
         Err(_e) => return,
     };
@@ -49,6 +52,7 @@ pub fn scan_file<'a>(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn scan_directory<'a>(
     d: &PathBuf,
     context: &mut OutputContext<'a>,
@@ -57,6 +61,7 @@ pub fn scan_directory<'a>(
     rules: &Vec<&Rule>,
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
     correlation_engine: &'a CorrelationEngine,
+    log: &LogSource,
 ) {
     let no_color = context.config.no_color;
     let process_events = |events: &[Value]| {
@@ -70,7 +75,7 @@ pub fn scan_directory<'a>(
             correlation_engine,
         );
     };
-    process_events_from_dir(process_events, d, options.output.is_some(), no_color).unwrap();
+    process_events_from_dir(process_events, d, options.output.is_some(), no_color, log).unwrap();
 }
 
 pub fn process_events_from_dir<F>(
@@ -78,6 +83,7 @@ pub fn process_events_from_dir<F>(
     directory: &PathBuf,
     show_progress: bool,
     no_color: bool,
+    log: &LogSource,
 ) -> Result<(), Box<dyn Error>>
 where
     F: FnMut(&[Value]),
@@ -131,7 +137,7 @@ where
             continue;
         };
 
-        let events = log_contents_to_events(&log_contents);
+        let events = log_contents_to_events(&log_contents, log);
         process_events(&events);
 
         if show_progress {
@@ -148,33 +154,42 @@ where
     Ok(())
 }
 
-fn log_contents_to_events(log_contents: &str) -> Vec<Value> {
-    let json_value: Result<Value, _> = serde_json::from_str(log_contents);
-    match json_value {
-        Ok(json_value) => {
+fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
+    match log {
+        LogSource::Aws => {
+            let json_value: Result<Value, _> = serde_json::from_str(log_contents);
             match json_value {
-                Value::Array(json_array) => json_array,
-                Value::Object(mut json_map) => {
-                    // use json_map.remove to get json_array
-                    if let Some(json_array) = json_map.remove("Records") {
-                        match json_array {
-                            Value::Array(json_array) => json_array,
-                            _ => vec![],
+                Ok(json_value) => {
+                    match json_value {
+                        Value::Array(json_array) => json_array,
+                        Value::Object(mut json_map) => {
+                            // use json_map.remove to get json_array
+                            if let Some(json_array) = json_map.remove("Records") {
+                                match json_array {
+                                    Value::Array(json_array) => json_array,
+                                    _ => vec![],
+                                }
+                            } else {
+                                vec![]
+                            }
                         }
-                    } else {
-                        vec![]
+                        _ => {
+                            // TODO: Handle unexpected JSON structure
+                            vec![]
+                        }
                     }
                 }
-                _ => {
+                Err(_) => {
                     // TODO: Handle unexpected JSON structure
                     vec![]
                 }
             }
         }
-        Err(_) => {
-            // TODO: Handle unexpected JSON structure
-            vec![]
-        }
+        LogSource::Azure => log_contents
+            .lines()
+            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+            .collect(),
+        _ => vec![],
     }
 }
 
@@ -190,6 +205,10 @@ fn detect_events<'a>(
     // If all the events are loaded at once, it can consume too much memory.
     // To avoid the problem, we split the events into chunks.
     const CHUNK_SIZE: usize = 1000;
+    let ts_key = context
+        .prof_ts_key
+        .strip_prefix(".")
+        .unwrap_or(context.prof_ts_key);
     for event_chunks in events.chunks(CHUNK_SIZE) {
         // Convert loaded events into JSON
         // I call the collect() function at the end of this block due to a lifetime issue of json_event.
@@ -200,7 +219,7 @@ fn detect_events<'a>(
             .par_iter()
             .zip(repeated_time_opt.into_par_iter())
             .filter_map(|(event, time_opt)| {
-                if filter_by_time(time_opt, event) {
+                if filter_by_time(time_opt, event, ts_key) {
                     Some(event)
                 } else {
                     None
@@ -211,14 +230,16 @@ fn detect_events<'a>(
                 Err(_) => None,
             })
             .collect();
-
         // conduct rule's matches and return pairs of json_event and matched_rules
         let results: Vec<(&Value, &Event, Vec<&Rule>)> = json_events
             .par_iter()
             .map(|(event, json_event)| {
                 let matched_rules: Vec<&Rule> = rules
                     .par_iter()
-                    .filter(move |rule| rule.is_match(json_event))
+                    .filter(move |rule| {
+                        rule.is_match(json_event)
+                            && is_match_service(&rule.logsource.service, json_event)
+                    })
                     .map(|rule| *rule)
                     .collect();
                 (*event, json_event, matched_rules)
@@ -370,25 +391,40 @@ pub fn read_gz_file(file_path: &PathBuf) -> io::Result<String> {
     decoder.read_to_string(&mut contents)?;
     Ok(contents)
 }
-pub fn load_json_from_file(log_contents: &str) -> Result<Vec<Value>, Box<dyn Error>> {
+pub fn load_json_from_file(
+    log_contents: &str,
+    log: &LogSource,
+) -> Result<Vec<Value>, Box<dyn Error>> {
     let mut events = Vec::new();
-    let json_value: Value = serde_json::from_str(log_contents)?;
-    match json_value {
-        Value::Array(json_array) => {
-            for json_value in json_array {
-                events.push(json_value);
-            }
-        }
-        Value::Object(json_map) => {
-            if let Some(json_array) = json_map.get("Records") {
-                for json_value in json_array.as_array().unwrap() {
-                    events.push(json_value.clone());
+    match log {
+        LogSource::Aws => {
+            let json_value: Value = serde_json::from_str(log_contents)?;
+            match json_value {
+                Value::Array(json_array) => {
+                    for json_value in json_array {
+                        events.push(json_value);
+                    }
+                }
+                Value::Object(json_map) => {
+                    if let Some(json_array) = json_map.get("Records") {
+                        for json_value in json_array.as_array().unwrap() {
+                            events.push(json_value.clone());
+                        }
+                    }
+                }
+                _ => {
+                    eprintln!("Unexpected JSON structure in file:");
                 }
             }
         }
-        _ => {
-            eprintln!("Unexpected JSON structure in file:");
+        LogSource::Azure => {
+            log_contents.lines().for_each(|line| {
+                if let Ok(json_value) = serde_json::from_str::<Value>(line) {
+                    events.push(json_value);
+                }
+            });
         }
+        _ => {}
     }
     Ok(events)
 }
@@ -412,7 +448,7 @@ mod tests {
     fn test_load_event_from_file() {
         let test_file = "test_files/json/DeleteTrail.json";
         let log_contents = fs::read_to_string(test_file).unwrap();
-        let result = load_json_from_file(&log_contents);
+        let result = load_json_from_file(&log_contents, &LogSource::Aws);
         assert!(result.is_ok());
         let event = result.unwrap();
         assert_eq!(event.len(), 1);
@@ -422,7 +458,7 @@ mod tests {
     fn test_load_event_from_file_record() {
         let test_file = "test_files/json/test.json";
         let log_contents = fs::read_to_string(test_file).unwrap();
-        let result = load_json_from_file(&log_contents);
+        let result = load_json_from_file(&log_contents, &LogSource::Aws);
         assert!(result.is_ok());
         let event = result.unwrap();
         assert_eq!(event.len(), 29);
