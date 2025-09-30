@@ -5,12 +5,8 @@ use chrono::{DateTime, Utc};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Cell, Table, TableComponent};
-use krapslog::{build_sparkline, build_time_markers};
 use num_format::{Locale, ToFormattedString};
-use std::cmp::min;
 use std::collections::{HashMap, HashSet};
-use std::io::Write;
-use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 #[derive(Debug, Default)]
 pub struct DetectionSummary {
@@ -195,7 +191,7 @@ pub fn print_detected_rule_authors(
     let authors_num = sorted_authors.len();
     let div = if authors_num <= table_column_num {
         1
-    } else if authors_num % 4 != 0 {
+    } else if authors_num.is_multiple_of(4) {
         authors_num / table_column_num + 1
     } else {
         authors_num / table_column_num
@@ -240,47 +236,5 @@ pub fn print_detected_rule_authors(
     }
     p(Green.rdg(no_color), "Rule Authors:", true);
     p(None, &format!("{tb}"), true);
-    println!();
-}
-
-pub fn print_timeline_hist(timestamps: &[i64], length: usize, side_margin_size: usize) {
-    if timestamps.is_empty() {
-        return;
-    }
-    if timestamps.len() < 5 {
-        let msg = "Detection Frequency Timeline could not be displayed as there needs to be more than 5 events.";
-        p(Some(Color::Rgb(255, 0, 0)), msg, false);
-        p(None, "\n", true);
-        return;
-    }
-
-    let title = "Detection Frequency Timeline";
-    let header_row_space = (length - title.len()) / 2;
-    let buf_wtr = BufferWriter::stdout(ColorChoice::Always);
-    let mut wtr = buf_wtr.buffer();
-    wtr.set_color(ColorSpec::new().set_fg(None)).ok();
-    writeln!(wtr, "{}{}", " ".repeat(header_row_space), title).ok();
-    println!();
-
-    let timestamp_marker_max = if timestamps.len() < 2 {
-        0
-    } else {
-        timestamps.len() - 2
-    };
-    let marker_num = min(timestamp_marker_max, 18);
-
-    let (header_raw, footer_raw) =
-        build_time_markers(timestamps, marker_num, length - (side_margin_size * 2));
-    let sparkline = build_sparkline(timestamps, length - (side_margin_size * 2), 5_usize);
-    for header_str in header_raw.lines() {
-        writeln!(wtr, "{}{}", " ".repeat(side_margin_size - 1), header_str).ok();
-    }
-    for line in sparkline.lines() {
-        writeln!(wtr, "{}{}", " ".repeat(side_margin_size - 1), line).ok();
-    }
-    for footer_str in footer_raw.lines() {
-        writeln!(wtr, "{}{}", " ".repeat(side_margin_size - 1), footer_str).ok();
-    }
-    buf_wtr.print(&wtr).ok();
     println!();
 }

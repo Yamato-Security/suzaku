@@ -87,10 +87,6 @@ pub struct TimelineOptions {
     #[arg(help_heading = Some("Output"), short='C', long = "clobber", requires = "output", display_order = 1)]
     pub clobber: bool,
 
-    /// Disable event frequency timeline (terminal needs to support Unicode)
-    #[arg(help_heading = Some("Display Settings"), short = 'T', long = "no-frequency-timeline", display_order = 3)]
-    pub no_frequency: bool,
-
     /// Do not display results summary
     #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
     pub no_summary: bool,
