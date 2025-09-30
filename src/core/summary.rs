@@ -192,9 +192,9 @@ pub fn print_detected_rule_authors(
     let div = if authors_num <= table_column_num {
         1
     } else if authors_num.is_multiple_of(4) {
-        authors_num / table_column_num + 1
-    } else {
         authors_num / table_column_num
+    } else {
+        authors_num / table_column_num + 1
     };
     let mut tb = Table::new();
     tb.load_preset(UTF8_FULL)
