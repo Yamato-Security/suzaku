@@ -10,6 +10,10 @@
 
 - Code refactored for easier handling of different log sources. (@fukusuket)
 
+**Bug Fixes:**
+
+- `-T, --no-frequency-timeline` option was not working so we removed it. Also fixed a logic bug in the authors display. (#110) (@fukusuket)
+
 ## 1.1.0 [2025/08/14] - Obon Release
 
 **Enhancements:**
