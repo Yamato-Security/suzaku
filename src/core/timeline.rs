@@ -2,9 +2,7 @@ use crate::core::color::SuzakuColor::{Green, Red};
 use crate::core::log_source::LogSource;
 use crate::core::rules;
 use crate::core::scan::{append_summary_data, scan_directory, scan_file};
-use crate::core::summary::{
-    DetectionSummary, print_detected_rule_authors, print_summary, print_timeline_hist,
-};
+use crate::core::summary::{DetectionSummary, print_detected_rule_authors, print_summary};
 use crate::core::timeline_writer::{
     OutputConfig, OutputContext, init_writers, write_correlation_record, write_record,
 };
@@ -135,9 +133,6 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
         Some((Width(w), _)) => w as usize,
         None => 100,
     };
-    if !options.no_frequency {
-        print_timeline_hist(&summary.timestamps, terminal_width, 3);
-    }
     let table_column_num = if terminal_width <= 105 {
         2
     } else if terminal_width < 140 {
