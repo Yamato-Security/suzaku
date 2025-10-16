@@ -91,7 +91,8 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
 
     let (writers, output_pathes) = init_writers(options.output.as_ref(), options.output_type);
     let config = OutputConfig::new(no_color, options.raw_output);
-    let mut context = OutputContext::new(&profile, &mut geo_search, &config, writers);
+    let mut context =
+        OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
     let mut summary = DetectionSummary::default();
     let mut matched_correlation: Vec<TimestampedEvent> = Vec::new();
     context.write_header();
@@ -158,7 +159,7 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
     }
 
     if !output_pathes.is_empty() {
-        output_path_info(no_color, &output_pathes);
+        output_path_info(no_color, &output_pathes, context.has_written);
     }
 }
 
