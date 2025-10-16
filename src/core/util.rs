@@ -65,7 +65,7 @@ pub fn p(color: Option<Color>, msg: &str, newline: bool) {
 pub fn output_path_info(no_color: bool, output_paths: &[PathBuf], has_detect: bool) {
     if !has_detect {
         p(Green.rdg(no_color), "Results saved: ", false);
-        p(None, "None.", true);
+        p(None, "None", true);
         return;
     }
     p(Green.rdg(no_color), "Results saved: ", false);
