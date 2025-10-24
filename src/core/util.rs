@@ -62,8 +62,12 @@ pub fn p(color: Option<Color>, msg: &str, newline: bool) {
     wtr.print(&buf).ok();
 }
 
-pub fn output_path_info(no_color: bool, output_paths: &[PathBuf]) {
+pub fn output_path_info(no_color: bool, output_paths: &[PathBuf], has_detect: bool) {
     p(Green.rdg(no_color), "Results saved: ", false);
+    if !has_detect {
+        p(None, "None", true);
+        return;
+    }
     for (i, path) in output_paths.iter().enumerate() {
         if let Ok(metadata) = path.metadata() {
             let size = ByteSize::b(metadata.len()).display();

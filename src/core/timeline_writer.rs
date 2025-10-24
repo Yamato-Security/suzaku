@@ -30,6 +30,8 @@ pub struct OutputContext<'a> {
     pub geo: &'a mut Option<GeoIPSearch>,
     pub config: &'a OutputConfig,
     pub writers: Writers,
+    pub has_written: bool,
+    pub output_paths: Vec<PathBuf>,
 }
 
 pub fn write_record(event: &Event, json: &Value, rule: &Rule, context: &mut OutputContext) {
@@ -42,6 +44,7 @@ pub fn write_record(event: &Event, json: &Value, rule: &Rule, context: &mut Outp
     write_to_csv(&record, context);
     write_to_json(&record, json, Some(event), Some(rule), context);
     write_to_jsonl(&record, json, Some(event), Some(rule), context);
+    context.has_written = true;
 }
 
 pub fn write_correlation_record(
@@ -488,6 +491,7 @@ impl<'a> OutputContext<'a> {
         geo: &'a mut Option<GeoIPSearch>,
         config: &'a OutputConfig,
         writers: Writers,
+        output_paths: &[PathBuf],
     ) -> Self {
         let prof_ts_key = profile
             .iter()
@@ -500,6 +504,8 @@ impl<'a> OutputContext<'a> {
             geo,
             config,
             writers,
+            has_written: false,
+            output_paths: output_paths.to_vec(),
         }
     }
 
@@ -512,6 +518,17 @@ impl<'a> OutputContext<'a> {
         }
         if let Some(ref mut writer) = self.writers.jsonl {
             writer.flush().unwrap();
+        }
+        if !self.has_written {
+            self.writers.csv = None;
+            self.writers.json = None;
+            self.writers.jsonl = None;
+
+            for path in &self.output_paths {
+                if path.exists() {
+                    std::fs::remove_file(path).ok();
+                }
+            }
         }
     }
 

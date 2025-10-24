@@ -89,7 +89,7 @@ fn print_count_map_desc(
     }
     wrt.flush().ok();
     match output {
-        Some(csv) => output_path_info(no_color, [csv.clone()].as_slice()),
+        Some(csv) => output_path_info(no_color, [csv.clone()].as_slice(), true),
         None => println!("{table}"),
     }
 }

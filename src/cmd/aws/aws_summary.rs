@@ -408,7 +408,7 @@ fn output_summary(
             .unwrap();
     }
     csv_wtr.flush().unwrap();
-    output_path_info(no_color, [csv_path].as_slice());
+    output_path_info(no_color, [csv_path].as_slice(), true);
 }
 
 fn read_abused_aws_api_calls(file_path: &str) -> HashMap<String, String> {
