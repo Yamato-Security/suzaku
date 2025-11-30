@@ -40,7 +40,6 @@ pub fn scan_file<'a>(
         Ok(value) => value,
         Err(_e) => return,
     };
-
     detect_events(
         &events,
         context,
@@ -185,10 +184,25 @@ fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
                 }
             }
         }
-        LogSource::Azure => log_contents
-            .lines()
-            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-            .collect(),
+        LogSource::Azure => {
+            // Try parsing as JSON object with "value" key first
+            if let Ok(json_value) = serde_json::from_str::<Value>(log_contents)
+                && let Value::Object(ref json_map) = json_value
+            {
+                if let Some(Value::Array(json_array)) = json_map.get("value") {
+                    return json_array.clone();
+                }
+                // Fall back to JSON array format
+                if let Value::Array(json_array) = json_value {
+                    return json_array;
+                }
+            }
+            // Fall back to JSONL format
+            log_contents
+                .lines()
+                .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .collect()
+        }
         _ => vec![],
     }
 }
@@ -418,12 +432,35 @@ pub fn load_json_from_file(
             }
         }
         LogSource::Azure => {
-            log_contents.lines().for_each(|line| {
-                if let Ok(json_value) = serde_json::from_str::<Value>(line) {
-                    events.push(json_value);
+            let log_contents_trimmed = log_contents
+                .strip_prefix('\u{FEFF}')
+                .unwrap_or(log_contents);
+            let json_value: Result<Value, _> = serde_json::from_str(log_contents_trimmed);
+            match json_value {
+                Ok(json_value) => match json_value {
+                    // JSON array format
+                    Value::Array(json_array) => {
+                        events.extend(json_array);
+                    }
+                    // JSON object with "value" key
+                    Value::Object(json_map) => {
+                        if let Some(Value::Array(json_array)) = json_map.get("value") {
+                            events.extend(json_array.clone());
+                        }
+                    }
+                    _ => {}
+                },
+                Err(_) => {
+                    // Fall back to JSONL format
+                    log_contents.lines().for_each(|line| {
+                        if let Ok(json_value) = serde_json::from_str::<Value>(line) {
+                            events.push(json_value);
+                        }
+                    });
                 }
-            });
+            }
         }
+
         _ => {}
     }
     Ok(events)
@@ -462,5 +499,53 @@ mod tests {
         assert!(result.is_ok());
         let event = result.unwrap();
         assert_eq!(event.len(), 29);
+    }
+
+    #[test]
+    fn test_load_azure_value_format() {
+        let test_file = "test_files/json/azure_value_format.json";
+        let log_contents = fs::read_to_string(test_file).unwrap();
+        let result = load_json_from_file(&log_contents, &LogSource::Azure);
+        assert!(result.is_ok());
+        let events = result.unwrap();
+        assert_eq!(events.len(), 1);
+        // Verify that the event has expected fields
+        assert!(events[0].get("caller").is_some());
+        assert_eq!(
+            events[0].get("caller").unwrap().as_str().unwrap(),
+            "admin@contoso.com"
+        );
+    }
+
+    #[test]
+    fn test_load_azure_graph_api_format() {
+        let test_file = "test_files/json/azure_graph_api_format.json";
+        let log_contents = fs::read_to_string(test_file).unwrap();
+        let result = load_json_from_file(&log_contents, &LogSource::Azure);
+        assert!(result.is_ok());
+        let events = result.unwrap();
+        assert_eq!(events.len(), 3);
+
+        // Verify first event has expected fields
+        assert!(events[0].get("eventTimestamp").is_some());
+        assert_eq!(
+            events[0].get("eventTimestamp").unwrap().as_str().unwrap(),
+            "2025-11-30T01:45:06.4650448Z"
+        );
+        assert!(events[0].get("caller").is_some());
+        assert_eq!(
+            events[0].get("caller").unwrap().as_str().unwrap(),
+            "rob@contoso.com"
+        );
+    }
+
+    #[test]
+    fn test_load_azure_graph_api_format2() {
+        let test_file = "test_files/json/Azure-ActivityLog.json";
+        let log_contents = fs::read_to_string(test_file).unwrap();
+        let result = load_json_from_file(&log_contents, &LogSource::Azure);
+        assert!(result.is_ok());
+        let events = result.unwrap();
+        assert_eq!(events.len(), 1080);
     }
 }
