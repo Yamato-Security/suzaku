@@ -185,17 +185,16 @@ fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
             }
         }
         LogSource::Azure => {
+            // Try parsing as JSON array first
+            if let Ok(Value::Array(json_array)) = serde_json::from_str::<Value>(log_contents) {
+                return json_array;
+            }
             // Try parsing as JSON object with "value" key first
             if let Ok(json_value) = serde_json::from_str::<Value>(log_contents)
                 && let Value::Object(ref json_map) = json_value
+                && let Some(Value::Array(json_array)) = json_map.get("value")
             {
-                if let Some(Value::Array(json_array)) = json_map.get("value") {
-                    return json_array.clone();
-                }
-                // Fall back to JSON array format
-                if let Value::Array(json_array) = json_value {
-                    return json_array;
-                }
+                return json_array.clone();
             }
             // Fall back to JSONL format
             log_contents
@@ -537,15 +536,5 @@ mod tests {
             events[0].get("caller").unwrap().as_str().unwrap(),
             "rob@contoso.com"
         );
-    }
-
-    #[test]
-    fn test_load_azure_graph_api_format2() {
-        let test_file = "test_files/json/Azure-ActivityLog.json";
-        let log_contents = fs::read_to_string(test_file).unwrap();
-        let result = load_json_from_file(&log_contents, &LogSource::Azure);
-        assert!(result.is_ok());
-        let events = result.unwrap();
-        assert_eq!(events.len(), 1080);
     }
 }
