@@ -9,6 +9,7 @@
 **改善:**
 
 - 異なるログソースの取り扱いを容易にするため、コードをリファクタリングした。 (@fukusuket)
+- Microsoft Graph API JSON形式のAzureログに対応した。 (#113) (@fukusuket)
 
 **バグ修正:**
 

@@ -9,6 +9,7 @@
 **Enhancements:**
 
 - Code refactored for easier handling of different log sources. (@fukusuket)
+- Added support for Microsoft Graph API JSON format for Azure logs. (#113) (@fukusuket)
 
 **Bug Fixes:**
 
