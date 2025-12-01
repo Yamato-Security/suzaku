@@ -22,7 +22,6 @@ git2="*"
 hashbrown="*"
 indicatif = "*"
 itertools = "*"
-krapslog = "0.6"
 libmimalloc-sys = { version = "*",  features = ["extended"] }
 maxminddb = "*"
 mimalloc = { version = "*", default-features = false }

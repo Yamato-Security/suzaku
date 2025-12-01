@@ -1,0 +1,281 @@
+[
+  {
+    "authorization":  {
+      "action":  "Microsoft.Resources/subscriptions/resourceGroups/delete",
+      "scope":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourceGroups/wela"
+    },
+    "caller":  "rob@contoso.com",
+    "channels":  "Operation",
+    "claims":  {
+      "aud":  "https://management.core.windows.net/",
+      "iss":  "https://sts.windows.net/fe5e9374-1f2c-4128-a5e2-033efa641646/",
+      "iat":  "1764466056",
+      "nbf":  "1764466056",
+      "exp":  "1764470656",
+      "http://schemas.microsoft.com/claims/authnclassreference":  "1",
+      "acrs":  "p1",
+      "aio":  "AfQAC/8aAAAAf1JwLyT3LYiw5AuvrrllwxPYIJcWAanrzZDn8o51q3rQKz9QlW+QlwIZ3etwkBP+TSTZ7Vj89JC8eQbeckLTn1vwbbA6rzTIFq7i0KZED9XW7khhvUOudmVoYLKIeJZ+7Rv8FcY6Zf91a5bdEWS7secTsIVo8RTfpoSzBKWFkBeQpu8wGDxRq49XAXSCXRAcB1TIjcoq4eLAVJQjW+kxGrMe0x74MSOZjUOtkR+kZkE1jI8s3s+8yeaMlI/32nxS8dmOKzPwM7rlFnT52Sf6aaNTHDNw3IPuxOAemtYylH7mOvdmfcdjnlBEeTJ2lzT7",
+      "altsecid":  "1:live.com:00037FFE1A7CA7BC",
+      "http://schemas.microsoft.com/claims/authnmethodsreferences":  "pwd,mfa",
+      "appid":  "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "appidacr":  "0",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress":  "rob@contoso.com",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname":  "大和",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname":  "朱雀",
+      "groups":  "66c84c0c-6c25-470b-9330-5113abab1ecf",
+      "http://schemas.microsoft.com/identity/claims/identityprovider":  "live.com",
+      "idtyp":  "user",
+      "ipaddr":  "240d:1a:7fe:a000:e4f5:37e6:6cfd:adbd",
+      "name":  "大和朱雀",
+      "http://schemas.microsoft.com/identity/claims/objectidentifier":  "97ac2078-7b11-4982-9b43-5e6f407d066c",
+      "puid":  "1003200047D500B0",
+      "rh":  "1.AVUAdJNe_iwfKEGl4gM--mQWRkZIf3kAutdPukPawfj2MBO_AKxVAA.",
+      "http://schemas.microsoft.com/identity/claims/scope":  "user_impersonation",
+      "sid":  "00a94039-740c-0a35-217e-b7906bee94c6",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier":  "CHDqallWk9cFDPMYuPhZ2NJd95t1QR4QUzkOAuO6HS4",
+      "http://schemas.microsoft.com/identity/claims/tenantid":  "fe5e9374-1f2c-4128-a5e2-033efa641646",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name":  "live.com#rob@contoso.com",
+      "uti":  "BYMvvd9bGkqlm0tPNk_GAA",
+      "ver":  "1.0",
+      "wids":  "62e90394-69f5-4237-9190-012177145e10",
+      "xms_act_fct":  "5 3",
+      "xms_edov":  "true",
+      "xms_ftd":  "ro9HGrmLNinwnU5EUm47yT6L3YfvJimHTBw85VKMbXkBa29yZWFzb3V0aC1kc21z",
+      "xms_idrel":  "1 24",
+      "xms_sub_fct":  "3 4",
+      "xms_tcdt":  "1558360955"
+    },
+    "correlationId":  "af67db90-ea0f-4ff5-8da7-6570de228eb2",
+    "description":  "",
+    "eventDataId":  "5df3b668-cc09-44fe-906c-e54bf315911b",
+    "eventName":  {
+      "value":  "EndRequest",
+      "localizedValue":  "End request"
+    },
+    "category":  {
+      "value":  "Administrative",
+      "localizedValue":  "Administrative"
+    },
+    "id":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/publicIPAddresses/sakurai10-ip/events/5df3b668-cc09-44fe-906c-e54bf315911b/ticks/639000639064650448",
+    "level":  "Informational",
+    "resourceGroupName":  "wela",
+    "resourceProviderName":  {
+      "value":  "Microsoft.Network",
+      "localizedValue":  "Microsoft.Network"
+    },
+    "resourceId":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/publicIPAddresses/sakurai10-ip",
+    "resourceType":  {
+      "value":  "Microsoft.Resources/subscriptions/resourceGroups",
+      "localizedValue":  "Microsoft.Resources/subscriptions/resourceGroups"
+    },
+    "operationId":  "90f4018b-2d97-43cb-878e-d7932b08026d",
+    "operationName":  {
+      "value":  "Microsoft.Network/publicIPAddresses/delete",
+      "localizedValue":  "Delete Public Ip Address"
+    },
+    "properties":  {
+      "eventCategory":  "Administrative",
+      "entity":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/publicIPAddresses/sakurai10-ip",
+      "message":  "Microsoft.Network/publicIPAddresses/delete",
+      "hierarchy":  "fe5e9374-1f2c-4128-a5e2-033efa641646/5d22beda-5051-4d08-89eb-a56f372e8890"
+    },
+    "status":  {
+      "value":  "Succeeded",
+      "localizedValue":  "Succeeded"
+    },
+    "subStatus":  {
+      "value":  "",
+      "localizedValue":  ""
+    },
+    "eventTimestamp":  "2025-11-30T01:45:06.4650448Z",
+    "submissionTimestamp":  "2025-11-30T01:47:13Z",
+    "subscriptionId":  "5d22beda-5051-4d08-89eb-a56f372e8890",
+    "tenantId":  "fe5e9374-1f2c-4128-a5e2-033efa641646"
+  },
+  {
+    "authorization":  {
+      "action":  "Microsoft.Resources/subscriptions/resourceGroups/delete",
+      "scope":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourceGroups/wela"
+    },
+    "caller":  "rob@contoso.com",
+    "channels":  "Operation",
+    "claims":  {
+      "aud":  "https://management.core.windows.net/",
+      "iss":  "https://sts.windows.net/fe5e9374-1f2c-4128-a5e2-033efa641646/",
+      "iat":  "1764466056",
+      "nbf":  "1764466056",
+      "exp":  "1764470656",
+      "http://schemas.microsoft.com/claims/authnclassreference":  "1",
+      "acrs":  "p1",
+      "aio":  "AfQAC/8aAAAAf1JwLyT3LYiw5AuvrrllwxPYIJcWAanrzZDn8o51q3rQKz9QlW+QlwIZ3etwkBP+TSTZ7Vj89JC8eQbeckLTn1vwbbA6rzTIFq7i0KZED9XW7khhvUOudmVoYLKIeJZ+7Rv8FcY6Zf91a5bdEWS7secTsIVo8RTfpoSzBKWFkBeQpu8wGDxRq49XAXSCXRAcB1TIjcoq4eLAVJQjW+kxGrMe0x74MSOZjUOtkR+kZkE1jI8s3s+8yeaMlI/32nxS8dmOKzPwM7rlFnT52Sf6aaNTHDNw3IPuxOAemtYylH7mOvdmfcdjnlBEeTJ2lzT7",
+      "altsecid":  "1:live.com:00037FFE1A7CA7BC",
+      "http://schemas.microsoft.com/claims/authnmethodsreferences":  "pwd,mfa",
+      "appid":  "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "appidacr":  "0",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress":  "rob@contoso.com",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname":  "大和",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname":  "朱雀",
+      "groups":  "66c84c0c-6c25-470b-9330-5113abab1ecf",
+      "http://schemas.microsoft.com/identity/claims/identityprovider":  "live.com",
+      "idtyp":  "user",
+      "ipaddr":  "240d:1a:7fe:a000:e4f5:37e6:6cfd:adbd",
+      "name":  "大和朱雀",
+      "http://schemas.microsoft.com/identity/claims/objectidentifier":  "97ac2078-7b11-4982-9b43-5e6f407d066c",
+      "puid":  "1003200047D500B0",
+      "rh":  "1.AVUAdJNe_iwfKEGl4gM--mQWRkZIf3kAutdPukPawfj2MBO_AKxVAA.",
+      "http://schemas.microsoft.com/identity/claims/scope":  "user_impersonation",
+      "sid":  "00a94039-740c-0a35-217e-b7906bee94c6",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier":  "CHDqallWk9cFDPMYuPhZ2NJd95t1QR4QUzkOAuO6HS4",
+      "http://schemas.microsoft.com/identity/claims/tenantid":  "fe5e9374-1f2c-4128-a5e2-033efa641646",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name":  "live.com#rob@contoso.com",
+      "uti":  "BYMvvd9bGkqlm0tPNk_GAA",
+      "ver":  "1.0",
+      "wids":  "62e90394-69f5-4237-9190-012177145e10",
+      "xms_act_fct":  "5 3",
+      "xms_edov":  "true",
+      "xms_ftd":  "ro9HGrmLNinwnU5EUm47yT6L3YfvJimHTBw85VKMbXkBa29yZWFzb3V0aC1kc21z",
+      "xms_idrel":  "1 24",
+      "xms_sub_fct":  "3 4",
+      "xms_tcdt":  "1558360955"
+    },
+    "correlationId":  "af67db90-ea0f-4ff5-8da7-6570de228eb2",
+    "description":  "",
+    "eventDataId":  "8a2bfc79-5cfa-4150-a2fc-1279ac34b94a",
+    "eventName":  {
+      "value":  "EndRequest",
+      "localizedValue":  "End request"
+    },
+    "category":  {
+      "value":  "Administrative",
+      "localizedValue":  "Administrative"
+    },
+    "id":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/virtualNetworks/vnet-japaneast/events/8a2bfc79-5cfa-4150-a2fc-1279ac34b94a/ticks/639000639016595788",
+    "level":  "Informational",
+    "resourceGroupName":  "wela",
+    "resourceProviderName":  {
+      "value":  "Microsoft.Network",
+      "localizedValue":  "Microsoft.Network"
+    },
+    "resourceId":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/virtualNetworks/vnet-japaneast",
+    "resourceType":  {
+      "value":  "Microsoft.Resources/subscriptions/resourceGroups",
+      "localizedValue":  "Microsoft.Resources/subscriptions/resourceGroups"
+    },
+    "operationId":  "ae920602-ccb3-4ee3-acac-517413d6c1bc",
+    "operationName":  {
+      "value":  "Microsoft.Network/virtualNetworks/delete",
+      "localizedValue":  "Delete Virtual Network"
+    },
+    "properties":  {
+      "eventCategory":  "Administrative",
+      "entity":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/virtualNetworks/vnet-japaneast",
+      "message":  "Microsoft.Network/virtualNetworks/delete",
+      "hierarchy":  "fe5e9374-1f2c-4128-a5e2-033efa641646/5d22beda-5051-4d08-89eb-a56f372e8890"
+    },
+    "status":  {
+      "value":  "Succeeded",
+      "localizedValue":  "Succeeded"
+    },
+    "subStatus":  {
+      "value":  "",
+      "localizedValue":  ""
+    },
+    "eventTimestamp":  "2025-11-30T01:45:01.6595788Z",
+    "submissionTimestamp":  "2025-11-30T01:47:02Z",
+    "subscriptionId":  "5d22beda-5051-4d08-89eb-a56f372e8890",
+    "tenantId":  "fe5e9374-1f2c-4128-a5e2-033efa641646"
+  },
+  {
+    "authorization":  {
+      "action":  "Microsoft.Resources/subscriptions/resourceGroups/delete",
+      "scope":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourceGroups/wela"
+    },
+    "caller":  "rob@contoso.com",
+    "channels":  "Operation",
+    "claims":  {
+      "aud":  "https://management.core.windows.net/",
+      "iss":  "https://sts.windows.net/fe5e9374-1f2c-4128-a5e2-033efa641646/",
+      "iat":  "1764466056",
+      "nbf":  "1764466056",
+      "exp":  "1764470656",
+      "http://schemas.microsoft.com/claims/authnclassreference":  "1",
+      "acrs":  "p1",
+      "aio":  "AfQAC/8aAAAAf1JwLyT3LYiw5AuvrrllwxPYIJcWAanrzZDn8o51q3rQKz9QlW+QlwIZ3etwkBP+TSTZ7Vj89JC8eQbeckLTn1vwbbA6rzTIFq7i0KZED9XW7khhvUOudmVoYLKIeJZ+7Rv8FcY6Zf91a5bdEWS7secTsIVo8RTfpoSzBKWFkBeQpu8wGDxRq49XAXSCXRAcB1TIjcoq4eLAVJQjW+kxGrMe0x74MSOZjUOtkR+kZkE1jI8s3s+8yeaMlI/32nxS8dmOKzPwM7rlFnT52Sf6aaNTHDNw3IPuxOAemtYylH7mOvdmfcdjnlBEeTJ2lzT7",
+      "altsecid":  "1:live.com:00037FFE1A7CA7BC",
+      "http://schemas.microsoft.com/claims/authnmethodsreferences":  "pwd,mfa",
+      "appid":  "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "appidacr":  "0",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress":  "rob@contoso.com",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname":  "大和",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname":  "朱雀",
+      "groups":  "66c84c0c-6c25-470b-9330-5113abab1ecf",
+      "http://schemas.microsoft.com/identity/claims/identityprovider":  "live.com",
+      "idtyp":  "user",
+      "ipaddr":  "240d:1a:7fe:a000:e4f5:37e6:6cfd:adbd",
+      "name":  "大和朱雀",
+      "http://schemas.microsoft.com/identity/claims/objectidentifier":  "97ac2078-7b11-4982-9b43-5e6f407d066c",
+      "puid":  "1003200047D500B0",
+      "rh":  "1.AVUAdJNe_iwfKEGl4gM--mQWRkZIf3kAutdPukPawfj2MBO_AKxVAA.",
+      "http://schemas.microsoft.com/identity/claims/scope":  "user_impersonation",
+      "sid":  "00a94039-740c-0a35-217e-b7906bee94c6",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier":  "CHDqallWk9cFDPMYuPhZ2NJd95t1QR4QUzkOAuO6HS4",
+      "http://schemas.microsoft.com/identity/claims/tenantid":  "fe5e9374-1f2c-4128-a5e2-033efa641646",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name":  "live.com#rob@contoso.com",
+      "uti":  "BYMvvd9bGkqlm0tPNk_GAA",
+      "ver":  "1.0",
+      "wids":  "62e90394-69f5-4237-9190-012177145e10",
+      "xms_act_fct":  "5 3",
+      "xms_edov":  "true",
+      "xms_ftd":  "ro9HGrmLNinwnU5EUm47yT6L3YfvJimHTBw85VKMbXkBa29yZWFzb3V0aC1kc21z",
+      "xms_idrel":  "1 24",
+      "xms_sub_fct":  "3 4",
+      "xms_tcdt":  "1558360955"
+    },
+    "correlationId":  "af67db90-ea0f-4ff5-8da7-6570de228eb2",
+    "description":  "",
+    "eventDataId":  "e64c1788-f688-4eaa-b09f-62000423836f",
+    "eventName":  {
+      "value":  "EndRequest",
+      "localizedValue":  "End request"
+    },
+    "category":  {
+      "value":  "Administrative",
+      "localizedValue":  "Administrative"
+    },
+    "id":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/networkSecurityGroups/sakurai10-nsg/events/e64c1788-f688-4eaa-b09f-62000423836f/ticks/639000638957576077",
+    "level":  "Informational",
+    "resourceGroupName":  "wela",
+    "resourceProviderName":  {
+      "value":  "Microsoft.Network",
+      "localizedValue":  "Microsoft.Network"
+    },
+    "resourceId":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/networkSecurityGroups/sakurai10-nsg",
+    "resourceType":  {
+      "value":  "Microsoft.Resources/subscriptions/resourceGroups",
+      "localizedValue":  "Microsoft.Resources/subscriptions/resourceGroups"
+    },
+    "operationId":  "2f664ceb-dbff-4997-9705-3d6c23cf7d42",
+    "operationName":  {
+      "value":  "Microsoft.Network/networkSecurityGroups/delete",
+      "localizedValue":  "Delete Network Security Group"
+    },
+    "properties":  {
+      "eventCategory":  "Administrative",
+      "entity":  "/subscriptions/5d22beda-5051-4d08-89eb-a56f372e8890/resourcegroups/wela/providers/Microsoft.Network/networkSecurityGroups/sakurai10-nsg",
+      "message":  "Microsoft.Network/networkSecurityGroups/delete",
+      "hierarchy":  "fe5e9374-1f2c-4128-a5e2-033efa641646/5d22beda-5051-4d08-89eb-a56f372e8890"
+    },
+    "status":  {
+      "value":  "Succeeded",
+      "localizedValue":  "Succeeded"
+    },
+    "subStatus":  {
+      "value":  "",
+      "localizedValue":  ""
+    },
+    "eventTimestamp":  "2025-11-30T01:44:55.7576077Z",
+    "submissionTimestamp":  "2025-11-30T01:46:00Z",
+    "subscriptionId":  "5d22beda-5051-4d08-89eb-a56f372e8890",
+    "tenantId":  "fe5e9374-1f2c-4128-a5e2-033efa641646"
+  }
+]

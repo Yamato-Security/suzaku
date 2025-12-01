@@ -298,19 +298,24 @@ fn get_value_from_event_common(
             return ip;
         }
     }
-
     // イベントフィールド処理（共通）
     if key.starts_with(".") {
-        let key = key.strip_prefix(".").unwrap();
-        if let Some(value) = event.get(key) {
-            if key == "eventTime" {
-                value.value_to_string().replace("T", " ").replace("Z", "")
-            } else {
-                value.value_to_string()
+        let key_without_prefix = key.trim_start_matches('.').trim();
+        let keys: Vec<&str> = key_without_prefix.split('|').collect();
+        for k in keys {
+            let k_trimmed = k.trim_matches('.').trim();
+            if let Some(value) = event.get(k_trimmed) {
+                return if k_trimmed.contains("eventTime")
+                    || k_trimmed.contains("time")
+                    || k_trimmed.contains("eventTimestamp")
+                {
+                    value.value_to_string().replace("T", " ").replace("Z", "")
+                } else {
+                    value.value_to_string()
+                };
             }
-        } else {
-            "-".to_string()
         }
+        "-".to_string()
     } else if key.starts_with("sigma.") {
         let key = key.replace("sigma.", "");
         match key.as_str() {
@@ -497,7 +502,7 @@ impl<'a> OutputContext<'a> {
             .iter()
             .find(|(k, _)| k == "Timestamp")
             .map(|(_k, v)| v.as_str())
-            .unwrap_or("eventTime");
+            .unwrap_or(".eventTime|.time|.eventTimestamp");
         Self {
             profile,
             prof_ts_key,
