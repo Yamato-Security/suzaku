@@ -5,6 +5,7 @@
 **新機能:**
 
 - Azureログ用のDFIRタイムラインを作成する`azure-timeline`コマンドを追加した。 (#109) (@fukusuket)
+- CloudTrailログを検索するための`aws-ct-search`コマンドを追加した。(#117) (@fukusuket)
 
 **改善:**
 

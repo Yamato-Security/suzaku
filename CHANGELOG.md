@@ -5,6 +5,7 @@
 **New Features:**
 
 - Added the `azure-timeline` command to create a DFIR timeline for Azure logs. (#109) (@fukusuket)
+- New `aws-ct-search` command to search through CloudTrail logs. (#117) (@fukusuket)
 
 **Enhancements:**
 
