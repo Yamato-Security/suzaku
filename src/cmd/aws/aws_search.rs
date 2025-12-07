@@ -34,6 +34,22 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
         .as_ref()
         .map(|pattern| Regex::new(pattern).expect("Invalid regex pattern"));
 
+    let sigma_rule_content = r"title: Dummy rule for Search command
+id: 2a2466e1-c0da-434b-a327-57da46cc8dae
+status: test
+description: ''
+author: YamatoSecurity
+date: 2025-12-24
+logsource:
+    product: aws
+    service: cloudtrail
+detection:
+    selection:
+        eventName: 'sample'
+    condition: selection
+level: informational";
+    let rule = rule_from_yaml(sigma_rule_content).unwrap();
+
     context.write_header();
 
     let mut search_func = |json_values: &[Value]| {
@@ -71,25 +87,8 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
             }
             let event = event_from_json(json_value.to_string().as_str());
             if let Ok(event) = event {
-                let sigma_rule_content = r"title: Dummy rule for Search command
-id: c85a99f2-bdfa-4d4a-8645-52628b2e4106
-status: test
-description: ''
-author: YamatoSecurity
-date: 2025-12-24
-logsource:
-    product: aws
-    service: cloudtrail
-detection:
-    selection:
-        eventName: 'sample'
-    condition: selection
-level: informational";
-                let rule = rule_from_yaml(sigma_rule_content);
-                if let Ok(rule) = rule {
-                    write_record(&event, json_value, Some(&rule), &mut context);
-                    matched_events += 1;
-                }
+                write_record(&event, json_value, Some(&rule), &mut context);
+                matched_events += 1;
             }
         }
     };

@@ -84,6 +84,7 @@ impl GeoIPSearch {
                     self.asn_cache.insert(ip, asn_str.to_string());
                     asn_str.to_string()
                 } else {
+                    self.asn_cache.insert(ip, "-".to_string());
                     "-".to_string()
                 }
             }
