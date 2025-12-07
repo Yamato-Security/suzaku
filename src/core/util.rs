@@ -1,8 +1,10 @@
 use crate::core::color::SuzakuColor::Green;
+use crate::core::log_source::LogSource;
+use crate::option::geoip::GeoIPSearch;
 use bytesize::ByteSize;
 use csv::Writer;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use std::{fs, io};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
@@ -93,4 +95,33 @@ pub fn set_rayon_threat_number(val: usize) {
         .num_threads(val)
         .build_global()
         .unwrap();
+}
+
+pub fn load_profile(
+    log: &LogSource,
+    geo_search: &Option<GeoIPSearch>,
+    skip_sigma: bool,
+) -> Vec<(String, String)> {
+    let file = File::open(log.profile_path()).expect("Unable to open profile file");
+    let reader = BufReader::new(file);
+    let mut profile = vec![];
+
+    for line in reader.lines() {
+        let line = line.expect("Unable to read line");
+        let parts: Vec<&str> = line.splitn(2, ':').collect();
+        if parts.len() == 2 {
+            let key = parts[0].trim();
+            let val = parts[1].trim().trim_matches('\'');
+            if skip_sigma && val.contains("sigma") {
+                continue;
+            }
+            profile.push((key.to_string(), val.to_string()));
+            if key == "SrcIP" && geo_search.is_some() {
+                profile.push(("SrcASN".to_string(), "SrcASN".to_string()));
+                profile.push(("SrcCity".to_string(), "SrcCity".to_string()));
+                profile.push(("SrcCountry".to_string(), "SrcCountry".to_string()));
+            }
+        }
+    }
+    profile
 }

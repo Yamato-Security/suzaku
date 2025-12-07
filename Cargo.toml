@@ -26,6 +26,7 @@ libmimalloc-sys = { version = "*",  features = ["extended"] }
 maxminddb = "*"
 mimalloc = { version = "*", default-features = false }
 num-format = "0.4.*"
+regex = "1"
 serde_json = "1"
 termcolor = "*"
 terminal_size = "0.4.*"

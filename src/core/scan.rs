@@ -74,7 +74,14 @@ pub fn scan_directory<'a>(
             correlation_engine,
         );
     };
-    process_events_from_dir(process_events, d, options.output.is_some(), no_color, log).unwrap();
+    process_events_from_dir(
+        process_events,
+        d,
+        options.output_opt.output.is_some(),
+        no_color,
+        log,
+    )
+    .unwrap();
 }
 
 pub fn process_events_from_dir<F>(
@@ -271,7 +278,7 @@ fn detect_events<'a>(
         for (event, json_event, matched_rules) in results {
             for rule in matched_rules {
                 // write to console
-                write_record(json_event, event, rule, context);
+                write_record(json_event, event, Some(rule), context);
                 append_summary_data(summary, json_event, rule, true, context);
             }
         }

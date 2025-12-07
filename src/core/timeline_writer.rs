@@ -34,16 +34,16 @@ pub struct OutputContext<'a> {
     pub output_paths: Vec<PathBuf>,
 }
 
-pub fn write_record(event: &Event, json: &Value, rule: &Rule, context: &mut OutputContext) {
+pub fn write_record(event: &Event, json: &Value, rule: Option<&Rule>, context: &mut OutputContext) {
     let mut record: Vec<String> = context
         .profile
         .iter()
         .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo))
         .collect();
-    write_to_stdout(&mut record, context, json, Some(event), Some(rule));
+    write_to_stdout(&mut record, context, json, Some(event), rule);
     write_to_csv(&record, context);
-    write_to_json(&record, json, Some(event), Some(rule), context);
-    write_to_jsonl(&record, json, Some(event), Some(rule), context);
+    write_to_json(&record, json, Some(event), rule, context);
+    write_to_jsonl(&record, json, Some(event), rule, context);
     context.has_written = true;
 }
 
@@ -93,7 +93,7 @@ fn write_to_stdout(
                 .collect();
 
             for (k, v) in sigma_profile {
-                if let (Some(event), Some(rule)) = (event, rule) {
+                if let (Some(event), rule) = (event, rule) {
                     let value = get_value_from_event(&v, event, rule, geo);
                     json_record[k] = Value::String(value.to_string());
                 }
@@ -160,7 +160,7 @@ fn write_to_json_format(
                 .collect();
 
             for (k, v) in sigma_profile {
-                if let (Some(event), Some(rule)) = (event, rule) {
+                if let (Some(event), rule) = (event, rule) {
                     let value = get_value_from_event(&v, event, rule, geo);
                     json_record[k] = Value::String(value.to_string());
                 }
@@ -443,10 +443,14 @@ fn get_value_from_correlation_event(
 fn get_value_from_event(
     key: &str,
     event: &Event,
-    rule: &Rule,
+    rule: Option<&Rule>,
     geo_ip: &mut Option<GeoIPSearch>,
 ) -> String {
-    get_value_from_event_common(key, event, RuleInfo::Rule(rule), geo_ip)
+    if let Some(rule) = rule {
+        get_value_from_event_common(key, event, RuleInfo::Rule(rule), geo_ip)
+    } else {
+        "".to_string()
+    }
 }
 
 // 使用例

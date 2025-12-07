@@ -77,11 +77,15 @@ impl GeoIPSearch {
         if let Some(asn) = self.asn_cache.get(&ip) {
             return asn.to_string();
         }
-        match self.asn.lookup::<geoip2::Asn>(ip) {
-            Ok(Some(asn)) => {
-                let asn_str = asn.autonomous_system_organization.unwrap_or("-");
-                self.asn_cache.insert(ip, asn_str.to_string());
-                asn_str.to_string()
+        match self.asn.lookup(ip) {
+            Ok(asn) => {
+                if let Ok(Some(asn)) = asn.decode::<geoip2::Asn>() {
+                    let asn_str = asn.autonomous_system_organization.unwrap_or("-");
+                    self.asn_cache.insert(ip, asn_str.to_string());
+                    asn_str.to_string()
+                } else {
+                    "-".to_string()
+                }
             }
             _ => "-".to_string(),
         }
@@ -94,13 +98,12 @@ impl GeoIPSearch {
         if let Some(country) = self.country_cache.get(&ip) {
             return country.to_string();
         }
-        match self.country.lookup::<geoip2::Country>(ip) {
-            Ok(Some(country)) => {
+        match self.country.lookup(ip) {
+            Ok(country) => {
                 let mut ret = "-";
-                if let Some(country) = country.country
-                    && let Some(name_tree) = country.names
-                {
-                    ret = name_tree.get("en").unwrap_or(&"-")
+                if let Ok(Some(country)) = country.decode::<geoip2::Country>() {
+                    let name_tree = country.country.names;
+                    ret = name_tree.english.unwrap_or("")
                 }
                 ret.to_string()
             }
@@ -115,13 +118,12 @@ impl GeoIPSearch {
         if let Some(city) = self.city_cache.get(&ip) {
             return city.to_string();
         }
-        match self.city.lookup::<geoip2::City>(ip) {
-            Ok(Some(city)) => {
+        match self.city.lookup(ip) {
+            Ok(city) => {
                 let mut ret = "-";
-                if let Some(city) = city.city
-                    && let Some(name_tree) = city.names
-                {
-                    ret = name_tree.get("en").unwrap_or(&"-")
+                if let Ok(Some(city)) = city.decode::<geoip2::City>() {
+                    let name_tree = city.city.names;
+                    ret = name_tree.english.unwrap_or("")
                 }
                 ret.to_string()
             }
