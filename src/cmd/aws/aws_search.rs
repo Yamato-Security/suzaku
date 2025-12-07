@@ -1,9 +1,10 @@
-use crate::core::color::SuzakuColor::Green;
+use crate::core::color::SuzakuColor::{Green, Red};
 use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::core::timeline_writer::{OutputConfig, OutputContext, init_writers, write_record};
 use crate::core::util::{load_profile, output_path_info, p};
 use crate::option::cli::{CommonOptions, SearchOptions};
+use crate::option::geoip::GeoIPSearch;
 use crate::option::timefiler::filter_by_time;
 use num_format::{Locale, ToFormattedString};
 use regex::Regex;
@@ -17,15 +18,29 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
 
     let mut matched_events = 0;
     let mut total_events = 0;
+    let mut geo_search = None;
+    if let Some(path) = options.output_opt.geo_ip.as_ref() {
+        let res = GeoIPSearch::new(path);
+        if let Ok(geo) = res {
+            geo_search = Some(geo);
+        } else {
+            p(
+                Red.rdg(no_color),
+                "Could not find the appropriate MaxMind GeoIP .mmdb database files.\n",
+                true,
+            );
+            return;
+        }
+    }
 
-    let profile = load_profile(&LogSource::Aws, &None, true);
+    let profile = load_profile(&LogSource::Aws, &geo_search, true);
     let (writers, output_pathes) = init_writers(
         options.output_opt.output.as_ref(),
         options.output_opt.output_type,
     );
     let config = OutputConfig::new(no_color, options.output_opt.raw_output);
-    let none = &mut None;
-    let mut context = OutputContext::new(&profile, none, &config, writers, &output_pathes);
+    let mut context =
+        OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
 
     let filter_conditions = parse_filter_conditions(&options.filter);
 
