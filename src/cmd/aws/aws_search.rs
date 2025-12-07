@@ -62,9 +62,8 @@ level: informational";
             if !filter_conditions.is_empty() && !matches_filters(json_value, &filter_conditions) {
                 continue;
             }
-
+            let json_str = json_value.to_string();
             if !options.keyword.is_empty() {
-                let json_str = json_value.to_string();
                 let found = if options.preserve_case {
                     options.keyword.iter().any(|k| json_str.contains(k))
                 } else {
@@ -78,13 +77,12 @@ level: informational";
                     continue;
                 }
             }
-
-            if let Some(ref pattern) = regex_pattern {
-                let json_str = json_value.to_string();
-                if !pattern.is_match(&json_str) {
-                    continue;
-                }
+            if let Some(ref pattern) = regex_pattern
+                && !pattern.is_match(&json_str)
+            {
+                continue;
             }
+
             let event = event_from_json(json_value.to_string().as_str());
             if let Ok(event) = event {
                 write_record(&event, json_value, Some(&rule), &mut context);
