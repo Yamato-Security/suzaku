@@ -75,7 +75,7 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
 id: c85a99f2-bdfa-4d4a-8645-52628b2e4106
 status: test
 description: ''
-author: YamatoSecuriry
+author: YamatoSecurity
 date: 2025-12-24
 logsource:
     product: aws
