@@ -75,7 +75,7 @@ pub struct OutputOption {
 
     /// Number of threads to use (default: same as CPU cores)
     #[arg(help_heading = Some("Output"), long = "threads", default_value = "0", hide_default_value = true, value_name = "THREAD NUMBER", display_order = 305)]
-    pub threat_num: usize,
+    pub thread_num: usize,
 }
 
 #[derive(Args, Clone, Debug, Default)]
