@@ -58,7 +58,7 @@ fn main() {
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
-            set_rayon_threat_number(options.output_opt.threat_num);
+            set_rayon_threat_number(options.output_opt.thread_num);
 
             // Common validation for timeline commands
             if !check_path_exists(
@@ -120,7 +120,7 @@ fn main() {
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
-            set_rayon_threat_number(options.output_opt.threat_num);
+            set_rayon_threat_number(options.output_opt.thread_num);
 
             // Validation for search command
             if !check_path_exists(
