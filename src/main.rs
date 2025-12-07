@@ -1,4 +1,5 @@
 use crate::cmd::aws::aws_metrics::aws_metrics;
+use crate::cmd::aws::aws_search::aws_search;
 use crate::cmd::aws::aws_summary::aws_summary;
 use crate::cmd::aws::aws_timeline::aws_timeline;
 
@@ -11,7 +12,7 @@ use core::util::{check_path_exists, p, set_rayon_threat_number};
 use libmimalloc_sys::mi_stats_print_out;
 use mimalloc::MiMalloc;
 use option::cli::Commands::{
-    AwsCtMetrics, AwsCtSummary, AwsCtTimeline, AzureTimeline, UpdateRules,
+    AwsCtMetrics, AwsCtSearch, AwsCtSummary, AwsCtTimeline, AzureTimeline, UpdateRules,
 };
 use option::cli::{Cli, RELEASE_NAME, VERSION};
 use std::ptr::null_mut;
@@ -40,6 +41,7 @@ fn main() {
     let cmd = &Cli::parse().cmd;
     let no_color = match cmd {
         AwsCtTimeline { common_opt, .. }
+        | AwsCtSearch { common_opt, .. }
         | AwsCtMetrics { common_opt, .. }
         | AwsCtSummary { common_opt, .. }
         | UpdateRules { common_opt }
@@ -56,7 +58,7 @@ fn main() {
             common_opt,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
-            set_rayon_threat_number(options.threat_num);
+            set_rayon_threat_number(options.output_opt.thread_num);
 
             // Common validation for timeline commands
             if !check_path_exists(
@@ -66,8 +68,8 @@ fn main() {
                 return;
             }
 
-            if let Some(output) = &options.output
-                && !options.clobber
+            if let Some(output) = &options.output_opt.output
+                && !options.output_opt.clobber
                 && output.exists()
             {
                 p(
@@ -90,7 +92,10 @@ fn main() {
                 return;
             }
 
-            if options.raw_output && options.output_type == 1 && options.output.is_some() {
+            if options.output_opt.raw_output
+                && options.output_opt.output_type == 1
+                && options.output_opt.output.is_some()
+            {
                 p(
                     None,
                     "--raw-output option is only available in JSON formats. Please specify an output type of 2-5.",
@@ -109,6 +114,50 @@ fn main() {
                 AwsCtTimeline { .. } => aws_timeline(options, common_opt),
                 _ => unreachable!(),
             }
+        }
+        AwsCtSearch {
+            options,
+            common_opt,
+        } => {
+            display_logo(common_opt.quiet, no_color, true, false);
+            set_rayon_threat_number(options.output_opt.thread_num);
+
+            // Validation for search command
+            if !check_path_exists(
+                options.input_opt.filepath.clone(),
+                options.input_opt.directory.clone(),
+            ) {
+                return;
+            }
+
+            if let Some(output) = &options.output_opt.output
+                && !options.output_opt.clobber
+                && output.exists()
+            {
+                p(
+                    None,
+                    &format!(
+                        "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
+                        output.display()
+                    ),
+                    true,
+                );
+                return;
+            }
+
+            if options.output_opt.raw_output
+                && options.output_opt.output_type == 1
+                && options.output_opt.output.is_some()
+            {
+                p(
+                    None,
+                    "--raw-output option is only available in JSON formats. Please specify an output type of 2-5.",
+                    true,
+                );
+                return;
+            }
+
+            aws_search(options, common_opt);
         }
         AwsCtMetrics {
             input_opt,
@@ -163,6 +212,7 @@ fn main() {
 
     let debug = match cmd {
         AwsCtTimeline { common_opt, .. }
+        | AwsCtSearch { common_opt, .. }
         | AwsCtMetrics { common_opt, .. }
         | AwsCtSummary { common_opt, .. }
         | AzureTimeline { common_opt, .. }

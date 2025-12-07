@@ -19,47 +19,99 @@ pub struct Cli {
 
 #[derive(Copy, Args, Clone, Debug, Default)]
 pub struct CommonOptions {
+    /// Show the help menu
+    #[clap(help_heading = Some("General Options"), short = 'h', long = "help", action = ArgAction::Help, required = false, display_order = 10)]
+    pub help: Option<bool>,
+
     /// Disable color output
-    #[arg(help_heading = Some("Display Settings"), short = 'K', long = "no-color", global = true, display_order = 1)]
+    #[arg(help_heading = Some("Display Settings"), short = 'K', long = "no-color", global = true, display_order = 400)]
     pub no_color: bool,
 
     /// Quiet mode: do not display the launch banner
-    #[arg(help_heading = Some("Display Settings"), short, long, global = true,  display_order = 10)]
+    #[arg(help_heading = Some("Display Settings"), short, long, global = true, display_order = 402)]
     pub quiet: bool,
 
     /// Print debug information (memory usage, etc...)
     #[clap(long = "debug", global = true, hide = true)]
     pub debug: bool,
-
-    /// Show the help menu
-    #[clap(help_heading = Some("General Options"), short = 'h', long = "help", action = ArgAction::Help, required = false)]
-    pub help: Option<bool>,
 }
 
 #[derive(Args, Clone, Debug, Default)]
 pub struct TimeOption {
     /// Start time of the events to load (ex: "2022-02-22T23:59:59Z)
-    #[arg(help_heading = Some("Filtering"), long = "timeline-start", value_name = "DATE")]
+    #[arg(help_heading = Some("Filtering"), long = "timeline-start", value_name = "DATE", display_order = 210)]
     pub timeline_start: Option<String>,
 
     /// End time of the events to load (ex: "2020-02-22T00:00:00Z")
-    #[arg(help_heading = Some("Filtering"), long = "timeline-end", value_name = "DATE")]
+    #[arg(help_heading = Some("Filtering"), long = "timeline-end", value_name = "DATE", display_order = 211)]
     pub timeline_end: Option<String>,
 
     /// Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
-    #[arg(help_heading = Some("Filtering"), long = "time-offset", value_name = "OFFSET", conflicts_with = "timeline_start")]
+    #[arg(help_heading = Some("Filtering"), long = "time-offset", value_name = "OFFSET", conflicts_with = "timeline_start", display_order = 212)]
     pub time_offset: Option<String>,
+}
+
+#[derive(Args, Clone, Debug, Default)]
+pub struct OutputOption {
+    /// Overwrite files when saving
+    #[arg(help_heading = Some("Output"), short='C', long = "clobber", requires = "output", display_order = 300)]
+    pub clobber: bool,
+
+    /// Add GeoIP (ASN, city, country) info to IP addresses
+    #[arg(help_heading = Some("Output"), short = 'G', long = "geo-ip", value_name = "MAXMIND-DB-DIR", display_order = 301)]
+    pub geo_ip: Option<PathBuf>,
+
+    /// Save the results to a file
+    #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", display_order = 302)]
+    pub output: Option<PathBuf>,
+
+    /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
+    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1", display_order = 303)]
+    pub output_type: u8,
+
+    /// Output the original JSON logs (only available in JSON formats or stdout)
+    #[arg(help_heading = Some("Output"), long = "raw-output", display_order = 304)]
+    pub raw_output: bool,
+
+    /// Number of threads to use (default: same as CPU cores)
+    #[arg(help_heading = Some("Output"), long = "threads", default_value = "0", hide_default_value = true, value_name = "THREAD NUMBER", display_order = 305)]
+    pub thread_num: usize,
+}
+
+#[derive(Args, Clone, Debug, Default)]
+pub struct SearchOptions {
+    #[clap(flatten)]
+    pub input_opt: InputOption,
+
+    /// Filter by specific field(s)
+    #[arg(help_heading = Some("Filtering"), short = 'F', long, value_name = "FILTER...", display_order = 200)]
+    pub filter: Vec<String>,
+
+    /// Case-sensitive keyword search
+    #[arg(help_heading = Some("Filtering"), short = 'c', long = "preserve-case", display_order = 201)]
+    pub preserve_case: bool,
+
+    /// Search by keyword(s)
+    #[arg(help_heading = Some("Filtering"), short = 'k', long, value_name = "KEYWORD...", display_order = 202)]
+    pub keyword: Vec<String>,
+
+    /// Search by regular expression
+    #[arg(help_heading = Some("Filtering"), short = 'r', long = "regex", value_name = "REGEX", display_order = 203)]
+    pub regex: Option<String>,
+
+    #[clap(flatten)]
+    pub output_opt: OutputOption,
 }
 
 #[derive(Args, Clone, Debug, Default)]
 #[clap(group(ArgGroup::new("input_filtering").args(["directory", "filepath"]).required(true)))]
 pub struct InputOption {
     /// Directory of multiple gz/json files
-    #[arg(help_heading = Some("Input"), short = 'd', long, value_name = "DIR", conflicts_with_all = ["filepath"])]
+    #[arg(help_heading = Some("Input"), short = 'd', long, value_name = "DIR", conflicts_with_all = ["filepath"], display_order = 100)]
     pub directory: Option<PathBuf>,
 
     /// File path to one gz/json file
-    #[arg(help_heading = Some("Input"), short = 'f', long = "file", value_name = "FILE", conflicts_with_all = ["directory"])]
+    #[arg(help_heading = Some("Input"), short = 'f', long = "file", value_name = "FILE", conflicts_with_all = ["directory"], display_order = 101)]
     pub filepath: Option<PathBuf>,
 
     #[clap(flatten)]
@@ -69,43 +121,22 @@ pub struct InputOption {
 #[derive(Args, Clone, Debug, Default)]
 pub struct TimelineOptions {
     /// Specify a custom rule directory or file (default: ./rules)
-    #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE")]
+    #[arg(help_heading = Some("General Options"), short = 'r', long, default_value = "./rules", hide_default_value = true, value_name = "DIR/FILE", display_order = 11)]
     pub rules: PathBuf,
 
     #[clap(flatten)]
     pub input_opt: InputOption,
 
-    /// Save the results to a file
-    #[arg(help_heading = Some("Output"), short, long, value_name = "FILE")]
-    pub output: Option<PathBuf>,
-
-    /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
-    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1")]
-    pub output_type: u8,
-
-    /// Overwrite files when saving
-    #[arg(help_heading = Some("Output"), short='C', long = "clobber", requires = "output", display_order = 1)]
-    pub clobber: bool,
+    #[clap(flatten)]
+    pub output_opt: OutputOption,
 
     /// Do not display results summary
-    #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 2)]
+    #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 401)]
     pub no_summary: bool,
 
-    /// Add GeoIP (ASN, city, country) info to IP addresses
-    #[arg(help_heading = Some("Output"), short = 'G', long = "geo-ip", value_name = "MAXMIND-DB-DIR", display_order = 2)]
-    pub geo_ip: Option<PathBuf>,
-
-    /// Output the original JSON logs (only available in JSON formats or stdout)
-    #[arg(help_heading = Some("Output"), short = 'R', long = "raw-output")]
-    pub raw_output: bool,
-
     /// Minimum level for rules to load (default: informational)
-    #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 3)]
+    #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 302)]
     pub min_level: String,
-
-    /// Number of threads to use (default: same as CPU cores)
-    #[arg(help_heading = Some("Output"), long = "threads", default_value = "0", hide_default_value = true, value_name = "THREAD NUMBER",)]
-    pub threat_num: usize,
 }
 
 #[derive(Subcommand)]
@@ -124,6 +155,22 @@ pub enum Commands {
 
         #[clap(flatten)]
         common_opt: CommonOptions,
+    },
+
+    #[command(
+        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
+        version = FULL_VERSION,
+        help_template = "\nVersion: {version}\n{author-with-newline}\n{usage-heading}\n  suzaku aws-ct-search <INPUT> [OPTIONS]\n\n{all-args}",
+        disable_help_flag = true,
+        disable_version_flag = true
+    )]
+    /// Search AWS CloudTrail logs
+    AwsCtSearch {
+        #[clap(flatten)]
+        common_opt: CommonOptions,
+
+        #[clap(flatten)]
+        options: SearchOptions,
     },
 
     #[command(
