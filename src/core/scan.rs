@@ -135,11 +135,29 @@ where
             pb.set_message(pb_msg);
         }
         let log_contents = if path.ends_with("json") {
-            fs::read_to_string(&path)?
+            match fs::read_to_string(&path) {
+                Ok(contents) => contents,
+                Err(_) => {
+                    if show_progress {
+                        pb.inc(1);
+                    }
+                    continue;
+                }
+            }
         } else if path.ends_with("gz") {
-            read_gz_file(&PathBuf::from(&path))?
+            match read_gz_file(&PathBuf::from(&path)) {
+                Ok(contents) => contents,
+                Err(_) => {
+                    if show_progress {
+                        pb.inc(1);
+                    }
+                    continue;
+                }
+            }
         } else {
-            pb.inc(1);
+            if show_progress {
+                pb.inc(1);
+            }
             continue;
         };
 
