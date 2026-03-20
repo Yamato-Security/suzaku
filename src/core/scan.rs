@@ -138,7 +138,9 @@ where
             match fs::read_to_string(&path) {
                 Ok(contents) => contents,
                 Err(_) => {
-                    pb.inc(1);
+                    if show_progress {
+                        pb.inc(1);
+                    }
                     continue;
                 }
             }
@@ -146,12 +148,16 @@ where
             match read_gz_file(&PathBuf::from(&path)) {
                 Ok(contents) => contents,
                 Err(_) => {
-                    pb.inc(1);
+                    if show_progress {
+                        pb.inc(1);
+                    }
                     continue;
                 }
             }
         } else {
-            pb.inc(1);
+            if show_progress {
+                pb.inc(1);
+            }
             continue;
         };
 
