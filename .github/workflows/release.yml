@@ -52,13 +52,13 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.branch_or_tag }}
           submodules: 'true'
 
       - name: Clone Suzaku rule repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           repository: Yamato-Security/suzaku-rules
@@ -172,7 +172,7 @@ jobs:
 
       - name: Setup node
         if: matrix.info.target == 'aarch64-apple-darwin'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
 
