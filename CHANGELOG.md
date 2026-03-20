@@ -16,6 +16,7 @@
 
 - `-T, --no-frequency-timeline` option was not working so we removed it. Also fixed a logic bug in the authors display. (#110) (@fukusuket)
 - Output file would get saved even if there were no results. (#114) (@fukusuket)
+- `aws-ct-summary` would panic when processing a corrupt or imcomplete log file. (#119) (@fukusuket)
 
 ## 1.1.0 [2025/08/14] - Obon Release
 
