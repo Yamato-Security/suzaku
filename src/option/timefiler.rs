@@ -2,6 +2,12 @@ use crate::option::cli::{FileDateOption, TimeOption};
 use chrono::{DateTime, Duration, Utc};
 use regex::Regex;
 use serde_json::Value;
+use std::sync::LazyLock;
+
+static DATE_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"[/\\](\d{4})[/\\](\d{2})[/\\](\d{2})[/\\]")
+        .expect("DATE_PATH_RE regex pattern is invalid")
+});
 
 pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
     let keys: Vec<&str> = ts_key
@@ -67,8 +73,7 @@ pub fn filter_file_by_date_path(opt: &FileDateOption, path: &str) -> bool {
     if opt.file_date_from.is_none() && opt.file_date_to.is_none() {
         return true;
     }
-    let re = Regex::new(r"/(\d{4})/(\d{2})/(\d{2})/").unwrap();
-    let Some(caps) = re.captures(path) else {
+    let Some(caps) = DATE_PATH_RE.captures(path) else {
         // No YYYY/MM/DD pattern found; pass through (e.g. Azure paths)
         return true;
     };
@@ -187,6 +192,19 @@ mod tests {
         assert!(filter_file_by_date_path(
             &opt,
             "/logs/azure/auditlogs_2024_01_15.json"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_windows_path_separators() {
+        // Windows-style path with backslash separators should match correctly
+        let opt = FileDateOption {
+            file_date_from: Some("20240101".to_string()),
+            file_date_to: Some("20240131".to_string()),
+        };
+        assert!(filter_file_by_date_path(
+            &opt,
+            r"AWSLogs\123\CloudTrail\us-east-1\2024\01\15\xxx.json.gz"
         ));
     }
 
