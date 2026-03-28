@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -6,6 +7,22 @@ use const_format::concatcp;
 pub const RELEASE_NAME: &str = "Dev Build";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
+
+/// Validate that the input is a valid date in YYYYMMDD format.
+fn parse_file_date(s: &str) -> Result<String, String> {
+    if s.len() != 8 || !s.chars().all(|c| c.is_ascii_digit()) {
+        return Err(format!(
+            "'{}' is not in YYYYMMDD format (e.g. 20240115)",
+            s
+        ));
+    }
+    let year: i32 = s[0..4].parse().unwrap();
+    let month: u32 = s[4..6].parse().unwrap();
+    let day: u32 = s[6..8].parse().unwrap();
+    NaiveDate::from_ymd_opt(year, month, day)
+        .ok_or_else(|| format!("'{}' is not a valid date", s))?;
+    Ok(s.to_string())
+}
 
 #[derive(Parser)]
 #[command(name = "suzaku")]
@@ -49,6 +66,17 @@ pub struct TimeOption {
     /// Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
     #[arg(help_heading = Some("Filtering"), long = "time-offset", value_name = "OFFSET", conflicts_with = "timeline_start", display_order = 212)]
     pub time_offset: Option<String>,
+}
+
+#[derive(Args, Clone, Debug, Default)]
+pub struct FileDateOption {
+    /// Filter files by start date based on AWSLogs S3 path date structure (ex: "20240101")
+    #[arg(help_heading = Some("Filtering"), long = "file-date-from", value_name = "DATE", value_parser = parse_file_date, display_order = 213)]
+    pub file_date_from: Option<String>,
+
+    /// Filter files by end date based on AWSLogs S3 path date structure (ex: "20241231")
+    #[arg(help_heading = Some("Filtering"), long = "file-date-to", value_name = "DATE", value_parser = parse_file_date, display_order = 214)]
+    pub file_date_to: Option<String>,
 }
 
 #[derive(Args, Clone, Debug, Default)]
@@ -116,6 +144,9 @@ pub struct InputOption {
 
     #[clap(flatten)]
     pub time_opt: TimeOption,
+
+    #[clap(flatten)]
+    pub file_date_opt: FileDateOption,
 }
 
 #[derive(Args, Clone, Debug, Default)]
