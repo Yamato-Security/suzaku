@@ -11,10 +11,7 @@ pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
 /// Validate that the input is a valid date in YYYYMMDD format.
 fn parse_file_date(s: &str) -> Result<String, String> {
     if s.len() != 8 || !s.chars().all(|c| c.is_ascii_digit()) {
-        return Err(format!(
-            "'{}' is not in YYYYMMDD format (e.g. 20240115)",
-            s
-        ));
+        return Err(format!("'{}' is not in YYYYMMDD format (e.g. 20240115)", s));
     }
     let year: i32 = s[0..4].parse().unwrap();
     let month: u32 = s[4..6].parse().unwrap();
