@@ -96,6 +96,27 @@ pub fn process_events_from_dir<F>(
 where
     F: FnMut(&[Value]),
 {
+    if file_date_opt.file_date_from.is_some() || file_date_opt.file_date_to.is_some() {
+        let from_str = file_date_opt
+            .file_date_from
+            .as_deref()
+            .map(format_date_display)
+            .unwrap_or_else(|| "*".to_string());
+        let to_str = file_date_opt
+            .file_date_to
+            .as_deref()
+            .map(format_date_display)
+            .unwrap_or_else(|| "*".to_string());
+        p(
+            Orange.rdg(no_color),
+            &format!(
+                "Filtering files by filename date prefix ({} - {}). Please wait. This may take a few minutes.",
+                from_str, to_str
+            ),
+            true,
+        );
+        println!();
+    }
     let (count, file_paths, total_size) = count_files_recursive(directory, file_date_opt)?;
     let size = ByteSize::b(total_size).display().to_string();
 
@@ -396,6 +417,15 @@ pub fn append_summary_data(
                     .or_insert(1);
             }
         }
+    }
+}
+
+/// Convert YYYYMMDD string to YYYY-MM-DD for display.
+fn format_date_display(s: &str) -> String {
+    if s.len() == 8 {
+        format!("{}-{}-{}", &s[0..4], &s[4..6], &s[6..8])
+    } else {
+        s.to_string()
     }
 }
 
