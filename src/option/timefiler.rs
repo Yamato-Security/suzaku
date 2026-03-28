@@ -75,12 +75,12 @@ pub fn filter_file_by_date_path(opt: &FileDateOption, path: &str) -> bool {
     // Compose as YYYYMMDD for direct lexicographic comparison with user input
     let file_date = format!("{}{}{}", &caps[1], &caps[2], &caps[3]);
     if let Some(from) = &opt.file_date_from
-        && file_date < *from
+        && file_date.as_str() < from.as_str()
     {
         return false;
     }
     if let Some(to) = &opt.file_date_to
-        && file_date > *to
+        && file_date.as_str() > to.as_str()
     {
         return false;
     }
