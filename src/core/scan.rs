@@ -3,8 +3,8 @@ use crate::core::log_source::{LogSource, is_match_service};
 use crate::core::summary::DetectionSummary;
 use crate::core::timeline_writer::{OutputContext, write_record};
 use crate::core::util::p;
-use crate::option::cli::{TimeOption, TimelineOptions};
-use crate::option::timefiler::filter_by_time;
+use crate::option::cli::{FileDateOption, TimeOption, TimelineOptions};
+use crate::option::timefiler::{filter_by_time, filter_file_by_date_path};
 use bytesize::ByteSize;
 use chrono::{DateTime, Utc};
 use colored::Colorize;
@@ -80,6 +80,7 @@ pub fn scan_directory<'a>(
         options.output_opt.output.is_some(),
         no_color,
         log,
+        &options.input_opt.file_date_opt,
     )
     .unwrap();
 }
@@ -90,11 +91,33 @@ pub fn process_events_from_dir<F>(
     show_progress: bool,
     no_color: bool,
     log: &LogSource,
+    file_date_opt: &FileDateOption,
 ) -> Result<(), Box<dyn Error>>
 where
     F: FnMut(&[Value]),
 {
-    let (count, file_paths, total_size) = count_files_recursive(directory)?;
+    if file_date_opt.file_date_from.is_some() || file_date_opt.file_date_to.is_some() {
+        let from_str = file_date_opt
+            .file_date_from
+            .as_deref()
+            .map(format_date_display)
+            .unwrap_or_else(|| "*".to_string());
+        let to_str = file_date_opt
+            .file_date_to
+            .as_deref()
+            .map(format_date_display)
+            .unwrap_or_else(|| "*".to_string());
+        p(
+            Orange.rdg(no_color),
+            &format!(
+                "Filtering files by filename date prefix ({} - {}). Please wait. This may take a few minutes.",
+                from_str, to_str
+            ),
+            true,
+        );
+        println!();
+    }
+    let (count, file_paths, total_size) = count_files_recursive(directory, file_date_opt)?;
     let size = ByteSize::b(total_size).display().to_string();
 
     p(Green.rdg(no_color), "Total log files: ", false);
@@ -397,7 +420,19 @@ pub fn append_summary_data(
     }
 }
 
-fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>, u64), Box<dyn Error>> {
+/// Convert YYYYMMDD string to YYYY-MM-DD for display.
+fn format_date_display(s: &str) -> String {
+    if s.len() == 8 {
+        format!("{}-{}-{}", &s[0..4], &s[4..6], &s[6..8])
+    } else {
+        s.to_string()
+    }
+}
+
+fn count_files_recursive(
+    directory: &PathBuf,
+    file_date_opt: &FileDateOption,
+) -> Result<(usize, Vec<String>, u64), Box<dyn Error>> {
     let mut count = 0;
     let mut paths = Vec::new();
     let mut total_size = 0;
@@ -408,12 +443,16 @@ fn count_files_recursive(directory: &PathBuf) -> Result<(usize, Vec<String>, u64
             if let Some(ext) = path.extension().and_then(|s| s.to_str())
                 && (ext == "json" || ext == "gz")
             {
+                let path_str = path.to_str().unwrap();
+                if !filter_file_by_date_path(file_date_opt, path_str) {
+                    continue;
+                }
                 count += 1;
                 total_size += fs::metadata(&path)?.len();
-                paths.push(path.to_str().unwrap().to_string());
+                paths.push(path_str.to_string());
             }
         } else if path.is_dir() {
-            let (sub_count, sub_paths, sub_size) = count_files_recursive(&path)?;
+            let (sub_count, sub_paths, sub_size) = count_files_recursive(&path, file_date_opt)?;
             count += sub_count;
             total_size += sub_size;
             paths.extend(sub_paths);

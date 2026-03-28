@@ -113,6 +113,7 @@ level: informational";
             options.output_opt.output.is_some(),
             no_color,
             &LogSource::Aws,
+            &options.input_opt.file_date_opt,
         )
         .unwrap();
     } else if let Some(f) = file {

@@ -253,7 +253,15 @@ pub fn aws_summary(
     };
     let abused_aws_api_values: Vec<String> = abused_aws_api_calls.values().cloned().collect();
     if let Some(d) = directory {
-        process_events_from_dir(summary_func, d, true, no_color, &LogSource::Aws).unwrap();
+        process_events_from_dir(
+            summary_func,
+            d,
+            true,
+            no_color,
+            &LogSource::Aws,
+            &input_opt.file_date_opt,
+        )
+        .unwrap();
         output_summary(
             &user_data,
             output,
