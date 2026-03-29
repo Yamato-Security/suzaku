@@ -1,6 +1,13 @@
-use crate::option::cli::TimeOption;
+use crate::option::cli::{FileDateOption, TimeOption};
 use chrono::{DateTime, Duration, Utc};
+use regex::Regex;
 use serde_json::Value;
+use std::sync::LazyLock;
+
+static DATE_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"[/\\](\d{4})[/\\](\d{2})[/\\](\d{2})[/\\]")
+        .expect("DATE_PATH_RE regex pattern is invalid")
+});
 
 pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
     let keys: Vec<&str> = ts_key
@@ -59,6 +66,32 @@ pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
     }
     true
 }
+/// Filter files by their path date structure (YYYY/MM/DD).
+/// Intended for AWSLogs S3-compatible paths like `AWSLogs/{account}/{service}/{region}/YYYY/MM/DD/`.
+/// If no date pattern is found in the path (e.g. Azure logs), the file is passed through (returns true).
+pub fn filter_file_by_date_path(opt: &FileDateOption, path: &str) -> bool {
+    if opt.file_date_from.is_none() && opt.file_date_to.is_none() {
+        return true;
+    }
+    let Some(caps) = DATE_PATH_RE.captures(path) else {
+        // No YYYY/MM/DD pattern found; pass through (e.g. Azure paths)
+        return true;
+    };
+    // Compose as YYYYMMDD for direct lexicographic comparison with user input
+    let file_date = format!("{}{}{}", &caps[1], &caps[2], &caps[3]);
+    if let Some(from) = &opt.file_date_from
+        && file_date.as_str() < from.as_str()
+    {
+        return false;
+    }
+    if let Some(to) = &opt.file_date_to
+        && file_date.as_str() > to.as_str()
+    {
+        return false;
+    }
+    true
+}
+
 fn parse_offset(offset: &str) -> Option<Duration> {
     let (num, unit) = offset.trim().split_at(offset.len() - 1);
     let n: i64 = num.parse().ok()?;
@@ -75,7 +108,107 @@ fn parse_offset(offset: &str) -> Option<Duration> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::option::cli::FileDateOption;
     use serde_json::json;
+
+    // --- filter_file_by_date_path tests ---
+
+    #[test]
+    fn test_filter_file_no_option_passes_through() {
+        let opt = FileDateOption::default();
+        assert!(filter_file_by_date_path(
+            &opt,
+            "AWSLogs/123/CloudTrail/us-east-1/2024/01/15/xxx.json.gz"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_within_range() {
+        let opt = FileDateOption {
+            file_date_from: Some("20240101".to_string()),
+            file_date_to: Some("20240131".to_string()),
+        };
+        assert!(filter_file_by_date_path(
+            &opt,
+            "AWSLogs/123/CloudTrail/ap-northeast-1/2024/01/15/xxx.json.gz"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_before_range() {
+        let opt = FileDateOption {
+            file_date_from: Some("20240201".to_string()),
+            file_date_to: None,
+        };
+        assert!(!filter_file_by_date_path(
+            &opt,
+            "AWSLogs/123/CloudTrail/ap-northeast-1/2024/01/15/xxx.json.gz"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_after_range() {
+        let opt = FileDateOption {
+            file_date_from: None,
+            file_date_to: Some("20240110".to_string()),
+        };
+        assert!(!filter_file_by_date_path(
+            &opt,
+            "AWSLogs/123/CloudTrail/ap-northeast-1/2024/01/15/xxx.json.gz"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_on_boundary_from() {
+        let opt = FileDateOption {
+            file_date_from: Some("20240115".to_string()),
+            file_date_to: None,
+        };
+        assert!(filter_file_by_date_path(
+            &opt,
+            "AWSLogs/123/CloudTrail/ap-northeast-1/2024/01/15/xxx.json.gz"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_on_boundary_to() {
+        let opt = FileDateOption {
+            file_date_from: None,
+            file_date_to: Some("20240115".to_string()),
+        };
+        assert!(filter_file_by_date_path(
+            &opt,
+            "AWSLogs/123/CloudTrail/ap-northeast-1/2024/01/15/xxx.json.gz"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_no_date_pattern_passes_through() {
+        // Azure-style path without YYYY/MM/DD structure passes through
+        let opt = FileDateOption {
+            file_date_from: Some("20240101".to_string()),
+            file_date_to: Some("20241231".to_string()),
+        };
+        assert!(filter_file_by_date_path(
+            &opt,
+            "/logs/azure/auditlogs_2024_01_15.json"
+        ));
+    }
+
+    #[test]
+    fn test_filter_file_windows_path_separators() {
+        // Windows-style path with backslash separators should match correctly
+        let opt = FileDateOption {
+            file_date_from: Some("20240101".to_string()),
+            file_date_to: Some("20240131".to_string()),
+        };
+        assert!(filter_file_by_date_path(
+            &opt,
+            r"AWSLogs\123\CloudTrail\us-east-1\2024\01\15\xxx.json.gz"
+        ));
+    }
+
+    // --- filter_by_time tests ---
 
     #[test]
     fn test_filter_by_time_within_range() {
