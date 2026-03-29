@@ -11,6 +11,7 @@
 
 - 異なるログソースの取り扱いを容易にするため、コードをリファクタリングした。 (@fukusuket)
 - Microsoft Graph API JSON形式のAzureログに対応した。 (#113) (@fukusuket)
+- 既存の `--timeline-start/--timeline-end` オプション（ファイル内のイベントタイムスタンプに基づいて動作する）とは異なり、S3キーの日付プレフィックスに基づいてオブジェクトをフィルタリングする `--file-date-from/--file-date-to` オプションを追加した。 (#118) (@fukusuket)
 
 **バグ修正:**
 
