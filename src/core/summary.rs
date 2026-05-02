@@ -187,7 +187,7 @@ pub fn print_detected_rule_authors(
     no_color: bool,
 ) {
     let mut sorted_authors: Vec<(&String, &i128)> = rule_author_counter.iter().collect();
-    sorted_authors.sort_by(|a, b| (-a.1).cmp(&(-b.1)));
+    sorted_authors.sort_by_key(|a| -a.1);
     let authors_num = sorted_authors.len();
     let div = if authors_num <= table_column_num {
         1

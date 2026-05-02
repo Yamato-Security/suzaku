@@ -321,7 +321,7 @@ fn output_summary(
     csv_wtr.write_record(&csv_header).unwrap();
 
     let mut sorted_user_data: Vec<_> = user_data.iter().collect();
-    sorted_user_data.sort_by(|a, b| b.1.num_of_events.cmp(&a.1.num_of_events));
+    sorted_user_data.sort_by_key(|b| std::cmp::Reverse(b.1.num_of_events));
 
     let fmt_key_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
         let total: usize = map.keys().len();
