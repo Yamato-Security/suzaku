@@ -438,25 +438,43 @@ fn output_summary(
     let output_json = matches!(output_type, 2 | 4);
     let output_jsonl = matches!(output_type, 3 | 5);
 
+    let csv_path = output_csv.then(|| {
+        let mut path = output.to_path_buf();
+        path.set_extension("csv");
+        path
+    });
+    let json_path = output_json.then(|| {
+        let mut path = output.to_path_buf();
+        path.set_extension("json");
+        path
+    });
+    let jsonl_path = output_jsonl.then(|| {
+        let mut path = output.to_path_buf();
+        path.set_extension("jsonl");
+        path
+    });
+
+    if !clobber
+        && let Some(path) = [csv_path.as_ref(), json_path.as_ref(), jsonl_path.as_ref()]
+            .into_iter()
+            .flatten()
+            .find(|path| path.exists())
+    {
+        p(
+            Some(Color::Rgb(255, 0, 0)),
+            &format!(
+                "The file {} already exists. Use --clobber to overwrite.",
+                path.display()
+            ),
+            true,
+        );
+        return;
+    }
+
     let mut output_paths: Vec<PathBuf> = Vec::new();
 
     // --- CSV 出力 ---
-    if output_csv {
-        let mut csv_path = output.to_path_buf();
-        csv_path.set_extension("csv");
-
-        if !clobber && csv_path.exists() {
-            p(
-                Some(Color::Rgb(255, 0, 0)),
-                &format!(
-                    "The file {} already exists. Use --clobber to overwrite.",
-                    csv_path.display()
-                ),
-                true,
-            );
-            return;
-        }
-
+    if let Some(csv_path) = csv_path {
         let fmt_key_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
             let total: usize = map.keys().len();
             let total = total.to_formatted_string(&Locale::en);
@@ -571,22 +589,7 @@ fn output_summary(
     }
 
     // --- JSON 出力 ---
-    if output_json {
-        let mut json_path = output.to_path_buf();
-        json_path.set_extension("json");
-
-        if !clobber && json_path.exists() {
-            p(
-                Some(Color::Rgb(255, 0, 0)),
-                &format!(
-                    "The file {} already exists. Use --clobber to overwrite.",
-                    json_path.display()
-                ),
-                true,
-            );
-            return;
-        }
-
+    if let Some(json_path) = json_path {
         let records = build_json_records(user_data, *hide_descriptions);
         let file = File::create(&json_path).unwrap();
         let mut writer = BufWriter::new(file);
@@ -596,22 +599,7 @@ fn output_summary(
     }
 
     // --- JSONL 出力 ---
-    if output_jsonl {
-        let mut jsonl_path = output.to_path_buf();
-        jsonl_path.set_extension("jsonl");
-
-        if !clobber && jsonl_path.exists() {
-            p(
-                Some(Color::Rgb(255, 0, 0)),
-                &format!(
-                    "The file {} already exists. Use --clobber to overwrite.",
-                    jsonl_path.display()
-                ),
-                true,
-            );
-            return;
-        }
-
+    if let Some(jsonl_path) = jsonl_path {
         let records = build_json_records(user_data, *hide_descriptions);
         let file = File::create(&jsonl_path).unwrap();
         let mut writer = BufWriter::new(file);
@@ -1071,6 +1059,24 @@ mod tests {
         // 上書きされていないこと
         let content = std::fs::read_to_string(&json_path).unwrap();
         assert_eq!(content, "original");
+    }
+
+    #[test]
+    fn test_clobber_false_preflights_all_output_paths_for_type_4() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+        let csv_path = tmp.path().join("result.csv");
+        let json_path = tmp.path().join("result.json");
+
+        std::fs::write(&json_path, "original").unwrap();
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 4, false);
+
+        assert_eq!(std::fs::read_to_string(&json_path).unwrap(), "original");
+        assert!(!csv_path.exists());
     }
 
     #[test]
