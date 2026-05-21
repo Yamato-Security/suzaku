@@ -216,14 +216,8 @@ fn build_json_records(
         .map(|(arn, summary)| SummaryJsonRecord {
             user_arn: arn.clone(),
             num_of_events: summary.num_of_events,
-            first_timestamp: summary
-                .first_timestamp
-                .replace('T', " ")
-                .replace('Z', ""),
-            last_timestamp: summary
-                .last_timestamp
-                .replace('T', " ")
-                .replace('Z', ""),
+            first_timestamp: summary.first_timestamp.replace('T', " ").replace('Z', ""),
+            last_timestamp: summary.last_timestamp.replace('T', " ").replace('Z', ""),
             abused_apis_success: map_to_api_entries(&summary.abused_api_success, hide_descriptions),
             abused_apis_failed: map_to_api_entries(&summary.abused_api_failed, hide_descriptions),
             other_apis_success: map_to_api_entries(&summary.other_api_success, false),
@@ -463,33 +457,27 @@ fn output_summary(
             return;
         }
 
-        let fmt_key_total =
-            |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
-                let total: usize = map.keys().len();
-                let total = total.to_formatted_string(&Locale::en);
-                let mut result = vec![format!("{}: {}", msg, total)];
-                result.extend(
-                    map.iter()
-                        .sorted_by(|a, b| b.1.cmp(a.1))
-                        .map(|(k, v)| {
-                            format!(
-                                "{} - {} ({} ~ {})",
-                                v.0.to_formatted_string(&Locale::en),
-                                k,
-                                v.1.replace('Z', "").replace('T', " "),
-                                v.2.replace('Z', "").replace('T', " ")
-                            )
-                        }),
-                );
-                result.join("\n")
-            };
+        let fmt_key_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
+            let total: usize = map.keys().len();
+            let total = total.to_formatted_string(&Locale::en);
+            let mut result = vec![format!("{}: {}", msg, total)];
+            result.extend(map.iter().sorted_by(|a, b| b.1.cmp(a.1)).map(|(k, v)| {
+                format!(
+                    "{} - {} ({} ~ {})",
+                    v.0.to_formatted_string(&Locale::en),
+                    k,
+                    v.1.replace('Z', "").replace('T', " "),
+                    v.2.replace('Z', "").replace('T', " ")
+                )
+            }));
+            result.join("\n")
+        };
 
-        let fmt_val_total =
-            |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
-                let total: usize = map.values().map(|v| v.0).sum();
-                let total = total.to_formatted_string(&Locale::en);
-                format!("| {msg} {total}")
-            };
+        let fmt_val_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
+            let total: usize = map.values().map(|v| v.0).sum();
+            let total = total.to_formatted_string(&Locale::en);
+            format!("| {msg} {total}")
+        };
 
         let mut csv_wtr = get_writer(&Some(csv_path.clone()));
         let csv_header = vec![
@@ -765,7 +753,11 @@ mod tests {
         let mut map = HashMap::new();
         map.insert(
             "ListBuckets (s3.amazonaws.com) - List all S3 buckets".to_string(),
-            (3usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-02T00:00:00Z".to_string()),
+            (
+                3usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-02T00:00:00Z".to_string(),
+            ),
         );
         let entries = map_to_api_entries(&map, false);
         assert_eq!(entries.len(), 1);
@@ -781,7 +773,11 @@ mod tests {
         let mut map = HashMap::new();
         map.insert(
             "ListBuckets (s3.amazonaws.com) - List all S3 buckets".to_string(),
-            (1usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-01T00:00:00Z".to_string()),
+            (
+                1usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
         );
         let entries = map_to_api_entries(&map, true);
         assert_eq!(entries[0].api, "ListBuckets (s3.amazonaws.com)");
@@ -793,7 +789,11 @@ mod tests {
         let mut map = HashMap::new();
         map.insert(
             "GetObject (s3.amazonaws.com)".to_string(),
-            (2usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-01T00:00:00Z".to_string()),
+            (
+                2usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
         );
         let entries = map_to_api_entries(&map, false);
         assert_eq!(entries[0].api, "GetObject (s3.amazonaws.com)");
@@ -805,15 +805,27 @@ mod tests {
         let mut map = HashMap::new();
         map.insert(
             "ApiA (src)".to_string(),
-            (1usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-01T00:00:00Z".to_string()),
+            (
+                1usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
         );
         map.insert(
             "ApiB (src)".to_string(),
-            (5usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-01T00:00:00Z".to_string()),
+            (
+                5usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
         );
         map.insert(
             "ApiC (src)".to_string(),
-            (3usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-01T00:00:00Z".to_string()),
+            (
+                3usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
         );
         let entries = map_to_api_entries(&map, false);
         assert_eq!(entries[0].count, 5);
@@ -830,7 +842,11 @@ mod tests {
         let mut map = HashMap::new();
         map.insert(
             "us-east-1".to_string(),
-            (10usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-02T00:00:00Z".to_string()),
+            (
+                10usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-02T00:00:00Z".to_string(),
+            ),
         );
         let entries = map_to_count_entries(&map);
         assert_eq!(entries.len(), 1);
@@ -845,11 +861,19 @@ mod tests {
         let mut map = HashMap::new();
         map.insert(
             "us-east-1".to_string(),
-            (2usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-01T00:00:00Z".to_string()),
+            (
+                2usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
         );
         map.insert(
             "eu-west-1".to_string(),
-            (8usize, "2024-01-01T00:00:00Z".to_string(), "2024-01-01T00:00:00Z".to_string()),
+            (
+                8usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
         );
         let entries = map_to_count_entries(&map);
         assert_eq!(entries[0].value, "eu-west-1");
@@ -863,7 +887,10 @@ mod tests {
     #[test]
     fn test_build_json_records_basic() {
         let mut user_data = HashMap::new();
-        user_data.insert("arn:aws:iam::123:user/alice".to_string(), make_test_summary());
+        user_data.insert(
+            "arn:aws:iam::123:user/alice".to_string(),
+            make_test_summary(),
+        );
 
         let records = build_json_records(&user_data, false);
 
@@ -891,7 +918,7 @@ mod tests {
         let records = build_json_records(&user_data, false);
         assert_eq!(records.len(), 2);
         assert_eq!(records[0].num_of_events, 20); // bob が先
-        assert_eq!(records[1].num_of_events, 5);  // alice が後
+        assert_eq!(records[1].num_of_events, 5); // alice が後
     }
 
     #[test]
@@ -989,7 +1016,10 @@ mod tests {
         let output_path = tmp.path().join("result");
 
         let mut user_data = HashMap::new();
-        user_data.insert("arn:aws:iam::123:user/alice".to_string(), make_test_summary());
+        user_data.insert(
+            "arn:aws:iam::123:user/alice".to_string(),
+            make_test_summary(),
+        );
 
         output_summary(&user_data, &output_path, true, &false, vec![], 2, false);
 
@@ -1056,4 +1086,3 @@ mod tests {
         assert_ne!(content, "original");
     }
 }
-
