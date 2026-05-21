@@ -907,10 +907,14 @@ mod tests {
     #[test]
     fn test_build_json_records_sorted_by_events_desc() {
         let mut user_data = HashMap::new();
-        let mut summary_alice = CTSummary::default();
-        summary_alice.num_of_events = 5;
-        let mut summary_bob = CTSummary::default();
-        summary_bob.num_of_events = 20;
+        let summary_alice = CTSummary {
+            num_of_events: 5,
+            ..Default::default()
+        };
+        let summary_bob = CTSummary {
+            num_of_events: 20,
+            ..Default::default()
+        };
 
         user_data.insert("arn:aws:iam::123:user/alice".to_string(), summary_alice);
         user_data.insert("arn:aws:iam::123:user/bob".to_string(), summary_bob);
