@@ -252,19 +252,19 @@ pub enum Commands {
         clobber: bool,
 
         /// Save the results to a file
-        #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true, display_order = 302)]
+        #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", required = true, display_order = 303)]
         output: PathBuf,
 
         /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
-        #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1", display_order = 303)]
+        #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1", display_order = 304)]
         output_type: u8,
 
         /// Hide description of the commonly abused API calls
-        #[arg(help_heading = Some("Output"), short = 'D', long = "hide-descriptions", display_order = 304)]
+        #[arg(help_heading = Some("Output"), short = 'D', long = "hide-descriptions", display_order = 301)]
         hide_descriptions: bool,
 
         /// Add GeoIP (ASN, city, country) info to IP addresses
-        #[arg(help_heading = Some("Output"), short = 'G', long = "geo-ip", visible_alias = "GeoIP", value_name = "MAXMIND-DB-DIR", display_order = 305)]
+        #[arg(help_heading = Some("Output"), short = 'G', long = "geo-ip", visible_alias = "GeoIP", value_name = "MAXMIND-DB-DIR", display_order = 302)]
         geo_ip: Option<PathBuf>,
 
         #[clap(flatten)]
