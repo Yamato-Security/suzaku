@@ -1417,6 +1417,7 @@ dependencies = [
  "openssl",
  "rayon",
  "regex",
+ "serde",
  "serde_json",
  "sigma-rust",
  "tempfile",
