@@ -264,7 +264,7 @@ pub enum Commands {
         hide_descriptions: bool,
 
         /// Add GeoIP (ASN, city, country) info to IP addresses
-        #[arg(help_heading = Some("Output"), short = 'G', long = "GeoIP", value_name = "MAXMIND-DB-DIR", display_order = 305)]
+        #[arg(help_heading = Some("Output"), short = 'G', long = "geo-ip", visible_alias = "GeoIP", value_name = "MAXMIND-DB-DIR", display_order = 305)]
         geo_ip: Option<PathBuf>,
 
         #[clap(flatten)]
