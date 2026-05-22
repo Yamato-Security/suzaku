@@ -8,13 +8,56 @@ use crate::option::timefiler::filter_by_time;
 use csv::ReaderBuilder;
 use itertools::Itertools;
 use num_format::{Locale, ToFormattedString};
+use serde::Serialize;
 use serde_json::Value;
 use sigma_rust::{Event, event_from_json};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use termcolor::Color;
+
+// ---------------------------------------------------------------------------
+// JSON 出力用データ構造
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct ApiEntry {
+    pub api: String,
+    pub description: String,
+    pub count: usize,
+    pub first_seen: String,
+    pub last_seen: String,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct CountEntry {
+    pub value: String,
+    pub count: usize,
+    pub first_seen: String,
+    pub last_seen: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct SummaryJsonRecord {
+    pub user_arn: String,
+    pub num_of_events: usize,
+    pub first_timestamp: String,
+    pub last_timestamp: String,
+    pub abused_apis_success: Vec<ApiEntry>,
+    pub abused_apis_failed: Vec<ApiEntry>,
+    pub other_apis_success: Vec<ApiEntry>,
+    pub other_apis_failed: Vec<ApiEntry>,
+    pub aws_regions: Vec<CountEntry>,
+    pub src_ips: Vec<CountEntry>,
+    pub user_types: String,
+    pub user_access_key_ids: Vec<CountEntry>,
+    pub user_agents: Vec<CountEntry>,
+}
+
+// ---------------------------------------------------------------------------
+// 集計用内部構造体
+// ---------------------------------------------------------------------------
 
 #[derive(Default)]
 struct CTSummary {
@@ -115,6 +158,87 @@ impl CTSummary {
     }
 }
 
+// ---------------------------------------------------------------------------
+// JSON ビルド用ヘルパー関数
+// ---------------------------------------------------------------------------
+
+/// `"EventName (source) - Description"` または `"EventName (source)"` 形式のキーを
+/// `ApiEntry` に変換して件数降順で返す。
+fn map_to_api_entries(
+    map: &HashMap<String, (usize, String, String)>,
+    hide_descriptions: bool,
+) -> Vec<ApiEntry> {
+    map.iter()
+        .sorted_by(|a, b| b.1.0.cmp(&a.1.0))
+        .map(|(key, (count, first, last))| {
+            let (api, description) = if let Some(pos) = key.find(" - ") {
+                let api = key[..pos].to_string();
+                let desc = if hide_descriptions {
+                    "".to_string()
+                } else {
+                    key[pos + 3..].to_string()
+                };
+                (api, desc)
+            } else {
+                (key.clone(), "".to_string())
+            };
+            ApiEntry {
+                api,
+                description,
+                count: *count,
+                first_seen: first.replace('T', " ").replace('Z', ""),
+                last_seen: last.replace('T', " ").replace('Z', ""),
+            }
+        })
+        .collect()
+}
+
+/// `HashMap<String, (usize, String, String)>` を件数降順の `CountEntry` リストに変換する。
+fn map_to_count_entries(map: &HashMap<String, (usize, String, String)>) -> Vec<CountEntry> {
+    map.iter()
+        .sorted_by(|a, b| b.1.0.cmp(&a.1.0))
+        .map(|(key, (count, first, last))| CountEntry {
+            value: key.clone(),
+            count: *count,
+            first_seen: first.replace('T', " ").replace('Z', ""),
+            last_seen: last.replace('T', " ").replace('Z', ""),
+        })
+        .collect()
+}
+
+/// `user_data` を JSON レコードのリスト（件数降順）に変換する。
+fn build_json_records(
+    user_data: &HashMap<String, CTSummary>,
+    hide_descriptions: bool,
+) -> Vec<SummaryJsonRecord> {
+    let mut records: Vec<SummaryJsonRecord> = user_data
+        .iter()
+        .map(|(arn, summary)| SummaryJsonRecord {
+            user_arn: arn.clone(),
+            num_of_events: summary.num_of_events,
+            first_timestamp: summary.first_timestamp.replace('T', " ").replace('Z', ""),
+            last_timestamp: summary.last_timestamp.replace('T', " ").replace('Z', ""),
+            abused_apis_success: map_to_api_entries(&summary.abused_api_success, hide_descriptions),
+            abused_apis_failed: map_to_api_entries(&summary.abused_api_failed, hide_descriptions),
+            other_apis_success: map_to_api_entries(&summary.other_api_success, false),
+            other_apis_failed: map_to_api_entries(&summary.other_api_failed, false),
+            aws_regions: map_to_count_entries(&summary.aws_regions),
+            src_ips: map_to_count_entries(&summary.src_ips),
+            user_types: summary.user_types.clone(),
+            user_access_key_ids: map_to_count_entries(&summary.access_key_ids),
+            user_agents: map_to_count_entries(&summary.user_agents),
+        })
+        .collect();
+
+    records.sort_by_key(|r| std::cmp::Reverse(r.num_of_events));
+    records
+}
+
+// ---------------------------------------------------------------------------
+// パブリックエントリポイント
+// ---------------------------------------------------------------------------
+
+#[allow(clippy::too_many_arguments)]
 pub fn aws_summary(
     input_opt: &InputOption,
     output: &Path,
@@ -122,6 +246,8 @@ pub fn aws_summary(
     include_sts: &bool,
     hide_descriptions: &bool,
     geo_ip: &Option<PathBuf>,
+    output_type: u8,
+    clobber: bool,
 ) {
     let directory = &input_opt.directory;
     let file = &input_opt.filepath;
@@ -268,6 +394,8 @@ pub fn aws_summary(
             no_color,
             hide_descriptions,
             abused_aws_api_values,
+            output_type,
+            clobber,
         );
     } else if let Some(f) = file {
         let log_contents = get_content(f);
@@ -280,144 +408,215 @@ pub fn aws_summary(
                 no_color,
                 hide_descriptions,
                 abused_aws_api_values,
+                output_type,
+                clobber,
             );
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// 出力処理
+// ---------------------------------------------------------------------------
+
+#[allow(clippy::too_many_arguments)]
 fn output_summary(
     user_data: &HashMap<String, CTSummary>,
     output: &Path,
     no_color: bool,
     hide_descriptions: &bool,
     abused_aws_api_disc: Vec<String>,
+    output_type: u8,
+    clobber: bool,
 ) {
     if user_data.is_empty() {
         p(Some(Color::Rgb(255, 0, 0)), "No events found.", true);
         return;
     }
 
-    let mut csv_path = output.to_path_buf();
-    if csv_path.extension().and_then(|ext| ext.to_str()) != Some("csv") {
-        csv_path.set_extension("csv");
-    }
-    let mut csv_wtr = get_writer(&Some(csv_path.clone()));
-    let csv_header = vec![
-        "UserARN",
-        "NumOfEvents",
-        "FirstTimestamp",
-        "LastTimestamp",
-        "AbusedAPIs-Success",
-        "AbusedAPIs-Failed",
-        "OtherAPIs-Success",
-        "OtherAPIs-Failed",
-        "AWS-Regions",
-        "SrcIPs",
-        "UserTypes",
-        "UserAccessKeyIDs",
-        "UserAgents",
-    ];
+    let output_csv = matches!(output_type, 1 | 4 | 5);
+    let output_json = matches!(output_type, 2 | 4);
+    let output_jsonl = matches!(output_type, 3 | 5);
 
-    csv_wtr.write_record(&csv_header).unwrap();
+    let csv_path = output_csv.then(|| {
+        let mut path = output.to_path_buf();
+        path.set_extension("csv");
+        path
+    });
+    let json_path = output_json.then(|| {
+        let mut path = output.to_path_buf();
+        path.set_extension("json");
+        path
+    });
+    let jsonl_path = output_jsonl.then(|| {
+        let mut path = output.to_path_buf();
+        path.set_extension("jsonl");
+        path
+    });
 
-    let mut sorted_user_data: Vec<_> = user_data.iter().collect();
-    sorted_user_data.sort_by_key(|b| std::cmp::Reverse(b.1.num_of_events));
-
-    let fmt_key_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
-        let total: usize = map.keys().len();
-        let total = total.to_formatted_string(&Locale::en);
-        let mut result = vec![format!("{}: {}", msg, total)];
-        result.extend(
-            map.iter()
-                .sorted_by(|a, b| b.1.cmp(a.1)) // 件数の多い順にソート
-                .map(|(k, v)| {
-                    format!(
-                        "{} - {} ({} ~ {})",
-                        v.0.to_formatted_string(&Locale::en),
-                        k,
-                        v.1.replace('Z', "").replace('T', " "),
-                        v.2.replace('Z', "").replace('T', " ")
-                    )
-                }),
+    if !clobber
+        && let Some(path) = [csv_path.as_ref(), json_path.as_ref(), jsonl_path.as_ref()]
+            .into_iter()
+            .flatten()
+            .find(|path| path.exists())
+    {
+        p(
+            Some(Color::Rgb(255, 0, 0)),
+            &format!(
+                "The file {} already exists. Use --clobber to overwrite.",
+                path.display()
+            ),
+            true,
         );
-        result.join("\n")
-    };
-
-    let fmt_val_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
-        let total: usize = map.values().map(|v| v.0).sum();
-        let total = total.to_formatted_string(&Locale::en);
-        format!("| {msg} {total}")
-    };
-
-    for (user_arn, summary) in sorted_user_data.iter() {
-        let num_of_events = summary.num_of_events.to_formatted_string(&Locale::en);
-        let first_timestamp = summary
-            .first_timestamp
-            .clone()
-            .replace("T", " ")
-            .replace("Z", "");
-        let last_timestamp = summary
-            .last_timestamp
-            .clone()
-            .replace("T", " ")
-            .replace("Z", "");
-        let aws_regions = fmt_key_total("Total regions", &summary.aws_regions);
-        let src_ips = fmt_key_total("Total source IPs", &summary.src_ips);
-        let user_types = &summary.user_types;
-        let access_key_ids = fmt_key_total("Total access key IDs", &summary.access_key_ids);
-        let user_agents = fmt_key_total("Total user agents", &summary.user_agents);
-
-        let mut abused_suc = fmt_key_total("Unique APIs", &summary.abused_api_success);
-        if let Some(pos) = abused_suc.find('\n') {
-            let abused_suc_val = fmt_val_total("Total APIs", &summary.abused_api_success);
-            abused_suc.insert_str(pos, &format!(" {abused_suc_val}"));
-        }
-        let mut abused_fai = fmt_key_total("Unique APIs", &summary.abused_api_failed);
-        if let Some(pos) = abused_fai.find('\n') {
-            let abused_fai_val = fmt_val_total("Total APIs", &summary.abused_api_failed);
-            abused_fai.insert_str(pos, &format!(" {abused_fai_val}"));
-        }
-        let mut other_suc = fmt_key_total("Unique APIs", &summary.other_api_success);
-        if let Some(pos) = other_suc.find('\n') {
-            let other_suc_val = fmt_val_total("Total APIs", &summary.other_api_success);
-            other_suc.insert_str(pos, &format!(" {other_suc_val}"));
-        }
-        let mut other_fai = fmt_key_total("Unique APIs", &summary.other_api_failed);
-        if let Some(pos) = other_fai.find('\n') {
-            let other_fai_val = fmt_val_total("Total APIs", &summary.other_api_failed);
-            other_fai.insert_str(pos, &format!(" {other_fai_val}"));
-        }
-
-        if *hide_descriptions {
-            abused_aws_api_disc.iter().for_each(|disc| {
-                abused_suc = abused_suc.replace(disc, "");
-                abused_fai = abused_fai.replace(disc, "");
-            });
-            abused_suc = abused_suc.replace("-  (2", "(2");
-            abused_fai = abused_fai.replace("-  (2", "(2");
-        }
-
-        csv_wtr
-            .write_record(vec![
-                user_arn,
-                &num_of_events,
-                &first_timestamp,
-                &last_timestamp,
-                &abused_suc,
-                &abused_fai,
-                &other_suc,
-                &other_fai,
-                &aws_regions,
-                &src_ips,
-                &user_types,
-                &access_key_ids,
-                &user_agents,
-            ])
-            .unwrap();
+        return;
     }
-    csv_wtr.flush().unwrap();
-    output_path_info(no_color, [csv_path].as_slice(), true);
+
+    let mut output_paths: Vec<PathBuf> = Vec::new();
+
+    // --- CSV 出力 ---
+    if let Some(csv_path) = csv_path {
+        let fmt_key_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
+            let total: usize = map.keys().len();
+            let total = total.to_formatted_string(&Locale::en);
+            let mut result = vec![format!("{}: {}", msg, total)];
+            result.extend(map.iter().sorted_by(|a, b| b.1.cmp(a.1)).map(|(k, v)| {
+                format!(
+                    "{} - {} ({} ~ {})",
+                    v.0.to_formatted_string(&Locale::en),
+                    k,
+                    v.1.replace('Z', "").replace('T', " "),
+                    v.2.replace('Z', "").replace('T', " ")
+                )
+            }));
+            result.join("\n")
+        };
+
+        let fmt_val_total = |msg: &str, map: &HashMap<String, (usize, String, String)>| -> String {
+            let total: usize = map.values().map(|v| v.0).sum();
+            let total = total.to_formatted_string(&Locale::en);
+            format!("| {msg} {total}")
+        };
+
+        let mut csv_wtr = get_writer(&Some(csv_path.clone()));
+        let csv_header = vec![
+            "UserARN",
+            "NumOfEvents",
+            "FirstTimestamp",
+            "LastTimestamp",
+            "AbusedAPIs-Success",
+            "AbusedAPIs-Failed",
+            "OtherAPIs-Success",
+            "OtherAPIs-Failed",
+            "AWS-Regions",
+            "SrcIPs",
+            "UserTypes",
+            "UserAccessKeyIDs",
+            "UserAgents",
+        ];
+        csv_wtr.write_record(&csv_header).unwrap();
+
+        let mut sorted_user_data: Vec<_> = user_data.iter().collect();
+        sorted_user_data.sort_by_key(|b| std::cmp::Reverse(b.1.num_of_events));
+
+        for (user_arn, summary) in sorted_user_data.iter() {
+            let num_of_events = summary.num_of_events.to_formatted_string(&Locale::en);
+            let first_timestamp = summary
+                .first_timestamp
+                .clone()
+                .replace("T", " ")
+                .replace("Z", "");
+            let last_timestamp = summary
+                .last_timestamp
+                .clone()
+                .replace("T", " ")
+                .replace("Z", "");
+            let aws_regions = fmt_key_total("Total regions", &summary.aws_regions);
+            let src_ips = fmt_key_total("Total source IPs", &summary.src_ips);
+            let user_types = &summary.user_types;
+            let access_key_ids = fmt_key_total("Total access key IDs", &summary.access_key_ids);
+            let user_agents = fmt_key_total("Total user agents", &summary.user_agents);
+
+            let mut abused_suc = fmt_key_total("Unique APIs", &summary.abused_api_success);
+            if let Some(pos) = abused_suc.find('\n') {
+                let abused_suc_val = fmt_val_total("Total APIs", &summary.abused_api_success);
+                abused_suc.insert_str(pos, &format!(" {abused_suc_val}"));
+            }
+            let mut abused_fai = fmt_key_total("Unique APIs", &summary.abused_api_failed);
+            if let Some(pos) = abused_fai.find('\n') {
+                let abused_fai_val = fmt_val_total("Total APIs", &summary.abused_api_failed);
+                abused_fai.insert_str(pos, &format!(" {abused_fai_val}"));
+            }
+            let mut other_suc = fmt_key_total("Unique APIs", &summary.other_api_success);
+            if let Some(pos) = other_suc.find('\n') {
+                let other_suc_val = fmt_val_total("Total APIs", &summary.other_api_success);
+                other_suc.insert_str(pos, &format!(" {other_suc_val}"));
+            }
+            let mut other_fai = fmt_key_total("Unique APIs", &summary.other_api_failed);
+            if let Some(pos) = other_fai.find('\n') {
+                let other_fai_val = fmt_val_total("Total APIs", &summary.other_api_failed);
+                other_fai.insert_str(pos, &format!(" {other_fai_val}"));
+            }
+
+            if *hide_descriptions {
+                abused_aws_api_disc.iter().for_each(|disc| {
+                    abused_suc = abused_suc.replace(disc, "");
+                    abused_fai = abused_fai.replace(disc, "");
+                });
+                abused_suc = abused_suc.replace("-  (2", "(2");
+                abused_fai = abused_fai.replace("-  (2", "(2");
+            }
+
+            csv_wtr
+                .write_record(vec![
+                    user_arn,
+                    &num_of_events,
+                    &first_timestamp,
+                    &last_timestamp,
+                    &abused_suc,
+                    &abused_fai,
+                    &other_suc,
+                    &other_fai,
+                    &aws_regions,
+                    &src_ips,
+                    &user_types,
+                    &access_key_ids,
+                    &user_agents,
+                ])
+                .unwrap();
+        }
+        csv_wtr.flush().unwrap();
+        output_paths.push(csv_path);
+    }
+
+    // --- JSON 出力 ---
+    if let Some(json_path) = json_path {
+        let records = build_json_records(user_data, *hide_descriptions);
+        let file = File::create(&json_path).unwrap();
+        let mut writer = BufWriter::new(file);
+        serde_json::to_writer_pretty(&mut writer, &records).unwrap();
+        writer.flush().unwrap();
+        output_paths.push(json_path);
+    }
+
+    // --- JSONL 出力 ---
+    if let Some(jsonl_path) = jsonl_path {
+        let records = build_json_records(user_data, *hide_descriptions);
+        let file = File::create(&jsonl_path).unwrap();
+        let mut writer = BufWriter::new(file);
+        for record in &records {
+            let line = serde_json::to_string(record).unwrap();
+            writeln!(writer, "{}", line).unwrap();
+        }
+        writer.flush().unwrap();
+        output_paths.push(jsonl_path);
+    }
+
+    output_path_info(no_color, output_paths.as_slice(), true);
 }
+
+// ---------------------------------------------------------------------------
+// abused_aws_api_calls.csv 読み込み
+// ---------------------------------------------------------------------------
 
 fn read_abused_aws_api_calls(file_path: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
@@ -443,5 +642,457 @@ fn read_abused_aws_api_calls(file_path: &str) -> HashMap<String, String> {
             );
             HashMap::new()
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// テスト
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use tempfile::TempDir;
+
+    /// テスト用の CTSummary を生成するヘルパー
+    fn make_test_summary() -> CTSummary {
+        let mut s = CTSummary::default();
+        s.add_event(
+            "2024-01-01T00:00:00Z".to_string(),
+            "us-east-1".to_string(),
+            "1.2.3.4".to_string(),
+            "IAMUser".to_string(),
+            "AKIAIOSFODNN7EXAMPLE".to_string(),
+            "aws-cli/2.0".to_string(),
+            "ListBuckets (s3.amazonaws.com) - List all S3 buckets".to_string(),
+            "".to_string(),
+            "".to_string(),
+            "".to_string(),
+        );
+        s.add_event(
+            "2024-01-02T00:00:00Z".to_string(),
+            "us-west-2".to_string(),
+            "5.6.7.8".to_string(),
+            "IAMUser".to_string(),
+            "AKIAIOSFODNN7EXAMPLE".to_string(),
+            "aws-sdk/1.0".to_string(),
+            "".to_string(),
+            "".to_string(),
+            "GetObject (s3.amazonaws.com)".to_string(),
+            "".to_string(),
+        );
+        s
+    }
+
+    // -----------------------------------------------------------------------
+    // CTSummary::add_event のテスト
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_ct_summary_num_of_events() {
+        let summary = make_test_summary();
+        assert_eq!(summary.num_of_events, 2);
+    }
+
+    #[test]
+    fn test_ct_summary_timestamps() {
+        let summary = make_test_summary();
+        assert_eq!(summary.first_timestamp, "2024-01-01T00:00:00Z");
+        assert_eq!(summary.last_timestamp, "2024-01-02T00:00:00Z");
+    }
+
+    #[test]
+    fn test_ct_summary_regions() {
+        let summary = make_test_summary();
+        assert_eq!(summary.aws_regions.len(), 2);
+        assert!(summary.aws_regions.contains_key("us-east-1"));
+        assert!(summary.aws_regions.contains_key("us-west-2"));
+    }
+
+    #[test]
+    fn test_ct_summary_abused_api_success() {
+        let summary = make_test_summary();
+        assert_eq!(summary.abused_api_success.len(), 1);
+        assert!(
+            summary
+                .abused_api_success
+                .contains_key("ListBuckets (s3.amazonaws.com) - List all S3 buckets")
+        );
+    }
+
+    #[test]
+    fn test_ct_summary_other_api_success() {
+        let summary = make_test_summary();
+        assert_eq!(summary.other_api_success.len(), 1);
+        assert!(
+            summary
+                .other_api_success
+                .contains_key("GetObject (s3.amazonaws.com)")
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // map_to_api_entries のテスト
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_map_to_api_entries_with_description() {
+        let mut map = HashMap::new();
+        map.insert(
+            "ListBuckets (s3.amazonaws.com) - List all S3 buckets".to_string(),
+            (
+                3usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-02T00:00:00Z".to_string(),
+            ),
+        );
+        let entries = map_to_api_entries(&map, false);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].api, "ListBuckets (s3.amazonaws.com)");
+        assert_eq!(entries[0].description, "List all S3 buckets");
+        assert_eq!(entries[0].count, 3);
+        assert_eq!(entries[0].first_seen, "2024-01-01 00:00:00");
+        assert_eq!(entries[0].last_seen, "2024-01-02 00:00:00");
+    }
+
+    #[test]
+    fn test_map_to_api_entries_hide_description() {
+        let mut map = HashMap::new();
+        map.insert(
+            "ListBuckets (s3.amazonaws.com) - List all S3 buckets".to_string(),
+            (
+                1usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
+        );
+        let entries = map_to_api_entries(&map, true);
+        assert_eq!(entries[0].api, "ListBuckets (s3.amazonaws.com)");
+        assert_eq!(entries[0].description, "");
+    }
+
+    #[test]
+    fn test_map_to_api_entries_no_description() {
+        let mut map = HashMap::new();
+        map.insert(
+            "GetObject (s3.amazonaws.com)".to_string(),
+            (
+                2usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
+        );
+        let entries = map_to_api_entries(&map, false);
+        assert_eq!(entries[0].api, "GetObject (s3.amazonaws.com)");
+        assert_eq!(entries[0].description, "");
+    }
+
+    #[test]
+    fn test_map_to_api_entries_sorted_by_count_desc() {
+        let mut map = HashMap::new();
+        map.insert(
+            "ApiA (src)".to_string(),
+            (
+                1usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
+        );
+        map.insert(
+            "ApiB (src)".to_string(),
+            (
+                5usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
+        );
+        map.insert(
+            "ApiC (src)".to_string(),
+            (
+                3usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
+        );
+        let entries = map_to_api_entries(&map, false);
+        assert_eq!(entries[0].count, 5);
+        assert_eq!(entries[1].count, 3);
+        assert_eq!(entries[2].count, 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // map_to_count_entries のテスト
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_map_to_count_entries_basic() {
+        let mut map = HashMap::new();
+        map.insert(
+            "us-east-1".to_string(),
+            (
+                10usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-02T00:00:00Z".to_string(),
+            ),
+        );
+        let entries = map_to_count_entries(&map);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].value, "us-east-1");
+        assert_eq!(entries[0].count, 10);
+        assert_eq!(entries[0].first_seen, "2024-01-01 00:00:00");
+        assert_eq!(entries[0].last_seen, "2024-01-02 00:00:00");
+    }
+
+    #[test]
+    fn test_map_to_count_entries_sorted_by_count_desc() {
+        let mut map = HashMap::new();
+        map.insert(
+            "us-east-1".to_string(),
+            (
+                2usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
+        );
+        map.insert(
+            "eu-west-1".to_string(),
+            (
+                8usize,
+                "2024-01-01T00:00:00Z".to_string(),
+                "2024-01-01T00:00:00Z".to_string(),
+            ),
+        );
+        let entries = map_to_count_entries(&map);
+        assert_eq!(entries[0].value, "eu-west-1");
+        assert_eq!(entries[1].value, "us-east-1");
+    }
+
+    // -----------------------------------------------------------------------
+    // build_json_records のテスト
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_build_json_records_basic() {
+        let mut user_data = HashMap::new();
+        user_data.insert(
+            "arn:aws:iam::123:user/alice".to_string(),
+            make_test_summary(),
+        );
+
+        let records = build_json_records(&user_data, false);
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].user_arn, "arn:aws:iam::123:user/alice");
+        assert_eq!(records[0].num_of_events, 2);
+        assert_eq!(records[0].first_timestamp, "2024-01-01 00:00:00");
+        assert_eq!(records[0].last_timestamp, "2024-01-02 00:00:00");
+        assert_eq!(records[0].aws_regions.len(), 2);
+        assert_eq!(records[0].abused_apis_success.len(), 1);
+        assert_eq!(records[0].other_apis_success.len(), 1);
+    }
+
+    #[test]
+    fn test_build_json_records_sorted_by_events_desc() {
+        let mut user_data = HashMap::new();
+        let summary_alice = CTSummary {
+            num_of_events: 5,
+            ..Default::default()
+        };
+        let summary_bob = CTSummary {
+            num_of_events: 20,
+            ..Default::default()
+        };
+
+        user_data.insert("arn:aws:iam::123:user/alice".to_string(), summary_alice);
+        user_data.insert("arn:aws:iam::123:user/bob".to_string(), summary_bob);
+
+        let records = build_json_records(&user_data, false);
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].num_of_events, 20); // bob が先
+        assert_eq!(records[1].num_of_events, 5); // alice が後
+    }
+
+    #[test]
+    fn test_build_json_records_hide_descriptions() {
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        let records = build_json_records(&user_data, true);
+        // hide_descriptions=true のとき description は空文字
+        assert_eq!(records[0].abused_apis_success[0].description, "");
+    }
+
+    // -----------------------------------------------------------------------
+    // output_summary のテスト (出力ファイル生成確認)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_output_type_1_creates_csv_only() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 1, false);
+
+        assert!(tmp.path().join("result.csv").exists());
+        assert!(!tmp.path().join("result.json").exists());
+        assert!(!tmp.path().join("result.jsonl").exists());
+    }
+
+    #[test]
+    fn test_output_type_2_creates_json_only() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 2, false);
+
+        assert!(!tmp.path().join("result.csv").exists());
+        assert!(tmp.path().join("result.json").exists());
+        assert!(!tmp.path().join("result.jsonl").exists());
+    }
+
+    #[test]
+    fn test_output_type_3_creates_jsonl_only() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 3, false);
+
+        assert!(!tmp.path().join("result.csv").exists());
+        assert!(!tmp.path().join("result.json").exists());
+        assert!(tmp.path().join("result.jsonl").exists());
+    }
+
+    #[test]
+    fn test_output_type_4_creates_csv_and_json() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 4, false);
+
+        assert!(tmp.path().join("result.csv").exists());
+        assert!(tmp.path().join("result.json").exists());
+        assert!(!tmp.path().join("result.jsonl").exists());
+    }
+
+    #[test]
+    fn test_output_type_5_creates_csv_and_jsonl() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 5, false);
+
+        assert!(tmp.path().join("result.csv").exists());
+        assert!(!tmp.path().join("result.json").exists());
+        assert!(tmp.path().join("result.jsonl").exists());
+    }
+
+    #[test]
+    fn test_output_json_valid_structure() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+
+        let mut user_data = HashMap::new();
+        user_data.insert(
+            "arn:aws:iam::123:user/alice".to_string(),
+            make_test_summary(),
+        );
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 2, false);
+
+        let content = std::fs::read_to_string(tmp.path().join("result.json")).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
+        let arr = parsed.as_array().unwrap();
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0]["user_arn"], "arn:aws:iam::123:user/alice");
+        assert_eq!(arr[0]["num_of_events"], 2);
+    }
+
+    #[test]
+    fn test_output_jsonl_each_line_is_valid_json() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::a".to_string(), make_test_summary());
+        user_data.insert("arn::b".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 3, false);
+
+        let content = std::fs::read_to_string(tmp.path().join("result.jsonl")).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 2);
+        for line in lines {
+            assert!(serde_json::from_str::<serde_json::Value>(line).is_ok());
+        }
+    }
+
+    #[test]
+    fn test_clobber_false_does_not_overwrite_existing_json() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+        let json_path = tmp.path().join("result.json");
+
+        // 先にファイルを作成
+        std::fs::write(&json_path, "original").unwrap();
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 2, false);
+
+        // 上書きされていないこと
+        let content = std::fs::read_to_string(&json_path).unwrap();
+        assert_eq!(content, "original");
+    }
+
+    #[test]
+    fn test_clobber_false_preflights_all_output_paths_for_type_4() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+        let csv_path = tmp.path().join("result.csv");
+        let json_path = tmp.path().join("result.json");
+
+        std::fs::write(&json_path, "original").unwrap();
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 4, false);
+
+        assert_eq!(std::fs::read_to_string(&json_path).unwrap(), "original");
+        assert!(!csv_path.exists());
+    }
+
+    #[test]
+    fn test_clobber_true_overwrites_existing_json() {
+        let tmp = TempDir::new().unwrap();
+        let output_path = tmp.path().join("result");
+        let json_path = tmp.path().join("result.json");
+
+        std::fs::write(&json_path, "original").unwrap();
+
+        let mut user_data = HashMap::new();
+        user_data.insert("arn::test".to_string(), make_test_summary());
+
+        output_summary(&user_data, &output_path, true, &false, vec![], 2, true);
+
+        let content = std::fs::read_to_string(&json_path).unwrap();
+        assert_ne!(content, "original");
     }
 }

@@ -178,6 +178,8 @@ fn main() {
             hide_descriptions,
             geo_ip,
             common_opt,
+            output_type,
+            clobber,
         } => {
             display_logo(common_opt.quiet, no_color, true, false);
             if !check_path_exists(input_opt.filepath.clone(), input_opt.directory.clone()) {
@@ -190,6 +192,8 @@ fn main() {
                 include_sts,
                 hide_descriptions,
                 geo_ip,
+                *output_type,
+                *clobber,
             );
         }
         UpdateRules { common_opt } => {
