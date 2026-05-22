@@ -12,6 +12,7 @@
 - Code refactored for easier handling of different log sources. (@fukusuket)
 - Added support for Microsoft Graph API JSON format for Azure logs. (#113) (@fukusuket)
 - Added `--file-date-from/--file-date-to` options that filter objects by their S3 key date prefix, distinct from the existing `--timeline-start/--timeline-end` options, which operates on in-file event timestamps. (#118) (@fukusuket)
+- Added `-output-type` option for the `aws-ct-summary` command to output in JSON. (#123) (@fukusuket)
 
 **Bug Fixes:**
 
