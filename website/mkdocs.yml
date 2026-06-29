@@ -1,0 +1,212 @@
+# =============================================================================
+# Suzaku Documentation Site — Material for MkDocs
+# -----------------------------------------------------------------------------
+# Hosted for free on GitHub Pages (see ../.github/workflows/docs.yml).
+# Top tabs = main topics, left sidebar = subtopics.
+# >>> If you fork/rename, update site_url, repo_url and repo_name below. <<<
+# =============================================================================
+
+site_name: Suzaku
+site_description: >-
+  Suzaku (朱雀) is a Sigma-based threat hunting and fast forensics timeline generator for cloud logs.
+site_author: Yamato Security
+site_url: https://yamato-security.github.io/suzaku/
+
+repo_url: https://github.com/Yamato-Security/suzaku
+repo_name: Yamato-Security/suzaku
+edit_uri: edit/main/website/docs/
+
+copyright: >-
+  Copyright &copy; Yamato Security — Documentation built with Material for MkDocs
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  logo: assets/logo.jpeg
+  favicon: assets/logo.jpeg
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.keys
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      width: 100%
+      auto_caption: false
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: ja
+          name: 日本語
+          build: true
+          site_name: Suzaku ドキュメント
+          nav_translations:
+            Home: ホーム
+            Overview: 概要
+            About Suzaku: Suzakuについて
+            Features: 機能
+            Screenshots: スクリーンショット
+            Getting Started: はじめに
+            Downloads: ダウンロード
+            Git Cloning: Gitクローン
+            Compiling From Source: ソースからのコンパイル
+            Running Suzaku: Suzakuの実行
+            Commands: コマンド
+            Command List: コマンドの一覧
+            Analysis Commands: 分析コマンド
+            DFIR Summary Commands: DFIRサマリーコマンド
+            DFIR Timeline Commands: DFIRタイムラインコマンド
+            Rules: ルール
+            Native Sigma Support: ネイティブSigmaサポート
+            Resources: リソース
+            Companion Projects: 関連プロジェクト
+            Changelog: 変更履歴
+            Contributing & Support: 貢献とサポート
+        - locale: zh-TW
+          name: 繁體中文
+          build: true
+        - locale: ko
+          name: 한국어
+          build: true
+        - locale: de
+          name: Deutsch
+          build: true
+        - locale: tr
+          name: Türkçe
+          build: true
+        - locale: fr
+          name: Français
+          build: true
+        - locale: es
+          name: Español
+          build: true
+        - locale: pt-BR
+          name: Português (Brasil)
+          build: true
+        - locale: uk
+          name: Українська
+          build: true
+        - locale: hi
+          name: हिन्दी
+          build: true
+        - locale: id
+          name: Bahasa Indonesia
+          build: true
+        - locale: my
+          name: မြန်မာဘာသာ
+          build: true
+        - locale: th
+          name: ไทย
+          build: true
+        - locale: ar
+          name: العربية
+          build: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Yamato-Security/suzaku
+      name: Suzaku on GitHub
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/SecurityYamato
+      name: Yamato Security on X
+
+nav:
+  - Home: index.md
+  - Overview:
+      - About Suzaku: overview/index.md
+      - Features: overview/features.md
+      - Screenshots: overview/screenshots.md
+  - Getting Started:
+      - Downloads: getting-started/index.md
+      - Git Cloning: getting-started/git-cloning.md
+      - Compiling From Source: getting-started/compiling.md
+      - Running Suzaku: getting-started/running.md
+  - Commands:
+      - Command List: commands/index.md
+      - Analysis Commands: commands/analysis.md
+      - DFIR Summary Commands: commands/dfir-summary.md
+      - DFIR Timeline Commands: commands/dfir-timeline.md
+  - Rules:
+      - Native Sigma Support: rules/index.md
+  - Resources:
+      - Companion Projects: resources/companion-projects.md
+      - Changelog: resources/changelog.md
+      - Contributing & Support: resources/contributing.md

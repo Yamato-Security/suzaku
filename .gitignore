@@ -17,3 +17,7 @@ test_*
 .~*
 suzaku*
 .idea/
+# MkDocs documentation site build output
+/website/site/
+!/website/docs/stylesheets/
+!/website/docs/stylesheets/extra.css
