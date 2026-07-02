@@ -1,7 +1,8 @@
 name: Deploy docs to GitHub Pages
 
 # Build the Material for MkDocs site in website/ and publish it to GitHub Pages.
-# One-time setup: Settings -> Pages -> Source: "GitHub Actions".
+# The "Configure Pages" step below enables Pages automatically (enablement: true),
+# so no manual "Settings -> Pages -> Source: GitHub Actions" step is required.
 
 on:
   push:
@@ -48,6 +49,12 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
+        # Auto-enable GitHub Pages (source: GitHub Actions) on the first run so the
+        # workflow provisions the Pages site itself. Without this, configure-pages
+        # fails with "Get Pages site failed ... Not Found" until someone manually sets
+        # Settings -> Pages -> Source: "GitHub Actions".
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
