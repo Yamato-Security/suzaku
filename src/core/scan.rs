@@ -130,11 +130,11 @@ where
     println!();
 
     let template = if no_color {
-        "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\r\n\r\n{msg}"
+        "[{elapsed_precise}] {human_pos} / {human_len} {spinner} [{bar:40}] {percent}%\n\n{msg}"
             .to_string()
     } else {
         format!(
-            "[{{elapsed_precise}}] {{human_pos}} / {{human_len}} {} [{}] {{percent}}%\r\n\r\n{{msg}}",
+            "[{{elapsed_precise}}] {{human_pos}} / {{human_len}} {} [{}] {{percent}}%\n\n{{msg}}",
             "{spinner}".truecolor(0, 255, 0),
             "{bar:40}".truecolor(0, 255, 0)
         )
