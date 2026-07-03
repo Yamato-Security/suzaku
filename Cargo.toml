@@ -18,7 +18,12 @@ console = "0.*"
 const_format = "0.2"
 csv = "1"
 flate2 = { version = "1", features = ["zlib-rs"], default-features = false }
-git2="*"
+# Enable the vendored-OpenSSL HTTPS/TLS backend for libgit2. The wildcard
+# "*" resolved to a build of libgit2 with no TLS transport, so `update-rules`
+# failed with "there is no TLS stream available; class=Ssl (16)". The unix
+# target already vendors OpenSSL (see `openssl` below), so this just links
+# libgit2's HTTPS support against it. Mirrors the same fix in hayabusa.
+git2 = { version = "0.21", features = ["https", "vendored-openssl"] }
 hashbrown="*"
 indicatif = "*"
 itertools = "*"
