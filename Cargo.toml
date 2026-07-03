@@ -11,7 +11,7 @@ include = ["src/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
 bytesize = "2"
 chrono = "0.4.*"
 cidr-utils = "*"
-clap = {version = "4.5.*", features = ["derive", "env"]}
+clap = {version = "4.6.*", features = ["derive", "env"]}
 colored = "3"
 comfy-table = "7"
 console = "0.*"
@@ -34,7 +34,7 @@ terminal_size = "0.4.*"
 ureq="*"
 rayon = "1"
 tempfile = "3"
-sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust" , rev = "5e6f58407f933af5271c252c3293aa845cf5c766" }
+sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust", branch = "0.7.0" }
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.
