@@ -11,6 +11,7 @@
 
 - Code refactored for easier handling of different log sources. (@fukusuket)
 - Added support for Microsoft Graph API JSON format for Azure logs. (#113) (@fukusuket)
+- Added support for the M365 Unified Audit Log to `azure-timeline`: reads `Search-UnifiedAuditLog` CSV exports (and JSON) by unwrapping the `AuditData` column/wrapper, folds UAL Name/Value property bags (`ExtendedProperties`/`Parameters`/…) into objects so rules can match nested values (e.g. `ExtendedProperties.UserAgent`), parses single/pretty-printed record objects, no longer drops events when no time filter is set, parses the `CreationTime` timestamp, and adds an `m365` log-source service. (#129) (@YamatoSecurity)
 - Added `--file-date-from/--file-date-to` options that filter objects by their S3 key date prefix, distinct from the existing `--timeline-start/--timeline-end` options, which operates on in-file event timestamps. (#118) (@fukusuket)
 - Added `-output-type` option for the `aws-ct-summary` command to output in JSON. (#123) (@fukusuket)
 
