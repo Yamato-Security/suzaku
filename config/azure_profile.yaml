@@ -1,4 +1,4 @@
-Timestamp: '.time|.eventTimestamp'
+Timestamp: '.time|.eventTimestamp|.CreationTime'
 RuleTitle: 'sigma.title'
 RuleAuthor: 'sigma.author'
 Level: 'sigma.level'

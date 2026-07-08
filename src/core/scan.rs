@@ -36,10 +36,15 @@ pub fn scan_file<'a>(
     log: &LogSource,
 ) {
     let log_contents = get_content(f);
-    let events = match load_json_from_file(&log_contents, log) {
-        Ok(value) => value,
-        Err(_e) => return,
+    let events = if f.display().to_string().ends_with(".csv") {
+        parse_csv_events(&log_contents)
+    } else {
+        match load_json_from_file(&log_contents, log) {
+            Ok(value) => value,
+            Err(_e) => return,
+        }
     };
+    let events = normalize_events(events, log);
     detect_events(
         &events,
         context,
@@ -157,7 +162,7 @@ where
             let pb_msg = format!("{path} ({size})");
             pb.set_message(pb_msg);
         }
-        let log_contents = if path.ends_with("json") {
+        let log_contents = if path.ends_with("json") || path.ends_with("csv") {
             match fs::read_to_string(&path) {
                 Ok(contents) => contents,
                 Err(_) => {
@@ -184,7 +189,12 @@ where
             continue;
         };
 
-        let events = log_contents_to_events(&log_contents, log);
+        let events = if path.ends_with("csv") {
+            parse_csv_events(&log_contents)
+        } else {
+            log_contents_to_events(&log_contents, log)
+        };
+        let events = normalize_events(events, log);
         process_events(&events);
 
         if show_progress {
@@ -199,6 +209,92 @@ where
         }
     }
     Ok(())
+}
+
+/// Normalize one raw Azure/M365 record before rule matching.
+///
+/// M365 Unified Audit Log records exported via `Search-UnifiedAuditLog` are
+/// wrapped in a row that carries the real record in an `AuditData` field — a
+/// JSON string (CSV export) or a nested object (JSON export). Unwrap it so rules
+/// match the actual record. Then fold the UAL Name/Value property bags
+/// (`ExtendedProperties`, `DeviceProperties`, `Parameters`, `ModifiedProperties`)
+/// into plain objects so rules can reach nested values like
+/// `ExtendedProperties.UserAgent`. Non-UAL Azure events (Azure Monitor
+/// diagnostic logs) are returned unchanged.
+fn normalize_azure_event(mut v: Value) -> Value {
+    // Unwrap the Search-UnifiedAuditLog `AuditData` wrapper.
+    if let Value::Object(map) = &v
+        && let Some(audit_data) = map.get("AuditData")
+    {
+        let inner = match audit_data {
+            Value::String(s) => serde_json::from_str::<Value>(s).ok(),
+            Value::Object(_) => Some(audit_data.clone()),
+            _ => None,
+        };
+        if let Some(inner) = inner {
+            v = inner;
+        }
+    }
+    // Only UAL records carry these Name/Value property bags; leave diagnostic logs untouched.
+    let is_ual = matches!(&v, Value::Object(m) if m.contains_key("Workload") || m.contains_key("RecordType"));
+    if is_ual && let Value::Object(map) = &mut v {
+        for key in [
+            "ExtendedProperties",
+            "DeviceProperties",
+            "Parameters",
+            "ModifiedProperties",
+        ] {
+            if let Some(Value::Array(arr)) = map.get(key) {
+                let mut folded = serde_json::Map::new();
+                for item in arr {
+                    if let Value::Object(pair) = item
+                        && let Some(Value::String(name)) = pair.get("Name")
+                    {
+                        let val = pair
+                            .get("Value")
+                            .or_else(|| pair.get("NewValue"))
+                            .cloned()
+                            .unwrap_or(Value::Null);
+                        folded.insert(name.clone(), val);
+                    }
+                }
+                if !folded.is_empty() {
+                    map.insert(key.to_string(), Value::Object(folded));
+                }
+            }
+        }
+    }
+    v
+}
+
+/// Apply `normalize_azure_event` to every event when scanning Azure logs.
+fn normalize_events(events: Vec<Value>, log: &LogSource) -> Vec<Value> {
+    match log {
+        LogSource::Azure => events.into_iter().map(normalize_azure_event).collect(),
+        _ => events,
+    }
+}
+
+/// Parse a `Search-UnifiedAuditLog` CSV export into one JSON object per row.
+/// The real audit record is carried in the `AuditData` column and is unwrapped
+/// afterwards by `normalize_azure_event`.
+fn parse_csv_events(contents: &str) -> Vec<Value> {
+    let mut events = Vec::new();
+    let mut reader = csv::ReaderBuilder::new()
+        .flexible(true)
+        .from_reader(contents.as_bytes());
+    let headers = match reader.headers() {
+        Ok(h) => h.clone(),
+        Err(_) => return events,
+    };
+    for record in reader.records().flatten() {
+        let mut map = serde_json::Map::new();
+        for (header, field) in headers.iter().zip(record.iter()) {
+            map.insert(header.to_string(), Value::String(field.to_string()));
+        }
+        events.push(Value::Object(map));
+    }
+    events
 }
 
 fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
@@ -233,18 +329,21 @@ fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
             }
         }
         LogSource::Azure => {
-            // Try parsing as JSON array first
-            if let Ok(Value::Array(json_array)) = serde_json::from_str::<Value>(log_contents) {
-                return json_array;
+            // Try parsing the whole file as a single JSON document first.
+            if let Ok(json_value) = serde_json::from_str::<Value>(log_contents) {
+                return match json_value {
+                    // JSON array of records
+                    Value::Array(json_array) => json_array,
+                    // Object with a "value" array (Azure Monitor REST shape) ...
+                    Value::Object(json_map) => match json_map.get("value") {
+                        Some(Value::Array(json_array)) => json_array.clone(),
+                        // ... otherwise a single record object (incl. pretty-printed)
+                        _ => vec![Value::Object(json_map)],
+                    },
+                    _ => vec![],
+                };
             }
-            // Try parsing as JSON object with "value" key first
-            if let Ok(json_value) = serde_json::from_str::<Value>(log_contents)
-                && let Value::Object(ref json_map) = json_value
-                && let Some(Value::Array(json_array)) = json_map.get("value")
-            {
-                return json_array.clone();
-            }
-            // Fall back to JSONL format
+            // Fall back to JSONL format (one JSON record per line)
             log_contents
                 .lines()
                 .filter_map(|line| serde_json::from_str::<Value>(line).ok())
@@ -441,7 +540,7 @@ fn count_files_recursive(
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension().and_then(|s| s.to_str())
-                && (ext == "json" || ext == "gz")
+                && (ext == "json" || ext == "gz" || ext == "csv")
             {
                 let path_str = path.to_str().unwrap();
                 if !filter_file_by_date_path(file_date_opt, path_str) {
@@ -505,10 +604,12 @@ pub fn load_json_from_file(
                     Value::Array(json_array) => {
                         events.extend(json_array);
                     }
-                    // JSON object with "value" key
+                    // JSON object with "value" key, or a single record object
                     Value::Object(json_map) => {
                         if let Some(Value::Array(json_array)) = json_map.get("value") {
                             events.extend(json_array.clone());
+                        } else {
+                            events.push(Value::Object(json_map));
                         }
                     }
                     _ => {}
@@ -531,7 +632,7 @@ pub fn load_json_from_file(
 
 pub fn get_content(f: &PathBuf) -> String {
     let path = f.display().to_string();
-    if path.ends_with(".json") {
+    if path.ends_with(".json") || path.ends_with(".csv") {
         fs::read_to_string(f).unwrap_or_default()
     } else if path.ends_with(".gz") {
         read_gz_file(f).unwrap_or_default()
@@ -599,6 +700,94 @@ mod tests {
         assert_eq!(
             events[0].get("caller").unwrap().as_str().unwrap(),
             "rob@contoso.com"
+        );
+    }
+
+    #[test]
+    fn test_normalize_unwraps_auditdata_string() {
+        // CSV export shape: AuditData is a JSON string carrying the real record.
+        let row = serde_json::json!({
+            "RecordType": "AzureActiveDirectory",
+            "AuditData": "{\"Operation\":\"UserLoggedIn\",\"Workload\":\"AzureActiveDirectory\"}"
+        });
+        let ev = normalize_azure_event(row);
+        assert_eq!(
+            ev.get("Operation").unwrap().as_str().unwrap(),
+            "UserLoggedIn"
+        );
+        assert_eq!(
+            ev.get("Workload").unwrap().as_str().unwrap(),
+            "AzureActiveDirectory"
+        );
+    }
+
+    #[test]
+    fn test_normalize_unwraps_auditdata_object() {
+        // JSON export shape: AuditData is a nested object.
+        let row = serde_json::json!({
+            "Operations": "New-InboxRule",
+            "AuditData": {"Operation": "New-InboxRule", "Workload": "Exchange"}
+        });
+        let ev = normalize_azure_event(row);
+        assert_eq!(
+            ev.get("Operation").unwrap().as_str().unwrap(),
+            "New-InboxRule"
+        );
+    }
+
+    #[test]
+    fn test_normalize_folds_name_value_property_bag() {
+        // ExtendedProperties (array of {Name,Value}) is folded into an object so
+        // nested keys like ExtendedProperties.UserAgent become matchable.
+        let rec = serde_json::json!({
+            "Operation": "UserLoggedIn",
+            "Workload": "AzureActiveDirectory",
+            "ExtendedProperties": [
+                {"Name": "UserAgent", "Value": "azurehound/v2.0.4"},
+                {"Name": "RequestType", "Value": "OAuth2"}
+            ]
+        });
+        let ev = normalize_azure_event(rec);
+        assert_eq!(
+            ev.pointer("/ExtendedProperties/UserAgent")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            "azurehound/v2.0.4"
+        );
+    }
+
+    #[test]
+    fn test_normalize_leaves_non_ual_event_untouched() {
+        // Azure Monitor diagnostic log (no Workload/RecordType) is unchanged.
+        let rec = serde_json::json!({"category": "Administrative", "operationName": "x"});
+        let ev = normalize_azure_event(rec.clone());
+        assert_eq!(ev, rec);
+    }
+
+    #[test]
+    fn test_parse_csv_events_unified_audit_log() {
+        let csv = "\"RecordType\",\"Operations\",\"AuditData\"\r\n\
+            \"AzureActiveDirectory\",\"UserLoggedIn\",\"{\"\"Operation\"\":\"\"UserLoggedIn\"\",\"\"Workload\"\":\"\"AzureActiveDirectory\"\"}\"\r\n";
+        let rows = parse_csv_events(csv);
+        assert_eq!(rows.len(), 1);
+        // Row carries AuditData as a string; normalization unwraps it to the record.
+        let ev = normalize_azure_event(rows.into_iter().next().unwrap());
+        assert_eq!(
+            ev.get("Operation").unwrap().as_str().unwrap(),
+            "UserLoggedIn"
+        );
+    }
+
+    #[test]
+    fn test_azure_single_object_json_is_one_event() {
+        // A bare (or pretty-printed) single JSON object must parse to one event.
+        let contents = "{\n  \"Operation\": \"Set-Mailbox\",\n  \"Workload\": \"Exchange\"\n}";
+        let events = log_contents_to_events(contents, &LogSource::Azure);
+        assert_eq!(events.len(), 1);
+        assert_eq!(
+            events[0].get("Operation").unwrap().as_str().unwrap(),
+            "Set-Mailbox"
         );
     }
 }
