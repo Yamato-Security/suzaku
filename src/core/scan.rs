@@ -359,23 +359,35 @@ fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
         LogSource::Azure => {
             // Try parsing the whole file as a single JSON document first.
             if let Ok(json_value) = serde_json::from_str::<Value>(log_contents) {
-                return match json_value {
-                    // JSON array of records
-                    Value::Array(json_array) => json_array,
-                    // Object with a "value" array (Azure Monitor REST shape) ...
-                    Value::Object(json_map) => match json_map.get("value") {
-                        Some(Value::Array(json_array)) => json_array.clone(),
-                        // ... otherwise a single record object (incl. pretty-printed)
-                        _ => vec![Value::Object(json_map)],
-                    },
-                    _ => vec![],
-                };
+                return azure_records(json_value);
             }
-            // Fall back to JSONL format (one JSON record per line)
+            // Fall back to JSONL: one JSON document per line, each of which may
+            // itself be a `{ "records": [...] }` batch (Event Hub capture).
             log_contents
                 .lines()
                 .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .flat_map(azure_records)
                 .collect()
+        }
+        _ => vec![],
+    }
+}
+
+/// Extract the individual Azure records from one parsed JSON document. Handles the
+/// shapes seen across Azure exports: a bare array of records, the Azure Monitor
+/// diagnostic-settings / Event Hub batch envelope `{ "records": [...] }`, the REST
+/// `{ "value": [...] }` shape, or a single record object.
+fn azure_records(value: Value) -> Vec<Value> {
+    match value {
+        Value::Array(records) => records,
+        Value::Object(mut map) => {
+            if let Some(Value::Array(records)) = map.remove("records") {
+                records
+            } else if let Some(Value::Array(records)) = map.remove("value") {
+                records
+            } else {
+                vec![Value::Object(map)]
+            }
         }
         _ => vec![],
     }
@@ -627,26 +639,13 @@ pub fn load_json_from_file(
                 .unwrap_or(log_contents);
             let json_value: Result<Value, _> = serde_json::from_str(log_contents_trimmed);
             match json_value {
-                Ok(json_value) => match json_value {
-                    // JSON array format
-                    Value::Array(json_array) => {
-                        events.extend(json_array);
-                    }
-                    // JSON object with "value" key, or a single record object
-                    Value::Object(json_map) => {
-                        if let Some(Value::Array(json_array)) = json_map.get("value") {
-                            events.extend(json_array.clone());
-                        } else {
-                            events.push(Value::Object(json_map));
-                        }
-                    }
-                    _ => {}
-                },
+                // Array, `{ records|value: [...] }` batch envelope, or a single record.
+                Ok(json_value) => events.extend(azure_records(json_value)),
                 Err(_) => {
-                    // Fall back to JSONL format
+                    // Fall back to JSONL (each line may itself be a `records` batch).
                     log_contents.lines().for_each(|line| {
                         if let Ok(json_value) = serde_json::from_str::<Value>(line) {
-                            events.push(json_value);
+                            events.extend(azure_records(json_value));
                         }
                     });
                 }
@@ -826,6 +825,47 @@ mod tests {
         assert_eq!(
             details,
             "DeliverToMailboxAndForward: True, ForwardingSmtpAddress: attacker@evil.com"
+        );
+    }
+
+    #[test]
+    fn test_azure_records_unwraps_batch_envelope() {
+        // Azure Monitor diagnostic-settings / Event Hub blobs wrap events as
+        // `{ "records": [...] }`; each record must become its own event.
+        let contents = r#"{"records":[{"category":"SignInLogs","properties":{"a":1}},{"category":"SignInLogs","properties":{"a":2}}]}"#;
+        let events = log_contents_to_events(contents, &LogSource::Azure);
+        assert_eq!(events.len(), 2);
+        assert_eq!(
+            events[0].get("category").unwrap().as_str().unwrap(),
+            "SignInLogs"
+        );
+    }
+
+    #[test]
+    fn test_azure_records_unwraps_per_line_batches() {
+        // Event Hub capture can write one `{ "records": [...] }` batch per line.
+        let contents = concat!(
+            r#"{"records":[{"category":"AuditLogs","properties":{"a":1}}]}"#,
+            "\n",
+            r#"{"records":[{"category":"AuditLogs","properties":{"a":2}},{"category":"AuditLogs","properties":{"a":3}}]}"#,
+        );
+        let events = log_contents_to_events(contents, &LogSource::Azure);
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_azure_records_helper_shapes() {
+        // bare array
+        assert_eq!(azure_records(serde_json::json!([{"x":1},{"x":2}])).len(), 2);
+        // { value: [...] } REST shape
+        assert_eq!(
+            azure_records(serde_json::json!({"value":[{"x":1}]})).len(),
+            1
+        );
+        // single record object
+        assert_eq!(
+            azure_records(serde_json::json!({"category":"SignInLogs"})).len(),
+            1
         );
     }
 
