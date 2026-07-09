@@ -264,6 +264,34 @@ fn normalize_azure_event(mut v: Value) -> Value {
             }
         }
     }
+    // Synthesize a stable, human-readable `_Details` summary of the
+    // security-relevant change (the Exchange cmdlet `Parameters`, or the
+    // directory-change `ModifiedProperties`) for the output timeline. The folded
+    // objects above stay for rule matching; this string renders in a
+    // deterministic key order (serde_json object iteration), unlike rendering
+    // sigma_rust's HashMap-backed event value directly.
+    if is_ual && let Value::Object(map) = &v {
+        let src = ["Parameters", "ModifiedProperties"]
+            .into_iter()
+            .find_map(|k| match map.get(k) {
+                Some(Value::Object(o)) if !o.is_empty() => Some(o),
+                _ => None,
+            });
+        let details = src.map(|o| {
+            o.iter()
+                .map(|(k, val)| match val {
+                    Value::String(s) => format!("{k}: {s}"),
+                    other => format!("{k}: {other}"),
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        });
+        if let Some(details) = details
+            && let Value::Object(map) = &mut v
+        {
+            map.insert("_Details".to_string(), Value::String(details));
+        }
+    }
     v
 }
 
@@ -776,6 +804,28 @@ mod tests {
         assert_eq!(
             ev.get("Operation").unwrap().as_str().unwrap(),
             "UserLoggedIn"
+        );
+    }
+
+    #[test]
+    fn test_normalize_synthesizes_deterministic_details_summary() {
+        // The `_Details` field summarizes the change (Exchange cmdlet Parameters)
+        // for the output timeline, in a stable key order.
+        let rec = serde_json::json!({
+            "Operation": "Set-Mailbox",
+            "Workload": "Exchange",
+            "Parameters": [
+                {"Name": "ForwardingSmtpAddress", "Value": "attacker@evil.com"},
+                {"Name": "DeliverToMailboxAndForward", "Value": "True"}
+            ]
+        });
+        let ev = normalize_azure_event(rec);
+        let details = ev.get("_Details").unwrap().as_str().unwrap();
+        assert!(details.contains("ForwardingSmtpAddress: attacker@evil.com"));
+        // serde_json object iteration is deterministic, so the summary is stable.
+        assert_eq!(
+            details,
+            "DeliverToMailboxAndForward: True, ForwardingSmtpAddress: attacker@evil.com"
         );
     }
 
