@@ -18,8 +18,14 @@ impl LogSource {
     pub fn supported_services(&self) -> &[&str] {
         match self {
             LogSource::Aws => &["cloudtrail"],
-            LogSource::Azure => &["activitylogs", "auditlogs", "signinlogs"],
-            LogSource::All => &["cloudtrail", "activitylogs", "auditlogs", "signinlogs"],
+            LogSource::Azure => &["activitylogs", "auditlogs", "signinlogs", "m365"],
+            LogSource::All => &[
+                "cloudtrail",
+                "activitylogs",
+                "auditlogs",
+                "signinlogs",
+                "m365",
+            ],
         }
     }
 }
@@ -52,6 +58,9 @@ pub fn is_match_service(service: &Option<String>, event: &Event) -> bool {
                         .get("category.value")
                         .is_some_and(|v| v.value_to_string() == "SignInLogs")
             }
+            // M365 Unified Audit Log records (Exchange/AzureActiveDirectory/etc.); these carry a
+            // `Workload` (and numeric `RecordType`) instead of the Azure Monitor `category`.
+            "m365" => event.get("Workload").is_some() || event.get("RecordType").is_some(),
             _ => false,
         }
     } else {

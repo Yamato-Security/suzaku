@@ -1,5 +1,5 @@
 use crate::option::cli::{FileDateOption, TimeOption};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use regex::Regex;
 use serde_json::Value;
 use std::sync::LazyLock;
@@ -10,6 +10,13 @@ static DATE_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
+    // With no time constraints, keep every event. Events whose timestamp field is
+    // absent or in an unrecognized format must not be silently dropped just
+    // because we could not read their time (e.g. M365 UAL uses `CreationTime`).
+    if opt.timeline_start.is_none() && opt.timeline_end.is_none() && opt.time_offset.is_none() {
+        return true;
+    }
+
     let keys: Vec<&str> = ts_key
         .split('|')
         .map(|k| k.trim_start_matches('.'))
@@ -23,18 +30,9 @@ pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
         Some(s) => s,
         None => return false,
     };
-    let event_time = match ts_key {
-        "eventTime" => match DateTime::parse_from_rfc3339(event_time_str) {
-            Ok(dt) => dt.with_timezone(&Utc),
-            Err(_) => return false,
-        },
-        "time" | "eventTimestamp" | "time|.eventTimestamp" => {
-            match event_time_str.parse::<DateTime<Utc>>() {
-                Ok(dt) => dt,
-                Err(_) => return false,
-            }
-        }
-        _ => return false,
+    let event_time = match parse_event_time(event_time_str) {
+        Some(dt) => dt,
+        None => return false,
     };
     if let Some(start) = &opt.timeline_start {
         let start_time = match DateTime::parse_from_rfc3339(start) {
@@ -90,6 +88,28 @@ pub fn filter_file_by_date_path(opt: &FileDateOption, path: &str) -> bool {
         return false;
     }
     true
+}
+
+/// Parse an event timestamp string across the formats seen in Azure/M365 logs:
+/// RFC3339 (`...Z`/offset), a fractional-second UTC form, and the timezone-less
+/// naive form used by M365 Unified Audit Log `CreationTime` (assumed UTC).
+fn parse_event_time(s: &str) -> Option<DateTime<Utc>> {
+    if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
+        return Some(dt.with_timezone(&Utc));
+    }
+    if let Ok(dt) = s.parse::<DateTime<Utc>>() {
+        return Some(dt);
+    }
+    for fmt in [
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%d %H:%M:%S",
+    ] {
+        if let Ok(ndt) = NaiveDateTime::parse_from_str(s, fmt) {
+            return Some(DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc));
+        }
+    }
+    None
 }
 
 fn parse_offset(offset: &str) -> Option<Duration> {
@@ -274,6 +294,39 @@ mod tests {
         };
         let value = json!({ "time": "2022-05-13T13:38:44.5454572Z" });
         assert!(filter_by_time(&opt, &value, "time"));
+    }
+
+    #[test]
+    fn test_filter_by_time_no_filter_keeps_event_without_timestamp_field() {
+        // With no time constraints, an event whose timestamp key is absent (e.g.
+        // M365 UAL, which uses CreationTime) must still be kept, not dropped.
+        let opt = TimeOption {
+            timeline_start: None,
+            timeline_end: None,
+            time_offset: None,
+        };
+        let value = json!({ "Operation": "UserLoggedIn" });
+        assert!(filter_by_time(
+            &opt,
+            &value,
+            "time|.eventTimestamp|.CreationTime"
+        ));
+    }
+
+    #[test]
+    fn test_filter_by_time_creationtime_naive_format() {
+        // M365 UAL CreationTime has no timezone; it is treated as UTC.
+        let opt = TimeOption {
+            timeline_start: Some("2023-11-21T23:00:00Z".to_string()),
+            timeline_end: Some("2023-11-22T00:00:00Z".to_string()),
+            time_offset: None,
+        };
+        let value = json!({ "CreationTime": "2023-11-21T23:44:05" });
+        assert!(filter_by_time(
+            &opt,
+            &value,
+            "time|.eventTimestamp|.CreationTime"
+        ));
     }
 
     #[test]

@@ -308,6 +308,7 @@ fn get_value_from_event_common(
                 return if k_trimmed.contains("eventTime")
                     || k_trimmed.contains("time")
                     || k_trimmed.contains("eventTimestamp")
+                    || k_trimmed.contains("CreationTime")
                 {
                     value.value_to_string().replace("T", " ").replace("Z", "")
                 } else {
