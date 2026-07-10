@@ -165,9 +165,9 @@ fn get_nested_value(event: &Value, path: &str) -> Option<Value> {
     let mut current = event;
 
     for part in parts {
-        match current.get(part) {
-            Some(val) => current = val,
-            None => return None,
+        {
+            let val = current.get(part)?;
+            current = val
         }
     }
 
