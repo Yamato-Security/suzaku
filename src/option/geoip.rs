@@ -111,11 +111,16 @@ impl GeoIPSearch {
                 let mut ret = "-";
                 if let Ok(Some(country)) = country.decode::<geoip2::Country>() {
                     let name_tree = country.country.names;
-                    ret = name_tree.english.unwrap_or("")
+                    ret = name_tree.english.unwrap_or("-")
                 }
-                ret.to_string()
+                let ret = ret.to_string();
+                self.country_cache.insert(ip, ret.clone());
+                ret
             }
-            _ => "-".to_string(),
+            _ => {
+                self.country_cache.insert(ip, "-".to_string());
+                "-".to_string()
+            }
         }
     }
 
