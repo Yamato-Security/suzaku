@@ -21,6 +21,7 @@
 - `-T, --no-frequency-timeline` option was not working so we removed it. Also fixed a logic bug in the authors display. (#110) (@fukusuket)
 - Output file would get saved even if there were no results. (#114) (@fukusuket)
 - `aws-ct-summary` would panic when processing a corrupt or imcomplete log file. (#119) (@fukusuket)
+- `--geo-ip` would panic at startup (`invalid IP address syntax`) because the abbreviated CIDR strings used for the private-IP check (e.g. `10/8`, `172.16/12`, `2000::/3`) are no longer accepted by the `cidr` crate. Dropped the `cidr-utils` dependency and check private ranges directly with `std`'s `Ipv4Addr::is_private()` and a manual IPv6 prefix match; also populated the previously unused GeoIP country/city caches. (#132) (@fukusuket)
 
 ## 1.1.0 [2025/08/14] - Obon Release
 
