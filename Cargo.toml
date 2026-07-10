@@ -10,7 +10,6 @@ include = ["src/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
 [dependencies]
 bytesize = "2"
 chrono = "0.4.*"
-cidr-utils = "*"
 clap = {version = "4.6.*", features = ["derive", "env"]}
 colored = "3"
 comfy-table = "7"
