@@ -6,6 +6,7 @@
 
 - Azureログ用のDFIRタイムラインを作成する`azure-timeline`コマンドを追加した。 (#109) (@fukusuket)
 - CloudTrailログを検索するための`aws-ct-search`コマンドを追加した。(#117) (@fukusuket)
+- UUIDを指定してルールを読み込み対象から除外できる除外リストファイル（`config/aws_ignore_rule_list.txt`）に対応した。これにより、置き換えられた重複ルールをリポジトリに残したまま読み込まないようにできる。 (#136) (@YamatoSecurity)
 
 **改善:**
 
