@@ -34,6 +34,13 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
     }
     let profile = load_profile(&log, &geo_search, false);
     let rules: Vec<Rule> = rules::load_rules_from_dir(&options.rules, &log);
+    // Skip rules listed in <rules-dir>/config/<log>_ignore_rule_list.txt (superseded/duplicate
+    // rules that stay in the repo but should not be loaded).
+    let ignore_ids =
+        rules::load_ignore_rule_ids(&rules::ignore_rule_list_path(&options.rules, &log));
+    let loaded_rule_count = rules.len();
+    let rules: Vec<Rule> = rules::filter_ignored_rules(rules, &ignore_ids);
+    let ignored_rule_count = loaded_rule_count - rules.len();
     let rules = rules::filter_rules_by_level(&rules, &options.min_level);
     let correlation_rules = rules::load_correlation_yamls_from_dir(&options.rules);
     if rules.is_empty() && correlation_rules.is_empty() {
@@ -80,6 +87,14 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
 
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
+    if ignored_rule_count > 0 {
+        p(
+            Green.rdg(no_color),
+            "Rules skipped via ignore-list: ",
+            false,
+        );
+        p(None, ignored_rule_count.to_string().as_str(), true);
+    }
     p(Green.rdg(no_color), "Total correlation rules: ", false);
     p(
         None,

@@ -1,8 +1,9 @@
 use crate::core::log_source::LogSource;
 use sigma_rust::Rule;
 use sigma_rust::rule_from_yaml;
+use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn load_correlation_yamls_from_dir(path: &PathBuf) -> Vec<String> {
     let mut yaml_contents = Vec::new();
@@ -77,6 +78,59 @@ fn load_rules_recursive(directory: &PathBuf, rules: &mut Vec<Rule>, log: &LogSou
             }
         }
     }
+}
+
+/// Path to the ignore-list file for a log source, resolved relative to the rules directory
+/// (its parent when a single rule file is passed): `<rules-dir>/config/<log>_ignore_rule_list.txt`.
+pub fn ignore_rule_list_path(rules_path: &Path, log: &LogSource) -> PathBuf {
+    let base = if rules_path.is_dir() {
+        rules_path.to_path_buf()
+    } else {
+        rules_path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_default()
+    };
+    base.join("config").join(log.ignore_rule_list_filename())
+}
+
+/// Read a set of rule UUIDs to skip from an ignore-list file. Format: one UUID per line;
+/// blank lines and lines starting with `#` are ignored; an inline `# comment` after the
+/// UUID is allowed. Returns an empty set if the file does not exist.
+pub fn load_ignore_rule_ids(path: &Path) -> HashSet<String> {
+    let mut ids = HashSet::new();
+    if let Ok(contents) = fs::read_to_string(path) {
+        for line in contents.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some(id) = line
+                .split('#')
+                .next()
+                .and_then(|s| s.split_whitespace().next())
+            {
+                ids.insert(id.to_string());
+            }
+        }
+    }
+    ids
+}
+
+/// Drop any rule whose `id` is in `ignore_ids`. Rules without an `id` are kept.
+pub fn filter_ignored_rules(rules: Vec<Rule>, ignore_ids: &HashSet<String>) -> Vec<Rule> {
+    if ignore_ids.is_empty() {
+        return rules;
+    }
+    rules
+        .into_iter()
+        .filter(|rule| {
+            rule.id
+                .as_deref()
+                .map(|id| !ignore_ids.contains(id))
+                .unwrap_or(true)
+        })
+        .collect()
 }
 
 fn level_to_int(level: &str) -> u8 {
@@ -213,6 +267,78 @@ detection:
         let rules = load_rules_from_dir(&dir_path, &LogSource::All);
 
         assert_eq!(rules.len(), 1); // Only .yml file should be loaded
+    }
+
+    fn make_rule_with_id(id: &str) -> Rule {
+        let yaml = format!(
+            r#"
+            title: Test Rule
+            id: {id}
+            level: medium
+            logsource:
+              product: aws
+              service: cloudtrail
+            detection:
+              selection:
+                field: value
+              condition: selection
+            "#
+        );
+        rule_from_yaml(&yaml).unwrap()
+    }
+
+    #[test]
+    fn test_load_ignore_rule_ids_parses_and_skips_comments() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("aws_ignore_rule_list.txt");
+        fs::write(
+            &file_path,
+            "# header comment\n\
+             07330162-dba1-4746-8121-a9647d49d297 # some rule -- superseded\n\
+             \n\
+             2070cb71-0958-4504-906f-f8d4163d7505\n\
+             # trailing comment line\n",
+        )
+        .unwrap();
+
+        let ids = load_ignore_rule_ids(&file_path);
+        assert_eq!(ids.len(), 2);
+        assert!(ids.contains("07330162-dba1-4746-8121-a9647d49d297"));
+        assert!(ids.contains("2070cb71-0958-4504-906f-f8d4163d7505"));
+    }
+
+    #[test]
+    fn test_load_ignore_rule_ids_missing_file_is_empty() {
+        let ids = load_ignore_rule_ids(&PathBuf::from("/nonexistent/ignore.txt"));
+        assert!(ids.is_empty());
+    }
+
+    #[test]
+    fn test_filter_ignored_rules() {
+        let rules = vec![
+            make_rule_with_id("keep-1"),
+            make_rule_with_id("drop-me"),
+            make_rule_with_id("keep-2"),
+        ];
+        let ignore: HashSet<String> = ["drop-me".to_string()].into_iter().collect();
+
+        let filtered = filter_ignored_rules(rules, &ignore);
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().all(|r| r.id.as_deref() != Some("drop-me")));
+    }
+
+    #[test]
+    fn test_filter_ignored_rules_empty_set_is_noop() {
+        let rules = vec![make_rule_with_id("a"), make_rule_with_id("b")];
+        let filtered = filter_ignored_rules(rules, &HashSet::new());
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_ignore_rule_list_path_for_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = ignore_rule_list_path(temp_dir.path(), &LogSource::Aws);
+        assert!(path.ends_with("config/aws_ignore_rule_list.txt"));
     }
 
     #[test]

@@ -15,6 +15,15 @@ impl LogSource {
         }
     }
 
+    /// File name (under the rules directory's `config/`) listing rule UUIDs to skip loading.
+    pub fn ignore_rule_list_filename(&self) -> &str {
+        match self {
+            LogSource::Aws => "aws_ignore_rule_list.txt",
+            LogSource::Azure => "azure_ignore_rule_list.txt",
+            LogSource::All => "",
+        }
+    }
+
     pub fn supported_services(&self) -> &[&str] {
         match self {
             LogSource::Aws => &["cloudtrail"],
