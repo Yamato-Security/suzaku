@@ -6,6 +6,7 @@
 
 - Added the `azure-timeline` command to create a DFIR timeline for Azure logs. (#109) (@fukusuket)
 - New `aws-ct-search` command to search through CloudTrail logs. (#117) (@fukusuket)
+- Added support for an ignore-list file (`config/aws_ignore_rule_list.txt`) to skip loading rules by UUID, so superseded/duplicate rules can stay in the repo without being loaded. (#136) (@YamatoSecurity)
 
 **Enhancements:**
 
