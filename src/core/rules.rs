@@ -117,6 +117,11 @@ pub fn load_ignore_rule_ids(path: &Path) -> HashSet<String> {
     ids
 }
 
+/// True if `id` is present in the ignore set. Rules without an id are never ignored.
+pub fn is_ignored(id: Option<&str>, ignore_ids: &HashSet<String>) -> bool {
+    id.map(|id| ignore_ids.contains(id)).unwrap_or(false)
+}
+
 /// Drop any rule whose `id` is in `ignore_ids`. Rules without an `id` are kept.
 pub fn filter_ignored_rules(rules: Vec<Rule>, ignore_ids: &HashSet<String>) -> Vec<Rule> {
     if ignore_ids.is_empty() {
@@ -124,12 +129,7 @@ pub fn filter_ignored_rules(rules: Vec<Rule>, ignore_ids: &HashSet<String>) -> V
     }
     rules
         .into_iter()
-        .filter(|rule| {
-            rule.id
-                .as_deref()
-                .map(|id| !ignore_ids.contains(id))
-                .unwrap_or(true)
-        })
+        .filter(|rule| !is_ignored(rule.id.as_deref(), ignore_ids))
         .collect()
 }
 
@@ -325,6 +325,14 @@ detection:
         let filtered = filter_ignored_rules(rules, &ignore);
         assert_eq!(filtered.len(), 2);
         assert!(filtered.iter().all(|r| r.id.as_deref() != Some("drop-me")));
+    }
+
+    #[test]
+    fn test_is_ignored() {
+        let ignore: HashSet<String> = ["drop-me".to_string()].into_iter().collect();
+        assert!(is_ignored(Some("drop-me"), &ignore));
+        assert!(!is_ignored(Some("keep-me"), &ignore));
+        assert!(!is_ignored(None, &ignore)); // rules without an id are never ignored
     }
 
     #[test]

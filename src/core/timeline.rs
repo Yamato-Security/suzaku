@@ -53,6 +53,7 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
     }
     let mut correlation_engine = CorrelationEngine::new();
     let mut total_correlation_rules = 0;
+    let mut ignored_correlation_count = 0;
     for yaml in &correlation_rules {
         match parse_rules_from_yaml(yaml.as_str()) {
             Ok(rules) => {
@@ -60,6 +61,12 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
                 let total_base_rules = base_rules.len();
                 let mut added_base_rules = 0;
                 for (name, rule) in base_rules {
+                    // Skip ignore-listed base rules; the correlation that depends on them is
+                    // then skipped too (added_base_rules never reaches total_base_rules).
+                    if rules::is_ignored(rule.id.as_deref(), &ignore_ids) {
+                        ignored_correlation_count += 1;
+                        continue;
+                    }
                     if let Some(ref service) = rule.logsource.service
                         && log.supported_services().contains(&service.as_str())
                     {
@@ -68,6 +75,10 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
                     }
                 }
                 for rule in correlation_rules {
+                    if rules::is_ignored(rule.id.as_deref(), &ignore_ids) {
+                        ignored_correlation_count += 1;
+                        continue;
+                    }
                     if added_base_rules == total_base_rules {
                         correlation_engine.add_correlation_rule(rule);
                         total_correlation_rules += 1;
@@ -87,13 +98,14 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
 
     p(Green.rdg(no_color), "Total detection rules: ", false);
     p(None, rules.len().to_string().as_str(), true);
-    if ignored_rule_count > 0 {
+    let total_ignored = ignored_rule_count + ignored_correlation_count;
+    if total_ignored > 0 {
         p(
             Green.rdg(no_color),
             "Rules skipped via ignore-list: ",
             false,
         );
-        p(None, ignored_rule_count.to_string().as_str(), true);
+        p(None, total_ignored.to_string().as_str(), true);
     }
     p(Green.rdg(no_color), "Total correlation rules: ", false);
     p(
