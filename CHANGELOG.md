@@ -20,6 +20,7 @@
 
 **Bug Fixes:**
 
+- The `aws-ct-timeline`, `aws-ct-metrics`, `aws-ct-search`, and `aws-ct-summary` commands silently dropped JSONL input (one CloudTrail event, or a `{ "Records": [...] }` batch, per line): the parsers read the whole file as a single JSON document and returned no events when that failed. They now fall back to per-line JSONL parsing, and `.jsonl` files are discovered and read. (#139) (@YamatoSecurity)
 - `-T, --no-frequency-timeline` option was not working so we removed it. Also fixed a logic bug in the authors display. (#110) (@fukusuket)
 - Output file would get saved even if there were no results. (#114) (@fukusuket)
 - `aws-ct-summary` would panic when processing a corrupt or imcomplete log file. (#119) (@fukusuket)

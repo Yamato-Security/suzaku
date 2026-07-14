@@ -162,32 +162,33 @@ where
             let pb_msg = format!("{path} ({size})");
             pb.set_message(pb_msg);
         }
-        let log_contents = if path.ends_with("json") || path.ends_with("csv") {
-            match fs::read_to_string(&path) {
-                Ok(contents) => contents,
-                Err(_) => {
-                    if show_progress {
-                        pb.inc(1);
+        let log_contents =
+            if path.ends_with("json") || path.ends_with("jsonl") || path.ends_with("csv") {
+                match fs::read_to_string(&path) {
+                    Ok(contents) => contents,
+                    Err(_) => {
+                        if show_progress {
+                            pb.inc(1);
+                        }
+                        continue;
                     }
-                    continue;
                 }
-            }
-        } else if path.ends_with("gz") {
-            match read_gz_file(&PathBuf::from(&path)) {
-                Ok(contents) => contents,
-                Err(_) => {
-                    if show_progress {
-                        pb.inc(1);
+            } else if path.ends_with("gz") {
+                match read_gz_file(&PathBuf::from(&path)) {
+                    Ok(contents) => contents,
+                    Err(_) => {
+                        if show_progress {
+                            pb.inc(1);
+                        }
+                        continue;
                     }
-                    continue;
                 }
-            }
-        } else {
-            if show_progress {
-                pb.inc(1);
-            }
-            continue;
-        };
+            } else {
+                if show_progress {
+                    pb.inc(1);
+                }
+                continue;
+            };
 
         let events = if path.ends_with("csv") {
             parse_csv_events(&log_contents)
@@ -328,33 +329,17 @@ fn parse_csv_events(contents: &str) -> Vec<Value> {
 fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
     match log {
         LogSource::Aws => {
-            let json_value: Result<Value, _> = serde_json::from_str(log_contents);
-            match json_value {
-                Ok(json_value) => {
-                    match json_value {
-                        Value::Array(json_array) => json_array,
-                        Value::Object(mut json_map) => {
-                            // use json_map.remove to get json_array
-                            if let Some(json_array) = json_map.remove("Records") {
-                                match json_array {
-                                    Value::Array(json_array) => json_array,
-                                    _ => vec![],
-                                }
-                            } else {
-                                vec![]
-                            }
-                        }
-                        _ => {
-                            // TODO: Handle unexpected JSON structure
-                            vec![]
-                        }
-                    }
-                }
-                Err(_) => {
-                    // TODO: Handle unexpected JSON structure
-                    vec![]
-                }
+            // Try parsing the whole file as a single JSON document first.
+            if let Ok(json_value) = serde_json::from_str::<Value>(log_contents) {
+                return aws_records(json_value);
             }
+            // Fall back to JSONL: one JSON document per line, each of which may be a single
+            // CloudTrail event or a `{ "Records": [...] }` batch.
+            log_contents
+                .lines()
+                .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .flat_map(aws_records)
+                .collect()
         }
         LogSource::Azure => {
             // Try parsing the whole file as a single JSON document first.
@@ -368,6 +353,23 @@ fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
                 .filter_map(|line| serde_json::from_str::<Value>(line).ok())
                 .flat_map(azure_records)
                 .collect()
+        }
+        _ => vec![],
+    }
+}
+
+/// Extract the individual CloudTrail events from one parsed JSON document. Handles the shapes
+/// seen across CloudTrail exports: the standard `{ "Records": [...] }` delivery batch, a bare
+/// array of events, or a single event object (e.g. one JSONL line).
+fn aws_records(value: Value) -> Vec<Value> {
+    match value {
+        Value::Array(records) => records,
+        Value::Object(mut map) => {
+            if let Some(Value::Array(records)) = map.remove("Records") {
+                records
+            } else {
+                vec![Value::Object(map)]
+            }
         }
         _ => vec![],
     }
@@ -580,7 +582,7 @@ fn count_files_recursive(
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension().and_then(|s| s.to_str())
-                && (ext == "json" || ext == "gz" || ext == "csv")
+                && (ext == "json" || ext == "jsonl" || ext == "gz" || ext == "csv")
             {
                 let path_str = path.to_str().unwrap();
                 if !filter_file_by_date_path(file_date_opt, path_str) {
@@ -614,22 +616,19 @@ pub fn load_json_from_file(
     let mut events = Vec::new();
     match log {
         LogSource::Aws => {
-            let json_value: Value = serde_json::from_str(log_contents)?;
-            match json_value {
-                Value::Array(json_array) => {
-                    for json_value in json_array {
-                        events.push(json_value);
-                    }
-                }
-                Value::Object(json_map) => {
-                    if let Some(json_array) = json_map.get("Records") {
-                        for json_value in json_array.as_array().unwrap() {
-                            events.push(json_value.clone());
+            let log_contents_trimmed = log_contents
+                .strip_prefix('\u{FEFF}')
+                .unwrap_or(log_contents);
+            match serde_json::from_str::<Value>(log_contents_trimmed) {
+                // Array, `{ "Records": [...] }` batch, or a single event object.
+                Ok(json_value) => events.extend(aws_records(json_value)),
+                Err(_) => {
+                    // Fall back to JSONL (each line may itself be a `Records` batch).
+                    log_contents.lines().for_each(|line| {
+                        if let Ok(json_value) = serde_json::from_str::<Value>(line) {
+                            events.extend(aws_records(json_value));
                         }
-                    }
-                }
-                _ => {
-                    eprintln!("Unexpected JSON structure in file:");
+                    });
                 }
             }
         }
@@ -659,7 +658,7 @@ pub fn load_json_from_file(
 
 pub fn get_content(f: &PathBuf) -> String {
     let path = f.display().to_string();
-    if path.ends_with(".json") || path.ends_with(".csv") {
+    if path.ends_with(".json") || path.ends_with(".jsonl") || path.ends_with(".csv") {
         fs::read_to_string(f).unwrap_or_default()
     } else if path.ends_with(".gz") {
         read_gz_file(f).unwrap_or_default()
@@ -879,5 +878,72 @@ mod tests {
             events[0].get("Operation").unwrap().as_str().unwrap(),
             "Set-Mailbox"
         );
+    }
+
+    #[test]
+    fn test_aws_records_helper_shapes() {
+        // standard CloudTrail `{ "Records": [...] }` batch
+        assert_eq!(
+            aws_records(serde_json::json!({"Records":[{"eventName":"A"},{"eventName":"B"}]})).len(),
+            2
+        );
+        // bare array of events
+        assert_eq!(aws_records(serde_json::json!([{"eventName":"A"}])).len(), 1);
+        // single event object (one JSONL line)
+        assert_eq!(
+            aws_records(serde_json::json!({"eventName":"A","eventSource":"iam.amazonaws.com"}))
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn test_aws_jsonl_content_is_parsed() {
+        // CloudTrail exported as JSONL: one event object per line.
+        let contents = concat!(
+            r#"{"eventName":"ConsoleLogin","eventSource":"signin.amazonaws.com"}"#,
+            "\n",
+            r#"{"eventName":"RunInstances","eventSource":"ec2.amazonaws.com"}"#,
+            "\n",
+            r#"{"eventName":"PutObject","eventSource":"s3.amazonaws.com"}"#,
+        );
+        let events = log_contents_to_events(contents, &LogSource::Aws);
+        assert_eq!(events.len(), 3);
+        assert_eq!(
+            events[0].get("eventName").unwrap().as_str().unwrap(),
+            "ConsoleLogin"
+        );
+    }
+
+    #[test]
+    fn test_aws_jsonl_per_line_batches_are_parsed() {
+        // Each JSONL line may itself be a `{ "Records": [...] }` batch.
+        let contents = concat!(
+            r#"{"Records":[{"eventName":"A"}]}"#,
+            "\n",
+            r#"{"Records":[{"eventName":"B"},{"eventName":"C"}]}"#,
+        );
+        assert_eq!(log_contents_to_events(contents, &LogSource::Aws).len(), 3);
+    }
+
+    #[test]
+    fn test_aws_batch_and_array_whole_file_still_parse() {
+        // Regression: the standard whole-file shapes must keep working.
+        let batch = r#"{"Records":[{"eventName":"A"},{"eventName":"B"}]}"#;
+        assert_eq!(log_contents_to_events(batch, &LogSource::Aws).len(), 2);
+        let array = r#"[{"eventName":"A"},{"eventName":"B"},{"eventName":"C"}]"#;
+        assert_eq!(log_contents_to_events(array, &LogSource::Aws).len(), 3);
+    }
+
+    #[test]
+    fn test_load_json_from_file_aws_handles_jsonl() {
+        // The path used by aws-ct-metrics/search/summary must also read JSONL.
+        let contents = concat!(
+            r#"{"eventName":"A"}"#,
+            "\n",
+            r#"{"Records":[{"eventName":"B"},{"eventName":"C"}]}"#,
+        );
+        let events = load_json_from_file(contents, &LogSource::Aws).unwrap();
+        assert_eq!(events.len(), 3);
     }
 }
