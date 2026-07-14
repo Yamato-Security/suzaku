@@ -32,6 +32,10 @@ impl LogSource {
                 "auditlogs",
                 "signinlogs",
                 "m365",
+                "audit",
+                "exchange",
+                "threat_detection",
+                "threat_management",
                 "riskdetection",
                 "pim",
             ],
@@ -41,6 +45,10 @@ impl LogSource {
                 "auditlogs",
                 "signinlogs",
                 "m365",
+                "audit",
+                "exchange",
+                "threat_detection",
+                "threat_management",
                 "riskdetection",
                 "pim",
             ],
@@ -78,7 +86,11 @@ pub fn is_match_service(service: &Option<String>, event: &Event) -> bool {
             }
             // M365 Unified Audit Log records (Exchange/AzureActiveDirectory/etc.); these carry a
             // `Workload` (and numeric `RecordType`) instead of the Azure Monitor `category`.
-            "m365" => event.get("Workload").is_some() || event.get("RecordType").is_some(),
+            // SigmaHQ's upstream m365 rules split across several service names
+            // (audit/exchange/threat_detection/threat_management); all of them target UAL records.
+            "m365" | "audit" | "exchange" | "threat_detection" | "threat_management" => {
+                event.get("Workload").is_some() || event.get("RecordType").is_some()
+            }
             // Entra ID Protection risk detections and Privileged Identity Management alert
             // incidents share the Microsoft Graph risk-event schema, identified by
             // `riskEventType`. The rule's specific `riskEventType` value selects the sub-type.
@@ -120,5 +132,32 @@ mod tests {
         let e = ev(r#"{"category":"SignInLogs"}"#);
         assert!(is_match_service(&Some("signinlogs".to_string()), &e));
         assert!(!is_match_service(&Some("auditlogs".to_string()), &e));
+    }
+
+    #[test]
+    fn m365_family_services_match_unified_audit_log_records() {
+        // SigmaHQ's m365 rules use several service names; all target UAL records, which are
+        // identified by `Workload`/`RecordType` rather than the Azure Monitor `category`.
+        let ual = ev(r#"{"Workload":"Exchange","RecordType":1,"Operation":"Add-FederatedDomain"}"#);
+        for svc in [
+            "m365",
+            "audit",
+            "exchange",
+            "threat_detection",
+            "threat_management",
+        ] {
+            assert!(
+                is_match_service(&Some(svc.to_string()), &ual),
+                "service {svc} should match a UAL record"
+            );
+        }
+        // An Azure Monitor record (only `category`) must not be treated as a UAL record.
+        let azure = ev(r#"{"category":"SignInLogs"}"#);
+        for svc in ["audit", "exchange", "threat_detection", "threat_management"] {
+            assert!(
+                !is_match_service(&Some(svc.to_string()), &azure),
+                "service {svc} should not match an Azure Monitor record"
+            );
+        }
     }
 }
