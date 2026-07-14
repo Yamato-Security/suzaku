@@ -10,6 +10,7 @@
 
 **改善:**
 
+- `azure-timeline` が SigmaHQ の Microsoft 365 ルールを読み込み・マッチできるようにした。これらのルールは `logsource.service` を `audit`/`exchange`/`threat_detection`/`threat_management` として宣言しているが、従来は `m365` しか認識されず、アップストリームの m365 ルールがすべて読み込み時に破棄されていた。これらのサービスを `m365` と同じ Unified Audit Log の判別（`Workload`/`RecordType`）で振り分けるようにした。 (#137) (@YamatoSecurity)
 - 異なるログソースの取り扱いを容易にするため、コードをリファクタリングした。 (@fukusuket)
 - Microsoft Graph API JSON形式のAzureログに対応した。 (#113) (@fukusuket)
 - 既存の `--timeline-start/--timeline-end` オプション（ファイル内のイベントタイムスタンプに基づいて動作する）とは異なり、S3キーの日付プレフィックスに基づいてオブジェクトをフィルタリングする `--file-date-from/--file-date-to` オプションを追加した。 (#118) (@fukusuket)
