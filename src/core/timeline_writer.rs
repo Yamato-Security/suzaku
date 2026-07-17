@@ -2,6 +2,7 @@ use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Green, Orange, Red, White, Yellow};
 use crate::core::util::{get_json_writer, get_writer};
 use crate::option::geoip::GeoIPSearch;
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use csv::Writer;
 use itertools::Itertools;
 use serde_json::Value;
@@ -15,6 +16,35 @@ use termcolor::{BufferWriter, ColorChoice, ColorSpec, WriteColor};
 pub struct OutputConfig {
     pub no_color: bool,
     pub raw_output: bool,
+    pub localtime: bool,
+}
+
+/// Formats an event timestamp for output.
+///
+/// By default the value is shown in UTC (`T`/`Z` stripped, e.g. `2023-07-10 12:27:45`). When
+/// `localtime` is set, the timestamp is parsed (RFC 3339, or a naive datetime assumed to be UTC)
+/// and rendered in the local timezone with an explicit offset, e.g. `2023-07-10 21:27:45+09:00`.
+/// Unparseable values fall back to the UTC rendering so nothing is dropped.
+fn format_timestamp(value: &str, localtime: bool) -> String {
+    if !localtime {
+        return value.replace("T", " ").replace("Z", "");
+    }
+    let utc: Option<DateTime<Utc>> = DateTime::parse_from_rfc3339(value)
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok()
+        .or_else(|| {
+            NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f")
+                .or_else(|_| NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S"))
+                .ok()
+                .map(|ndt| Utc.from_utc_datetime(&ndt))
+        });
+    match utc {
+        Some(u) => u
+            .with_timezone(&Local)
+            .format("%Y-%m-%d %H:%M:%S%:z")
+            .to_string(),
+        None => value.replace("T", " ").replace("Z", ""),
+    }
 }
 
 pub struct Writers {
@@ -35,10 +65,11 @@ pub struct OutputContext<'a> {
 }
 
 pub fn write_record(event: &Event, json: &Value, rule: Option<&Rule>, context: &mut OutputContext) {
+    let localtime = context.config.localtime;
     let mut record: Vec<String> = context
         .profile
         .iter()
-        .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo))
+        .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo, localtime))
         .collect();
     write_to_stdout(&mut record, context, json, Some(event), rule);
     write_to_csv(&record, context);
@@ -84,6 +115,7 @@ fn write_to_stdout(
             buf.set_color(ColorSpec::new().set_fg(color.rdg(context.config.no_color)))
                 .ok();
             let profile = context.profile;
+            let localtime = context.config.localtime;
             let geo = &mut context.geo;
             let mut json_record = json.clone();
             let sigma_profile: Vec<(String, String)> = profile
@@ -94,7 +126,7 @@ fn write_to_stdout(
 
             for (k, v) in sigma_profile {
                 if let (Some(event), rule) = (event, rule) {
-                    let value = get_value_from_event(&v, event, rule, geo);
+                    let value = get_value_from_event(&v, event, rule, geo, localtime);
                     json_record[k] = Value::String(value.to_string());
                 }
             }
@@ -143,6 +175,7 @@ fn write_to_json_format(
 
     if raw_output {
         let profile = context.profile;
+        let localtime = context.config.localtime;
         let geo = &mut context.geo;
 
         let writer = if pretty {
@@ -161,7 +194,7 @@ fn write_to_json_format(
 
             for (k, v) in sigma_profile {
                 if let (Some(event), rule) = (event, rule) {
-                    let value = get_value_from_event(&v, event, rule, geo);
+                    let value = get_value_from_event(&v, event, rule, geo, localtime);
                     json_record[k] = Value::String(value.to_string());
                 }
             }
@@ -250,6 +283,7 @@ fn build_correlation_record(
 ) -> Vec<String> {
     let events: Vec<Event> = events.iter().map(|e| e.event.clone()).collect();
     let profile = &context.profile;
+    let localtime = context.config.localtime;
     let mut correlation_map: HashMap<String, String> = HashMap::new();
     for (_, profile_value) in profile.iter() {
         let mut values = HashSet::new();
@@ -257,7 +291,13 @@ fn build_correlation_record(
             if profile_value == ".eventTime" && i < events.len() - 1 {
                 continue;
             }
-            let value = get_value_from_correlation_event(profile_value, event, rule, context.geo);
+            let value = get_value_from_correlation_event(
+                profile_value,
+                event,
+                rule,
+                context.geo,
+                localtime,
+            );
             values.insert(value);
         }
         let values: Vec<String> = values.into_iter().sorted().collect();
@@ -280,6 +320,7 @@ fn get_value_from_event_common(
     event: &Event,
     rule_info: RuleInfo,
     geo_ip: &mut Option<GeoIPSearch>,
+    localtime: bool,
 ) -> String {
     // GeoIP処理部分（共通）
     if let Some(geo) = geo_ip
@@ -310,7 +351,7 @@ fn get_value_from_event_common(
                     || k_trimmed.contains("eventTimestamp")
                     || k_trimmed.contains("CreationTime")
                 {
-                    value.value_to_string().replace("T", " ").replace("Z", "")
+                    format_timestamp(&value.value_to_string(), localtime)
                 } else {
                     value.value_to_string()
                 };
@@ -437,8 +478,15 @@ fn get_value_from_correlation_event(
     event: &Event,
     rule: &SigmaCorrelationRule,
     geo_ip: &mut Option<GeoIPSearch>,
+    localtime: bool,
 ) -> String {
-    get_value_from_event_common(key, event, RuleInfo::CorrelationRule(rule), geo_ip)
+    get_value_from_event_common(
+        key,
+        event,
+        RuleInfo::CorrelationRule(rule),
+        geo_ip,
+        localtime,
+    )
 }
 
 fn get_value_from_event(
@@ -446,9 +494,10 @@ fn get_value_from_event(
     event: &Event,
     rule: Option<&Rule>,
     geo_ip: &mut Option<GeoIPSearch>,
+    localtime: bool,
 ) -> String {
     if let Some(rule) = rule {
-        get_value_from_event_common(key, event, RuleInfo::Rule(rule), geo_ip)
+        get_value_from_event_common(key, event, RuleInfo::Rule(rule), geo_ip, localtime)
     } else {
         "".to_string()
     }
@@ -456,10 +505,11 @@ fn get_value_from_event(
 
 // 使用例
 impl OutputConfig {
-    pub fn new(no_color: bool, raw_output: bool) -> Self {
+    pub fn new(no_color: bool, raw_output: bool, localtime: bool) -> Self {
         Self {
             no_color,
             raw_output,
+            localtime,
         }
     }
 }
@@ -622,4 +672,48 @@ pub fn init_writers(output_path: Option<&PathBuf>, output_type: u8) -> (Writers,
     }
 
     (writers, output_pathes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_timestamp_utc_default_strips_t_and_z() {
+        assert_eq!(
+            format_timestamp("2023-07-10T12:27:45Z", false),
+            "2023-07-10 12:27:45"
+        );
+    }
+
+    #[test]
+    fn format_timestamp_localtime_preserves_rfc3339_instant() {
+        // The localtime rendering carries an explicit offset, so re-parsing it must
+        // recover the same UTC instant regardless of the machine's local timezone.
+        let out = format_timestamp("2023-07-10T12:27:45Z", true);
+        let parsed = DateTime::parse_from_str(&out, "%Y-%m-%d %H:%M:%S%:z")
+            .expect("localtime output should be parseable with an offset");
+        assert_eq!(
+            parsed.with_timezone(&Utc),
+            Utc.with_ymd_and_hms(2023, 7, 10, 12, 27, 45).unwrap()
+        );
+    }
+
+    #[test]
+    fn format_timestamp_localtime_assumes_naive_is_utc() {
+        // A naive timestamp (no offset, e.g. M365 CreationTime) is treated as UTC.
+        let out = format_timestamp("2023-07-10T12:27:45", true);
+        let parsed = DateTime::parse_from_str(&out, "%Y-%m-%d %H:%M:%S%:z")
+            .expect("localtime output should be parseable with an offset");
+        assert_eq!(
+            parsed.with_timezone(&Utc),
+            Utc.with_ymd_and_hms(2023, 7, 10, 12, 27, 45).unwrap()
+        );
+    }
+
+    #[test]
+    fn format_timestamp_localtime_falls_back_on_unparseable() {
+        // Non-timestamp values must not be dropped; fall back to the UTC rendering.
+        assert_eq!(format_timestamp("not-a-timestamp", true), "not-a-timestamp");
+    }
 }

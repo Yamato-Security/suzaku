@@ -10,6 +10,7 @@
 
 **Enhancements:**
 
+- Added a `-l, --localtime` option to the `aws-ct-timeline` and `azure-timeline` commands that outputs event timestamps in the machine's local timezone with an explicit UTC offset (e.g. `2023-07-10 12:27:45` becomes `2023-07-10 21:27:45+09:00` in JST) instead of UTC. Unparseable timestamps fall back to the existing UTC rendering. (#34) (@YamatoSecurity)
 - Bumped `sigma-rust` to the released `v0.7.1` and updated all other dependencies to their latest versions. `sigma-rust` v0.7.1 keeps the Sigma correlation support suzaku relies on while moving its YAML backend off the deprecated `serde_yml`/`noyalib` (which parsed large unsigned 64-bit values in rules/events as lossy floats) to the actively maintained `yaml_serde`, restoring correct `u64` parsing. (@YamatoSecurity)
 - Code refactored for easier handling of different log sources. (@fukusuket)
 - Added support for Microsoft Graph API JSON format for Azure logs. (#113) (@fukusuket)

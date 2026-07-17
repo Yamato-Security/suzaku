@@ -118,7 +118,7 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
         options.output_opt.output.as_ref(),
         options.output_opt.output_type,
     );
-    let config = OutputConfig::new(no_color, options.output_opt.raw_output);
+    let config = OutputConfig::new(no_color, options.output_opt.raw_output, options.localtime);
     let mut context =
         OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
     let mut summary = DetectionSummary::default();
