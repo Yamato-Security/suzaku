@@ -135,6 +135,7 @@ plugins:
             DFIR Timeline Commands: DFIRタイムラインコマンド
             Rules: ルール
             Native Sigma Support: ネイティブSigmaサポート
+            MITRE ATT&CK Tags: MITRE ATT&CK タグ
             Resources: リソース
             Companion Projects: 関連プロジェクト
             Changelog: 変更履歴
@@ -160,6 +161,7 @@ plugins:
             "DFIR Timeline Commands": "DFIR 時間軸指令"
             "Rules": "規則"
             "Native Sigma Support": "原生 Sigma 支援"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK 標籤"
             "Resources": "資源"
             "Companion Projects": "相關專案"
             "Changelog": "變更日誌"
@@ -185,6 +187,7 @@ plugins:
             "DFIR Timeline Commands": "DFIR 타임라인 명령어"
             "Rules": "규칙"
             "Native Sigma Support": "네이티브 Sigma 지원"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK 태그"
             "Resources": "리소스"
             "Companion Projects": "관련 프로젝트"
             "Changelog": "변경 이력"
@@ -210,6 +213,7 @@ plugins:
             "DFIR Timeline Commands": "DFIR-Zeitleistenbefehle"
             "Rules": "Regeln"
             "Native Sigma Support": "Native Sigma-Unterstützung"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK Tags"
             "Resources": "Ressourcen"
             "Companion Projects": "Begleitprojekte"
             "Changelog": "Änderungsprotokoll"
@@ -235,6 +239,7 @@ plugins:
             "DFIR Timeline Commands": "DFIR Zaman Çizelgesi Komutları"
             "Rules": "Kurallar"
             "Native Sigma Support": "Yerel Sigma Desteği"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK Etiketleri"
             "Resources": "Kaynaklar"
             "Companion Projects": "Tamamlayıcı Projeler"
             "Changelog": "Değişiklik Günlüğü"
@@ -260,6 +265,7 @@ plugins:
             "DFIR Timeline Commands": "Commandes de chronologie DFIR"
             "Rules": "Règles"
             "Native Sigma Support": "Prise en charge native de Sigma"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK Étiquettes"
             "Resources": "Ressources"
             "Companion Projects": "Projets compagnons"
             "Changelog": "Journal des modifications"
@@ -285,6 +291,7 @@ plugins:
             "DFIR Timeline Commands": "Comandos de línea de tiempo DFIR"
             "Rules": "Reglas"
             "Native Sigma Support": "Soporte nativo de Sigma"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK Etiquetas"
             "Resources": "Recursos"
             "Companion Projects": "Proyectos complementarios"
             "Changelog": "Registro de cambios"
@@ -310,6 +317,7 @@ plugins:
             "DFIR Timeline Commands": "Comandos de Linha do Tempo DFIR"
             "Rules": "Regras"
             "Native Sigma Support": "Suporte Nativo a Sigma"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK Etiquetas"
             "Resources": "Recursos"
             "Companion Projects": "Projetos Complementares"
             "Changelog": "Registro de Alterações"
@@ -335,6 +343,7 @@ plugins:
             "DFIR Timeline Commands": "Команди хронології DFIR"
             "Rules": "Правила"
             "Native Sigma Support": "Нативна підтримка Sigma"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK Теги"
             "Resources": "Ресурси"
             "Companion Projects": "Супутні проєкти"
             "Changelog": "Журнал змін"
@@ -360,6 +369,7 @@ plugins:
             "DFIR Timeline Commands": "DFIR टाइमलाइन कमांड"
             "Rules": "नियम"
             "Native Sigma Support": "मूल Sigma समर्थन"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK टैग"
             "Resources": "संसाधन"
             "Companion Projects": "सहयोगी परियोजनाएँ"
             "Changelog": "परिवर्तन सूची"
@@ -385,6 +395,7 @@ plugins:
             "DFIR Timeline Commands": "Perintah Linimasa DFIR"
             "Rules": "Aturan"
             "Native Sigma Support": "Dukungan Sigma Native"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK Tag"
             "Resources": "Sumber Daya"
             "Companion Projects": "Proyek Pendamping"
             "Changelog": "Catatan Perubahan"
@@ -410,6 +421,7 @@ plugins:
             "DFIR Timeline Commands": "DFIR အချိန်ဇယား ညွှန်ကြားချက်များ"
             "Rules": "စည်းမျဉ်းများ"
             "Native Sigma Support": "Native Sigma ပံ့ပိုးမှု"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK တဂ်များ"
             "Resources": "အရင်းအမြစ်များ"
             "Companion Projects": "ဆက်စပ်ပရောဂျက်များ"
             "Changelog": "ပြောင်းလဲမှုမှတ်တမ်း"
@@ -435,6 +447,7 @@ plugins:
             "DFIR Timeline Commands": "คำสั่งไทม์ไลน์ DFIR"
             "Rules": "กฎ"
             "Native Sigma Support": "การรองรับ Sigma แบบเนทีฟ"
+            "MITRE ATT&CK Tags": "MITRE ATT&CK แท็ก"
             "Resources": "แหล่งข้อมูล"
             "Companion Projects": "โครงการที่เกี่ยวข้อง"
             "Changelog": "บันทึกการเปลี่ยนแปลง"
@@ -460,6 +473,7 @@ plugins:
             "DFIR Timeline Commands": "أوامر الجدول الزمني لـ DFIR"
             "Rules": "القواعد"
             "Native Sigma Support": "دعم Sigma الأصلي"
+            "MITRE ATT&CK Tags": "وسوم MITRE ATT&CK"
             "Resources": "الموارد"
             "Companion Projects": "المشاريع المصاحبة"
             "Changelog": "سجل التغييرات"
@@ -492,6 +506,7 @@ nav:
       - DFIR Timeline Commands: commands/dfir-timeline.md
   - Rules:
       - Native Sigma Support: rules/index.md
+      - MITRE ATT&CK Tags: rules/mitre-attack-tags.md
   - Resources:
       - Companion Projects: resources/companion-projects.md
       - Changelog: resources/changelog.md
