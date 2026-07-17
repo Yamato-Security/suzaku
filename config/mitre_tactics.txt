@@ -1,0 +1,17 @@
+tag_full_str,tag_output_str
+attack.reconnaissance,Recon
+attack.resource-development,ResDev
+attack.initial-access,InitAccess
+attack.execution,Exec
+attack.persistence,Persis
+attack.privilege-escalation,PrivEsc
+attack.stealth,Stealth
+attack.defense-evasion,Stealth
+attack.defense-impairment,DefImpair
+attack.credential-access,CredAccess
+attack.discovery,Disc
+attack.lateral-movement,LatMov
+attack.collection,Collect
+attack.command-and-control,C2
+attack.exfiltration,Exfil
+attack.impact,Impact
