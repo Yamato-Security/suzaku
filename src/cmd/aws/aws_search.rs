@@ -38,7 +38,7 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
         options.output_opt.output.as_ref(),
         options.output_opt.output_type,
     );
-    let config = OutputConfig::new(no_color, options.output_opt.raw_output);
+    let config = OutputConfig::new(no_color, options.output_opt.raw_output, false);
     let mut context =
         OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
 

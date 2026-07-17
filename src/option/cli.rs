@@ -165,6 +165,10 @@ pub struct TimelineOptions {
     /// Minimum level for rules to load (default: informational)
     #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 302)]
     pub min_level: String,
+
+    /// Output the timestamp in the local timezone (default: UTC)
+    #[arg(help_heading = Some("Time Format"), short = 'l', long = "localtime", display_order = 351)]
+    pub localtime: bool,
 }
 
 #[derive(Subcommand)]
