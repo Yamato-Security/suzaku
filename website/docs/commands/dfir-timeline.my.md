@@ -45,13 +45,15 @@ Display Settings:
 
 ### `aws-ct-timeline` output profile
 
-Suzaku သည် `config/default_profile.yaml` ဖိုင်ကို အခြေခံ၍ အချက်အလက်များကို ထုတ်ပေးပါမည်:
+Suzaku သည် `config/aws_profile.yaml` ဖိုင်ကို အခြေခံ၍ အချက်အလက်များကို ထုတ်ပေးပါမည်:
 ```yaml
 Timestamp: '.eventTime'
 RuleTitle: 'sigma.title'
 RuleAuthor: 'sigma.author'
 Level: 'sigma.level'
 EventName: '.eventName'
+ErrorCode: '.errorCode'
+ErrorMessage: '.errorMessage'
 EventSource: '.eventSource'
 AWS-Region: '.awsRegion'
 SrcIP: '.sourceIPAddress'
@@ -63,6 +65,7 @@ UserARN: '.userIdentity.arn'
 UserPrincipalID: '.userIdentity.principalId'
 UserAccessKeyID: '.userIdentity.accessKeyId'
 EventID: '.eventID'
+Tags: 'sigma.tags'
 RuleID: 'sigma.id'
 ```
 

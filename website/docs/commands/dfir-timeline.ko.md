@@ -45,13 +45,15 @@ Display Settings:
 
 ### `aws-ct-timeline` 출력 프로파일
 
-Suzaku는 `config/default_profile.yaml` 파일을 기반으로 정보를 출력합니다:
+Suzaku는 `config/aws_profile.yaml` 파일을 기반으로 정보를 출력합니다:
 ```yaml
 Timestamp: '.eventTime'
 RuleTitle: 'sigma.title'
 RuleAuthor: 'sigma.author'
 Level: 'sigma.level'
 EventName: '.eventName'
+ErrorCode: '.errorCode'
+ErrorMessage: '.errorMessage'
 EventSource: '.eventSource'
 AWS-Region: '.awsRegion'
 SrcIP: '.sourceIPAddress'
@@ -63,6 +65,7 @@ UserARN: '.userIdentity.arn'
 UserPrincipalID: '.userIdentity.principalId'
 UserAccessKeyID: '.userIdentity.accessKeyId'
 EventID: '.eventID'
+Tags: 'sigma.tags'
 RuleID: 'sigma.id'
 ```
 
