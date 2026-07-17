@@ -38,7 +38,7 @@ terminal_size = "0.4.*"
 ureq="*"
 rayon = "1"
 tempfile = "3"
-sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust", branch = "0.7.0" }
+sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust", tag = "v0.7.1" }
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.

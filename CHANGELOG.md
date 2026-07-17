@@ -10,6 +10,7 @@
 
 **Enhancements:**
 
+- Bumped `sigma-rust` to the released `v0.7.1` and updated all other dependencies to their latest versions. `sigma-rust` v0.7.1 keeps the Sigma correlation support suzaku relies on while moving its YAML backend off the deprecated `serde_yml`/`noyalib` (which parsed large unsigned 64-bit values in rules/events as lossy floats) to the actively maintained `yaml_serde`, restoring correct `u64` parsing. (@YamatoSecurity)
 - Code refactored for easier handling of different log sources. (@fukusuket)
 - Added support for Microsoft Graph API JSON format for Azure logs. (#113) (@fukusuket)
 - `azure-timeline` now unwraps the `{ "records": [...] }` batch envelope used by Azure Monitor diagnostic-settings blobs and Event Hub messages (both whole-file and per-line), so those exports are read record-by-record instead of as a single event, and it now loads/matches the `identity_protection` (`riskdetection`) and `privileged_identity_management` (`pim`) rule types, which were previously dropped at load. (#130) (@YamatoSecurity)
