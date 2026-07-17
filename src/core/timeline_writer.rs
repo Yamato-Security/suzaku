@@ -276,6 +276,56 @@ fn abbreviate_level(level: &str) -> &str {
     }
 }
 
+/// Abbreviates a single Sigma `tags` entry following the conventions requested in
+/// <https://github.com/Yamato-Security/suzaku/issues/62> (matching Hayabusa's tag output):
+/// ATT&CK tactics get a short name, techniques (`attack.t1562.001`) become `T1562.001`, and
+/// groups (`attack.g0035`) become `G0035`. Separators are normalized so both the hyphen
+/// (`attack.credential-access`) and underscore (`attack.credential_access`) spellings map to
+/// the same abbreviation. Unrecognized tags (e.g. `cve.*`, `car.*`) are returned unchanged.
+fn abbreviate_tag(tag: &str) -> String {
+    let lower = tag.to_lowercase();
+    // Tactics: fold `_` to `-` so both spellings collapse onto a single key.
+    let tactic = match lower.replace('_', "-").as_str() {
+        "attack.reconnaissance" => Some("Recon"),
+        "attack.resource-development" => Some("ResDev"),
+        "attack.initial-access" => Some("InitAccess"),
+        "attack.execution" => Some("Exec"),
+        "attack.persistence" => Some("Persis"),
+        "attack.privilege-escalation" => Some("PrivEsc"),
+        "attack.defense-evasion" => Some("Evas"),
+        "attack.credential-access" => Some("CredAccess"),
+        "attack.discovery" => Some("Disc"),
+        "attack.lateral-movement" => Some("LatMov"),
+        "attack.collection" => Some("Collect"),
+        "attack.command-and-control" => Some("C2"),
+        "attack.exfiltration" => Some("Exfil"),
+        "attack.impact" => Some("Impact"),
+        _ => None,
+    };
+    if let Some(tactic) = tactic {
+        return tactic.to_string();
+    }
+    // Techniques: attack.t1562.001 -> T1562.001
+    if let Some(rest) = lower.strip_prefix("attack.t") {
+        return format!("T{}", rest.to_uppercase());
+    }
+    // Groups: attack.g0035 -> G0035
+    if let Some(rest) = lower.strip_prefix("attack.g") {
+        return format!("G{}", rest.to_uppercase());
+    }
+    // Unknown namespace: leave the tag untouched.
+    tag.to_string()
+}
+
+/// Joins a rule's `tags` list into a single ` ¦ `-separated string of abbreviations
+/// (like Hayabusa), so the list can be rendered in one flat CSV/JSON column.
+fn format_tags(tags: &[String]) -> String {
+    tags.iter()
+        .map(|tag| abbreviate_tag(tag))
+        .collect::<Vec<_>>()
+        .join(" ¦ ")
+}
+
 fn build_correlation_record(
     events: &Vec<&TimestampedEvent>,
     rule: &SigmaCorrelationRule,
@@ -450,8 +500,8 @@ impl<'a> RuleInfo<'a> {
 
     fn tags(&self) -> Option<String> {
         match self {
-            RuleInfo::Rule(rule) => rule.tags.as_ref().map(|tags| tags.join(", ")),
-            RuleInfo::CorrelationRule(rule) => rule.tags.as_ref().map(|tags| tags.join(", ")),
+            RuleInfo::Rule(rule) => rule.tags.as_ref().map(|tags| format_tags(tags)),
+            RuleInfo::CorrelationRule(rule) => rule.tags.as_ref().map(|tags| format_tags(tags)),
         }
     }
 
@@ -715,5 +765,68 @@ mod tests {
     fn format_timestamp_localtime_falls_back_on_unparseable() {
         // Non-timestamp values must not be dropped; fall back to the UTC rendering.
         assert_eq!(format_timestamp("not-a-timestamp", true), "not-a-timestamp");
+    }
+
+    #[test]
+    fn abbreviate_tag_maps_all_tactics() {
+        let cases = [
+            ("attack.reconnaissance", "Recon"),
+            ("attack.resource-development", "ResDev"),
+            ("attack.initial-access", "InitAccess"),
+            ("attack.execution", "Exec"),
+            ("attack.persistence", "Persis"),
+            ("attack.privilege-escalation", "PrivEsc"),
+            ("attack.defense-evasion", "Evas"),
+            ("attack.credential-access", "CredAccess"),
+            ("attack.discovery", "Disc"),
+            ("attack.lateral-movement", "LatMov"),
+            ("attack.collection", "Collect"),
+            ("attack.command-and-control", "C2"),
+            ("attack.exfiltration", "Exfil"),
+            ("attack.impact", "Impact"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(abbreviate_tag(input), expected, "tactic {input}");
+        }
+    }
+
+    #[test]
+    fn abbreviate_tag_normalizes_hyphen_and_underscore() {
+        // Both spellings appear in the real rule corpus and must collapse to one abbreviation.
+        assert_eq!(abbreviate_tag("attack.credential_access"), "CredAccess");
+        assert_eq!(abbreviate_tag("attack.credential-access"), "CredAccess");
+        assert_eq!(abbreviate_tag("attack.initial_access"), "InitAccess");
+        assert_eq!(abbreviate_tag("attack.command_and_control"), "C2");
+    }
+
+    #[test]
+    fn abbreviate_tag_handles_techniques_and_groups() {
+        assert_eq!(abbreviate_tag("attack.t1562.001"), "T1562.001");
+        assert_eq!(abbreviate_tag("attack.t1110"), "T1110");
+        assert_eq!(abbreviate_tag("attack.g0035"), "G0035");
+        // Mixed-case input is normalized before matching.
+        assert_eq!(abbreviate_tag("attack.T1087"), "T1087");
+    }
+
+    #[test]
+    fn abbreviate_tag_leaves_unknown_namespaces_unchanged() {
+        assert_eq!(abbreviate_tag("cve.2021.1234"), "cve.2021.1234");
+        assert_eq!(abbreviate_tag("car.2013-05-004"), "car.2013-05-004");
+    }
+
+    #[test]
+    fn format_tags_matches_issue_example() {
+        // Verbatim example from issue #62.
+        let tags = vec![
+            "attack.g0035".to_string(),
+            "attack.credential_access".to_string(),
+            "attack.discovery".to_string(),
+            "attack.t1110".to_string(),
+            "attack.t1087".to_string(),
+        ];
+        assert_eq!(
+            format_tags(&tags),
+            "G0035 ¦ CredAccess ¦ Disc ¦ T1110 ¦ T1087"
+        );
     }
 }
