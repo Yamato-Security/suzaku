@@ -276,6 +276,72 @@ fn abbreviate_level(level: &str) -> &str {
     }
 }
 
+/// Path (relative to the working directory, like the output profiles) of the ATT&CK tactic
+/// abbreviation table. This is the same file Hayabusa ships, minus its `html_tag_output_str`
+/// column: each line is `<full tag>,<abbreviation>` (e.g. `attack.credential-access,CredAccess`).
+const MITRE_TACTICS_PATH: &str = "config/mitre_tactics.txt";
+
+/// Parses the `config/mitre_tactics.txt` table into a `full-tag -> abbreviation` map. Keys are
+/// lowercased with `_` folded to `-` so lookups are case- and separator-insensitive. The header
+/// row and any non-`attack.` line are skipped. A missing/unreadable file yields an empty map, in
+/// which case tactic tags simply pass through un-abbreviated (techniques/groups are unaffected).
+fn load_mitre_tactics(path: &str) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    if let Ok(contents) = std::fs::read_to_string(path) {
+        for line in contents.lines() {
+            let mut fields = line.split(',');
+            let (Some(full), Some(abbrev)) = (fields.next(), fields.next()) else {
+                continue;
+            };
+            let key = full.trim().to_lowercase().replace('_', "-");
+            if !key.starts_with("attack.") {
+                continue; // header row / comments / blanks
+            }
+            map.insert(key, abbrev.trim().to_string());
+        }
+    }
+    map
+}
+
+/// Process-wide cache of the ATT&CK tactic table, loaded once on first use.
+fn mitre_tactics() -> &'static HashMap<String, String> {
+    static MAP: std::sync::OnceLock<HashMap<String, String>> = std::sync::OnceLock::new();
+    MAP.get_or_init(|| load_mitre_tactics(MITRE_TACTICS_PATH))
+}
+
+/// Abbreviates a single Sigma `tags` entry following the conventions requested in
+/// <https://github.com/Yamato-Security/suzaku/issues/62> (matching Hayabusa's tag output):
+/// ATT&CK tactics are looked up in `config/mitre_tactics.txt`, techniques (`attack.t1562.001`)
+/// become `T1562.001`, and groups (`attack.g0035`) become `G0035`. Separators are normalized so
+/// both the hyphen (`attack.credential-access`) and underscore (`attack.credential_access`)
+/// spellings map to the same abbreviation. Unrecognized tags (e.g. `cve.*`) are returned unchanged.
+fn abbreviate_tag(tag: &str) -> String {
+    let lower = tag.to_lowercase();
+    // Tactics: look up in the config-driven table, folding `_` to `-` to match its keys.
+    if let Some(abbrev) = mitre_tactics().get(&lower.replace('_', "-")) {
+        return abbrev.clone();
+    }
+    // Techniques: attack.t1562.001 -> T1562.001
+    if let Some(rest) = lower.strip_prefix("attack.t") {
+        return format!("T{}", rest.to_uppercase());
+    }
+    // Groups: attack.g0035 -> G0035
+    if let Some(rest) = lower.strip_prefix("attack.g") {
+        return format!("G{}", rest.to_uppercase());
+    }
+    // Unknown namespace: leave the tag untouched.
+    tag.to_string()
+}
+
+/// Joins a rule's `tags` list into a single ` ¦ `-separated string of abbreviations
+/// (like Hayabusa), so the list can be rendered in one flat CSV/JSON column.
+fn format_tags(tags: &[String]) -> String {
+    tags.iter()
+        .map(|tag| abbreviate_tag(tag))
+        .collect::<Vec<_>>()
+        .join(" ¦ ")
+}
+
 fn build_correlation_record(
     events: &Vec<&TimestampedEvent>,
     rule: &SigmaCorrelationRule,
@@ -450,8 +516,8 @@ impl<'a> RuleInfo<'a> {
 
     fn tags(&self) -> Option<String> {
         match self {
-            RuleInfo::Rule(rule) => rule.tags.as_ref().map(|tags| tags.join(", ")),
-            RuleInfo::CorrelationRule(rule) => rule.tags.as_ref().map(|tags| tags.join(", ")),
+            RuleInfo::Rule(rule) => rule.tags.as_ref().map(|tags| format_tags(tags)),
+            RuleInfo::CorrelationRule(rule) => rule.tags.as_ref().map(|tags| format_tags(tags)),
         }
     }
 
@@ -715,5 +781,108 @@ mod tests {
     fn format_timestamp_localtime_falls_back_on_unparseable() {
         // Non-timestamp values must not be dropped; fall back to the UTC rendering.
         assert_eq!(format_timestamp("not-a-timestamp", true), "not-a-timestamp");
+    }
+
+    #[test]
+    fn abbreviate_tag_maps_all_tactics() {
+        // Mappings come from config/mitre_tactics.txt (the same table Hayabusa ships), so this
+        // exercises the file loader end to end. Note defense-evasion maps to `Stealth`, matching
+        // Hayabusa (not the `Evas` originally listed in issue #62).
+        let cases = [
+            ("attack.reconnaissance", "Recon"),
+            ("attack.resource-development", "ResDev"),
+            ("attack.initial-access", "InitAccess"),
+            ("attack.execution", "Exec"),
+            ("attack.persistence", "Persis"),
+            ("attack.privilege-escalation", "PrivEsc"),
+            ("attack.stealth", "Stealth"),
+            ("attack.defense-evasion", "Stealth"),
+            ("attack.defense-impairment", "DefImpair"),
+            ("attack.credential-access", "CredAccess"),
+            ("attack.discovery", "Disc"),
+            ("attack.lateral-movement", "LatMov"),
+            ("attack.collection", "Collect"),
+            ("attack.command-and-control", "C2"),
+            ("attack.exfiltration", "Exfil"),
+            ("attack.impact", "Impact"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(abbreviate_tag(input), expected, "tactic {input}");
+        }
+    }
+
+    #[test]
+    fn load_mitre_tactics_parses_and_normalizes() {
+        use std::io::Write;
+        // Include the header row and a stray 3-column (Hayabusa-style) line to prove the loader
+        // skips the header and tolerates/ignores extra columns.
+        let dir = std::env::temp_dir();
+        let path = dir.join("suzaku_test_mitre_tactics.txt");
+        {
+            let mut f = std::fs::File::create(&path).unwrap();
+            writeln!(f, "tag_full_str,tag_output_str").unwrap();
+            writeln!(f, "attack.credential-access,CredAccess").unwrap();
+            writeln!(f, "attack.command-and-control,C2,13. C2").unwrap();
+            writeln!(f).unwrap();
+        }
+        let map = load_mitre_tactics(path.to_str().unwrap());
+        assert_eq!(
+            map.get("attack.credential-access").map(String::as_str),
+            Some("CredAccess")
+        );
+        // Third column is ignored.
+        assert_eq!(
+            map.get("attack.command-and-control").map(String::as_str),
+            Some("C2")
+        );
+        // Header row is not inserted.
+        assert!(!map.contains_key("tag_full_str"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn load_mitre_tactics_missing_file_is_empty() {
+        // A missing table degrades gracefully to an empty map (tactics pass through).
+        assert!(load_mitre_tactics("config/does_not_exist_mitre_tactics.txt").is_empty());
+    }
+
+    #[test]
+    fn abbreviate_tag_normalizes_hyphen_and_underscore() {
+        // Both spellings appear in the real rule corpus and must collapse to one abbreviation.
+        assert_eq!(abbreviate_tag("attack.credential_access"), "CredAccess");
+        assert_eq!(abbreviate_tag("attack.credential-access"), "CredAccess");
+        assert_eq!(abbreviate_tag("attack.initial_access"), "InitAccess");
+        assert_eq!(abbreviate_tag("attack.command_and_control"), "C2");
+    }
+
+    #[test]
+    fn abbreviate_tag_handles_techniques_and_groups() {
+        assert_eq!(abbreviate_tag("attack.t1562.001"), "T1562.001");
+        assert_eq!(abbreviate_tag("attack.t1110"), "T1110");
+        assert_eq!(abbreviate_tag("attack.g0035"), "G0035");
+        // Mixed-case input is normalized before matching.
+        assert_eq!(abbreviate_tag("attack.T1087"), "T1087");
+    }
+
+    #[test]
+    fn abbreviate_tag_leaves_unknown_namespaces_unchanged() {
+        assert_eq!(abbreviate_tag("cve.2021.1234"), "cve.2021.1234");
+        assert_eq!(abbreviate_tag("car.2013-05-004"), "car.2013-05-004");
+    }
+
+    #[test]
+    fn format_tags_matches_issue_example() {
+        // Verbatim example from issue #62.
+        let tags = vec![
+            "attack.g0035".to_string(),
+            "attack.credential_access".to_string(),
+            "attack.discovery".to_string(),
+            "attack.t1110".to_string(),
+            "attack.t1087".to_string(),
+        ];
+        assert_eq!(
+            format_tags(&tags),
+            "G0035 ¦ CredAccess ¦ Disc ¦ T1110 ¦ T1087"
+        );
     }
 }
