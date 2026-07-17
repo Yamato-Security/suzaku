@@ -135,6 +135,7 @@ plugins:
             DFIR Timeline Commands: DFIRタイムラインコマンド
             Rules: ルール
             Native Sigma Support: ネイティブSigmaサポート
+            MITRE ATT&CK Tags: MITRE ATT&CK タグ
             Resources: リソース
             Companion Projects: 関連プロジェクト
             Changelog: 変更履歴
@@ -492,6 +493,7 @@ nav:
       - DFIR Timeline Commands: commands/dfir-timeline.md
   - Rules:
       - Native Sigma Support: rules/index.md
+      - MITRE ATT&CK Tags: rules/mitre-attack-tags.md
   - Resources:
       - Companion Projects: resources/companion-projects.md
       - Changelog: resources/changelog.md
