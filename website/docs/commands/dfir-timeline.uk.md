@@ -45,13 +45,15 @@ Display Settings:
 
 ### Профіль виводу команди `aws-ct-timeline`
 
-Suzaku виводить інформацію на основі файлу `config/default_profile.yaml`:
+Suzaku виводить інформацію на основі файлу `config/aws_profile.yaml`:
 ```yaml
 Timestamp: '.eventTime'
 RuleTitle: 'sigma.title'
 RuleAuthor: 'sigma.author'
 Level: 'sigma.level'
 EventName: '.eventName'
+ErrorCode: '.errorCode'
+ErrorMessage: '.errorMessage'
 EventSource: '.eventSource'
 AWS-Region: '.awsRegion'
 SrcIP: '.sourceIPAddress'
@@ -63,6 +65,7 @@ UserARN: '.userIdentity.arn'
 UserPrincipalID: '.userIdentity.principalId'
 UserAccessKeyID: '.userIdentity.accessKeyId'
 EventID: '.eventID'
+Tags: 'sigma.tags'
 RuleID: 'sigma.id'
 ```
 

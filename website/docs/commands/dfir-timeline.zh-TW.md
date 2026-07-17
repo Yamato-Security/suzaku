@@ -45,13 +45,15 @@ Display Settings:
 
 ### `aws-ct-timeline` 輸出設定檔
 
-Suzaku 會根據 `config/default_profile.yaml` 檔案輸出資訊：
+Suzaku 會根據 `config/aws_profile.yaml` 檔案輸出資訊：
 ```yaml
 Timestamp: '.eventTime'
 RuleTitle: 'sigma.title'
 RuleAuthor: 'sigma.author'
 Level: 'sigma.level'
 EventName: '.eventName'
+ErrorCode: '.errorCode'
+ErrorMessage: '.errorMessage'
 EventSource: '.eventSource'
 AWS-Region: '.awsRegion'
 SrcIP: '.sourceIPAddress'
@@ -63,6 +65,7 @@ UserARN: '.userIdentity.arn'
 UserPrincipalID: '.userIdentity.principalId'
 UserAccessKeyID: '.userIdentity.accessKeyId'
 EventID: '.eventID'
+Tags: 'sigma.tags'
 RuleID: 'sigma.id'
 ```
 
