@@ -1,10 +1,10 @@
 [package]
 name = "suzaku"
-version = "2.0.0-dev"
+version = "2.0.0"
 repository = "https://github.com/Yamato-Security/suzaku"
 authors = ["Yamato Security @SecurityYamato"]
 edition = "2024"
-rust-version = "1.89.0"
+rust-version = "1.97.1"
 include = ["src/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
 
 [dependencies]
@@ -38,7 +38,7 @@ terminal_size = "0.4.*"
 ureq="*"
 rayon = "1"
 tempfile = "3"
-sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust", branch = "0.7.0" }
+sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust", tag = "v0.7.1" }
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.
