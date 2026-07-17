@@ -79,15 +79,20 @@ pub fn scan_directory<'a>(
             correlation_engine,
         );
     };
-    process_events_from_dir(
+    if let Err(e) = process_events_from_dir(
         process_events,
         d,
         options.output_opt.output.is_some(),
         no_color,
         log,
         &options.input_opt.file_date_opt,
-    )
-    .unwrap();
+    ) {
+        p(
+            Orange.rdg(no_color),
+            &format!("Failed to scan directory {}: {e}", d.display()),
+            true,
+        );
+    }
 }
 
 pub fn process_events_from_dir<F>(
@@ -584,13 +589,13 @@ fn count_files_recursive(
             if let Some(ext) = path.extension().and_then(|s| s.to_str())
                 && (ext == "json" || ext == "jsonl" || ext == "gz" || ext == "csv")
             {
-                let path_str = path.to_str().unwrap();
-                if !filter_file_by_date_path(file_date_opt, path_str) {
+                let path_str = path.to_string_lossy();
+                if !filter_file_by_date_path(file_date_opt, &path_str) {
                     continue;
                 }
                 count += 1;
                 total_size += fs::metadata(&path)?.len();
-                paths.push(path_str.to_string());
+                paths.push(path_str.into_owned());
             }
         } else if path.is_dir() {
             let (sub_count, sub_paths, sub_size) = count_files_recursive(&path, file_date_opt)?;
@@ -945,5 +950,28 @@ mod tests {
         );
         let events = load_json_from_file(contents, &LogSource::Aws).unwrap();
         assert_eq!(events.len(), 3);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_count_files_recursive_non_utf8_filename() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        // A file whose extension is valid UTF-8 (.json) but whose stem is not.
+        let dir = tempfile::tempdir().unwrap();
+        let name = OsStr::from_bytes(b"bad-\xff.json");
+        let path = dir.path().join(name);
+        // Some filesystems reject non-UTF-8 names at creation; only assert when
+        // the file could actually be created (e.g. ext4).
+        if fs::write(&path, b"[]").is_err() {
+            return;
+        }
+
+        let (count, paths, _size) =
+            count_files_recursive(&dir.path().to_path_buf(), &FileDateOption::default())
+                .expect("non-UTF-8 filename should not panic the walk");
+        assert_eq!(count, 1);
+        assert_eq!(paths.len(), 1);
     }
 }
