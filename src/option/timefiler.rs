@@ -121,12 +121,15 @@ pub(crate) fn parse_offset(offset: &str) -> Option<Duration> {
     let unit = chars.next_back()?; // None => empty input, no panic
     let num = chars.as_str(); // everything before the unit character
     let n: i64 = num.parse().ok()?;
+    // Use checked multiplication and chrono's non-panicking `try_*` constructors so a huge
+    // numeric offset (e.g. `9223372036854775807y`) is rejected as `None` instead of panicking
+    // with "attempt to multiply with overflow" / an out-of-range `Duration`.
     match unit {
-        'y' => Some(Duration::days(n * 365)),
-        'M' => Some(Duration::days(n * 30)),
-        'd' => Some(Duration::days(n)),
-        'h' => Some(Duration::hours(n)),
-        'm' => Some(Duration::minutes(n)),
+        'y' => Duration::try_days(n.checked_mul(365)?),
+        'M' => Duration::try_days(n.checked_mul(30)?),
+        'd' => Duration::try_days(n),
+        'h' => Duration::try_hours(n),
+        'm' => Duration::try_minutes(n),
         _ => None,
     }
 }
@@ -365,5 +368,16 @@ mod tests {
         assert_eq!(parse_offset("30あ"), None);
         assert_eq!(parse_offset("30x"), None);
         assert_eq!(parse_offset("d"), None); // no number
+    }
+
+    #[test]
+    fn parse_offset_rejects_overflowing_offsets_without_panicking() {
+        // Very large numeric offsets previously panicked with "attempt to multiply with
+        // overflow" (or an out-of-range chrono Duration), reachable via the clap value parser.
+        assert_eq!(parse_offset("9223372036854775807y"), None); // i64::MAX * 365 overflows
+        assert_eq!(parse_offset("-9223372036854775808y"), None); // i64::MIN * 365 overflows
+        assert_eq!(parse_offset("9223372036854775807d"), None); // out of chrono Duration range
+        assert_eq!(parse_offset("9223372036854775807h"), None);
+        assert_eq!(parse_offset("9223372036854775807m"), None);
     }
 }
