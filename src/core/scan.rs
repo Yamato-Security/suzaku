@@ -602,12 +602,38 @@ fn count_files_recursive(
     Ok((count, paths, total_size))
 }
 
+/// Upper bound on the decompressed size of a single `.gz` input. DEFLATE can inflate at
+/// roughly 1032:1, so a few-MB archive can otherwise expand to many GB and OOM-kill the
+/// whole scan. Generous enough for real logs, finite enough to stop a decompression bomb.
+const MAX_DECOMPRESSED_BYTES: u64 = 3 * 1024 * 1024 * 1024; // 3 GiB
+
 pub fn read_gz_file(file_path: &PathBuf) -> io::Result<String> {
+    read_gz_file_capped(file_path, MAX_DECOMPRESSED_BYTES)
+}
+
+/// Decompresses a gzip file, refusing to buffer more than `max_bytes` of decompressed data.
+///
+/// `Read::take` alone is not enough: it truncates silently and returns `Ok`, which would feed
+/// a partial/corrupted log to the parser. Instead we read one byte past the ceiling and treat
+/// hitting it as an error, so the caller's per-file handling (`Err(_) => continue` /
+/// `unwrap_or_default()`) skips just that file and the scan continues.
+fn read_gz_file_capped(file_path: &PathBuf, max_bytes: u64) -> io::Result<String> {
     let file = File::open(file_path)?;
-    let mut decoder = GzDecoder::new(BufReader::new(file));
-    let mut contents = String::new();
-    decoder.read_to_string(&mut contents)?;
-    Ok(contents)
+    let decoder = GzDecoder::new(BufReader::new(file));
+    let mut buf = Vec::new();
+    decoder.take(max_bytes + 1).read_to_end(&mut buf)?;
+    if buf.len() as u64 > max_bytes {
+        eprintln!(
+            "[WARNING] Skipping {}: decompressed size exceeds the {} GiB limit (possible gzip bomb).",
+            file_path.display(),
+            max_bytes / (1024 * 1024 * 1024)
+        );
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "decompressed size exceeds the maximum allowed limit",
+        ));
+    }
+    String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 pub fn load_json_from_file(
     log_contents: &str,
@@ -945,5 +971,41 @@ mod tests {
         );
         let events = load_json_from_file(contents, &LogSource::Aws).unwrap();
         assert_eq!(events.len(), 3);
+    }
+
+    fn write_gz(path: &PathBuf, decompressed: &[u8]) {
+        use flate2::Compression;
+        use flate2::write::GzEncoder;
+        use std::io::Write as _;
+        let mut enc = GzEncoder::new(File::create(path).unwrap(), Compression::default());
+        enc.write_all(decompressed).unwrap();
+        enc.finish().unwrap();
+    }
+
+    #[test]
+    fn read_gz_file_capped_rejects_oversized_decompression() {
+        // 200 decompressed bytes with a 16-byte cap must error (not return partial data),
+        // so the caller skips the file instead of the process OOM-ing on a bomb.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bomb.json.gz");
+        write_gz(&path, &[b'A'; 200]);
+        assert!(read_gz_file_capped(&path, 16).is_err());
+    }
+
+    #[test]
+    fn read_gz_file_capped_accepts_within_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ok.json.gz");
+        write_gz(&path, b"[]");
+        assert_eq!(read_gz_file_capped(&path, 1024).unwrap(), "[]");
+    }
+
+    #[test]
+    fn read_gz_file_capped_accepts_exactly_at_limit() {
+        // Exactly `max_bytes` decompressed is allowed; only strictly-over is rejected.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("edge.json.gz");
+        write_gz(&path, &[b'x'; 32]);
+        assert_eq!(read_gz_file_capped(&path, 32).unwrap().len(), 32);
     }
 }
