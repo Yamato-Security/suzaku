@@ -24,6 +24,7 @@
 **Bug Fixes:**
 
 - Malformed `--timeline-start` / `--timeline-end` / `--time-offset` values are now rejected up front with a clear error, instead of being parsed per-event and silently dropping **every** event (empty timeline, no warning) — e.g. a plain `--timeline-start 2024-01-01` instead of full RFC 3339. Also fixed a `parse_offset` panic on an empty offset, trailing whitespace, or a multibyte trailing character (the split index was taken from the untrimmed length). (#150) (@YamatoSecurity)
+- Fixed a panic (`byte index 24 is not a char boundary`) when the end-of-scan "Rule Authors" summary truncated an author name longer than 27 bytes whose 24th byte fell mid-codepoint — routine for Japanese/CJK and other non-ASCII author names common in Sigma rule packs. Truncation now counts and cuts by characters, not bytes, so the completed run's output is no longer discarded. (#148) (@YamatoSecurity)
 - The `aws-ct-timeline`, `aws-ct-metrics`, `aws-ct-search`, and `aws-ct-summary` commands silently dropped JSONL input (one CloudTrail event, or a `{ "Records": [...] }` batch, per line): the parsers read the whole file as a single JSON document and returned no events when that failed. They now fall back to per-line JSONL parsing, and `.jsonl` files are discovered and read. (#139) (@YamatoSecurity)
 - `-T, --no-frequency-timeline` option was not working so we removed it. Also fixed a logic bug in the authors display. (#110) (@fukusuket)
 - Output file would get saved even if there were no results. (#114) (@fukusuket)

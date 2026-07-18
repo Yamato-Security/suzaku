@@ -181,6 +181,20 @@ fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)>
     println!();
 }
 
+/// Truncates a rule author name to at most 27 characters for the summary table.
+///
+/// Slicing by byte index panics ("byte index N is not a char boundary") when a multibyte
+/// UTF-8 codepoint straddles the cut — routine for Japanese/CJK and accented author names.
+/// Counting and truncating by `chars()` keeps the ~27-char display budget and never slices
+/// mid-codepoint.
+fn truncate_author(name: &str) -> String {
+    if name.chars().count() <= 27 {
+        name.to_string()
+    } else {
+        format!("{}...", name.chars().take(24).collect::<String>())
+    }
+}
+
 pub fn print_detected_rule_authors(
     rule_author_counter: &HashMap<String, i128>,
     table_column_num: usize,
@@ -207,12 +221,7 @@ pub fn print_detected_rule_authors(
         let mut tmp = Vec::new();
         for y in 0..div {
             if y * table_column_num + x < sorted_authors.len() {
-                // Limit length to 27 to prevent the table from wrapping
-                let filter_author = if sorted_authors[y * table_column_num + x].0.len() <= 27 {
-                    sorted_authors[y * table_column_num + x].0.to_string()
-                } else {
-                    format!("{}...", &sorted_authors[y * table_column_num + x].0[0..24])
-                };
+                let filter_author = truncate_author(sorted_authors[y * table_column_num + x].0);
                 tmp.push(format!(
                     "{} ({})",
                     filter_author,
@@ -237,4 +246,35 @@ pub fn print_detected_rule_authors(
     p(Green.rdg(no_color), "Rule Authors:", true);
     p(None, &format!("{tb}"), true);
     println!();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate_author_short_name_unchanged() {
+        // <= 27 chars is returned verbatim, including short multibyte names.
+        assert_eq!(truncate_author("Zach Mathis"), "Zach Mathis");
+        assert_eq!(truncate_author("山本太郎"), "山本太郎");
+    }
+
+    #[test]
+    fn truncate_author_long_ascii_is_truncated_by_chars() {
+        let out = truncate_author(&"a".repeat(40));
+        assert!(out.ends_with("..."));
+        assert_eq!(out.chars().count(), 27); // 24 chars + "..."
+    }
+
+    #[test]
+    fn truncate_author_multibyte_does_not_panic() {
+        // 22 ASCII + 10 three-byte kanji => 32 chars, and byte index 24 lands in the
+        // interior of the first kanji, so the old `&name[0..24]` byte slice panicked with
+        // "byte index 24 is not a char boundary". The char-based version must not panic.
+        let name = format!("{}{}", "x".repeat(22), "あ".repeat(10));
+        assert!(!name.is_char_boundary(24)); // reproduces the exact panic condition
+        let out = truncate_author(&name); // must not panic
+        assert!(out.ends_with("..."));
+        assert_eq!(out.chars().count(), 27);
+    }
 }
