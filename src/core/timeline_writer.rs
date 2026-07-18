@@ -389,22 +389,24 @@ fn get_value_from_event_common(
     geo_ip: &mut Option<GeoIPSearch>,
     localtime: bool,
 ) -> String {
-    // GeoIP処理部分（共通）
-    if let Some(geo) = geo_ip
-        && let Some(ip) = event.get("sourceIPAddress")
-    {
-        let ip = ip.value_to_string();
-        if let Some(ip) = geo.convert(ip.as_str()) {
-            if key == "SrcASN" {
-                return geo.get_asn(ip);
-            } else if key == "SrcCity" {
-                return geo.get_city(ip);
-            } else if key == "SrcCountry" {
-                return geo.get_country(ip);
+    // GeoIP処理部分（共通）: only the three geo columns are enriched. A missing
+    // GeoIP DB, a missing sourceIPAddress, or a non-IP value (e.g. an AWS service
+    // principal like "cloudtrail.amazonaws.com") yields the "-" placeholder for
+    // those columns only — it must never overwrite an unrelated column's value.
+    if matches!(key, "SrcASN" | "SrcCity" | "SrcCountry") {
+        if let Some(geo) = geo_ip
+            && let Some(ip) = event.get("sourceIPAddress")
+        {
+            let ip = ip.value_to_string();
+            if let Some(ip) = geo.convert(ip.as_str()) {
+                return match key {
+                    "SrcASN" => geo.get_asn(ip),
+                    "SrcCity" => geo.get_city(ip),
+                    _ => geo.get_country(ip),
+                };
             }
-        } else {
-            return ip;
         }
+        return "-".to_string();
     }
     // イベントフィールド処理（共通）
     if key.starts_with(".") {

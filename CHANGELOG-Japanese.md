@@ -25,6 +25,7 @@
 - スキャン終了時の「Rule Authors」サマリーで、27バイトを超え24バイト目がマルチバイト文字の途中に来る作者名を切り詰める際に発生していたパニック（`byte index 24 is not a char boundary`）を修正した。日本語などの非ASCII作者名（Sigma ルールパックで一般的）で起きていた。切り詰めをバイトではなく文字単位で行うようにし、完了済みの結果が破棄されないようにした。 (#148) (@YamatoSecurity)
 - CSV/表計算ソフトの数式インジェクション（CWE-1236）をレポート出力で無害化した。CSV のセルは攻撃者が影響を与えられるクラウドログのフィールド（`userAgent`、プリンシパル ARN、エラー文字列など）に由来し、`=`・`+`・`-`・`@`・タブ・CR で始まる値は Excel/LibreOffice/Sheets で開いた際に数式として評価されてしまう。これらの値は全ての CSV 出力箇所でアポストロフィを前置（表計算ソフトはテキスト強制マーカーとして扱う）するようにした。JSON/JSONL と標準出力は変更しない。 (#146) (@YamatoSecurity)
 - gzip の展開サイズを制限し、展開爆弾（decompression bomb）による OOM を防いだ。スキャン対象ツリー内の細工された・破損した `.gz` が数GB（DEFLATE は約1032:1）に展開し、スキャン全体が OOM で強制終了される可能性があった。`.gz` 入力は展開後 3 GiB を上限とし、上限を超えるファイルは実行を中断せず警告を表示してスキップするようにした。 (#147) (@YamatoSecurity)
+- `--geo-ip` がタイムライン出力を破壊していた問題を修正した。レコードの `sourceIPAddress` が解析可能な IP アドレスでない場合（`cloudtrail.amazonaws.com` などの AWS サービスイベントでは一般的）、GeoIP ルックアップがその生の文字列を*すべて*の出力列に返し、`Timestamp`・`EventName`・`RuleTitle` などを上書きしていた。エンリッチメントを `SrcASN`・`SrcCity`・`SrcCountry` の3列のみに限定し、アドレスを解決できない場合は `-` を出力するようにした。 (#145) (@YamatoSecurity)
 - `aws-ct-timeline`・`aws-ct-metrics`・`aws-ct-search`・`aws-ct-summary` コマンドが JSONL 入力（1行に1つの CloudTrail イベント、または `{ "Records": [...] }` バッチ）を無言で読み飛ばしていた問題を修正した。パーサーはファイル全体を単一の JSON として読み込み、失敗するとイベントを1件も返していなかった。行単位の JSONL 解析にフォールバックするようにし、`.jsonl` 拡張子のファイルも認識・読み込みできるようにした。 (#139) (@YamatoSecurity)
 - `-T, --no-frequency-timeline`オプションが機能していなかったため削除した。また、作者表示のロジックバグを修正した。 (#110) (@fukusuket)
 - 結果がなくても出力ファイルは保存されていた。 (#114) (@fukusuket)
