@@ -1,7 +1,7 @@
 use crate::core::color::SuzakuColor::Red;
 use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::core::util::{get_writer, output_path_info, p};
+use crate::core::util::{get_writer, output_path_info, p, sanitize_csv_field};
 use crate::option::cli::InputOption;
 use crate::option::geoip::GeoIPSearch;
 use crate::option::timefiler::filter_by_time;
@@ -566,23 +566,22 @@ fn output_summary(
                 abused_fai = abused_fai.replace("-  (2", "(2");
             }
 
-            csv_wtr
-                .write_record(vec![
-                    user_arn,
-                    &num_of_events,
-                    &first_timestamp,
-                    &last_timestamp,
-                    &abused_suc,
-                    &abused_fai,
-                    &other_suc,
-                    &other_fai,
-                    &aws_regions,
-                    &src_ips,
-                    &user_types,
-                    &access_key_ids,
-                    &user_agents,
-                ])
-                .unwrap();
+            let sanitized = vec![
+                sanitize_csv_field(user_arn),
+                sanitize_csv_field(&num_of_events),
+                sanitize_csv_field(&first_timestamp),
+                sanitize_csv_field(&last_timestamp),
+                sanitize_csv_field(&abused_suc),
+                sanitize_csv_field(&abused_fai),
+                sanitize_csv_field(&other_suc),
+                sanitize_csv_field(&other_fai),
+                sanitize_csv_field(&aws_regions),
+                sanitize_csv_field(&src_ips),
+                sanitize_csv_field(user_types),
+                sanitize_csv_field(&access_key_ids),
+                sanitize_csv_field(&user_agents),
+            ];
+            csv_wtr.write_record(&sanitized).unwrap();
         }
         csv_wtr.flush().unwrap();
         output_paths.push(csv_path);

@@ -27,6 +27,30 @@ pub fn get_json_writer(output: &Option<PathBuf>) -> BufWriter<Box<dyn Write>> {
     }
 }
 
+/// Neutralizes CSV/spreadsheet formula injection (CWE-1236) for a single field.
+///
+/// Excel, LibreOffice Calc and Google Sheets treat any cell whose text begins with `=`, `+`,
+/// `-`, `@`, a tab (0x09) or a carriage return (0x0D) as a formula. Suzaku's CSV fields carry
+/// attacker-influenceable cloud-log values (`userAgent`, principal names, error strings, ...),
+/// so such a value would be evaluated when an analyst opens the report. The `csv` crate only
+/// escapes delimiters/quotes/newlines, so it does not prevent this. Prefix any dangerous value
+/// with a single apostrophe, which spreadsheets treat as a "force text" marker and hide on
+/// display. Use this for CSV output ONLY — never for JSON/JSONL or stdout.
+pub fn sanitize_csv_field(field: &str) -> String {
+    if field
+        .chars()
+        .next()
+        .is_some_and(|c| matches!(c, '=' | '+' | '-' | '@' | '\t' | '\r'))
+    {
+        let mut s = String::with_capacity(field.len() + 1);
+        s.push('\'');
+        s.push_str(field);
+        s
+    } else {
+        field.to_string()
+    }
+}
+
 pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) -> bool {
     if let Some(file) = filepath {
         if !file.exists() {
@@ -124,4 +148,32 @@ pub fn load_profile(
         }
     }
     profile
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_csv_field_neutralizes_formula_triggers() {
+        // Leading formula characters get an apostrophe prefix.
+        for f in ["=1+1", "+cmd", "-2+3", "@SUM(A1)", "\tx", "\rx"] {
+            let out = sanitize_csv_field(f);
+            assert!(out.starts_with('\''), "{f:?} -> {out:?}");
+            assert_eq!(&out[1..], f);
+        }
+    }
+
+    #[test]
+    fn sanitize_csv_field_leaves_safe_values_unchanged() {
+        for f in [
+            "cloudtrail.amazonaws.com",
+            "ListBuckets",
+            "192.168.0.1",
+            "",
+            "abc-def",
+        ] {
+            assert_eq!(sanitize_csv_field(f), f);
+        }
+    }
 }
