@@ -1,6 +1,7 @@
+use crate::core::color::SuzakuColor::Red;
 use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::core::util::{get_writer, output_path_info, p, sanitize_csv_field};
+use crate::core::util::{fatal_error, get_writer, output_path_info, p, sanitize_csv_field};
 use crate::option::cli::InputOption;
 use crate::option::timefiler::filter_by_time;
 use comfy_table::{Cell, CellAlignment, Table};
@@ -15,7 +16,7 @@ use termcolor::Color;
 pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf>, no_color: bool) {
     let directory = &input_opt.directory;
     let file = &input_opt.filepath;
-    let mut wtr = get_writer(output);
+    let mut wtr = get_writer(output).unwrap_or_else(|e| fatal_error(no_color, &e));
     let csv_header = vec!["EventName", "Percent", "Total"];
     if output.is_some() {
         wtr.write_record(&csv_header).unwrap();
@@ -41,15 +42,20 @@ pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf
     };
 
     if let Some(d) = directory {
-        process_events_from_dir(
+        if let Err(e) = process_events_from_dir(
             stats_func,
             d,
             true,
             no_color,
             &LogSource::Aws,
             &input_opt.file_date_opt,
-        )
-        .unwrap();
+        ) {
+            p(
+                Red.rdg(no_color),
+                &format!("Failed to scan directory {}: {e}", d.display()),
+                true,
+            );
+        }
         print_count_map_desc(csv_header, &count_map, wtr, output, no_color);
     } else if let Some(f) = file {
         let log_contents = get_content(f);

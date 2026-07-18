@@ -2,7 +2,7 @@ use crate::core::color::SuzakuColor::{Green, Red};
 use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
 use crate::core::timeline_writer::{OutputConfig, OutputContext, init_writers, write_record};
-use crate::core::util::{load_profile, output_path_info, p};
+use crate::core::util::{fatal_error, load_profile, output_path_info, p};
 use crate::option::cli::{CommonOptions, SearchOptions};
 use crate::option::geoip::GeoIPSearch;
 use crate::option::timefiler::filter_by_time;
@@ -37,7 +37,8 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
     let (writers, output_pathes) = init_writers(
         options.output_opt.output.as_ref(),
         options.output_opt.output_type,
-    );
+    )
+    .unwrap_or_else(|e| fatal_error(no_color, &e));
     let config = OutputConfig::new(no_color, options.output_opt.raw_output, false);
     let mut context =
         OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
@@ -107,15 +108,20 @@ level: informational";
     };
 
     if let Some(d) = directory {
-        process_events_from_dir(
+        if let Err(e) = process_events_from_dir(
             search_func,
             d,
             options.output_opt.output.is_some(),
             no_color,
             &LogSource::Aws,
             &options.input_opt.file_date_opt,
-        )
-        .unwrap();
+        ) {
+            p(
+                Red.rdg(no_color),
+                &format!("Failed to scan directory {}: {e}", d.display()),
+                true,
+            );
+        }
     } else if let Some(f) = file {
         let log_contents = get_content(f);
         let events = load_json_from_file(&log_contents, &LogSource::Aws);

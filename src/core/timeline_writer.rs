@@ -695,7 +695,10 @@ impl OutputType {
         }
     }
 }
-pub fn init_writers(output_path: Option<&PathBuf>, output_type: u8) -> (Writers, Vec<PathBuf>) {
+pub fn init_writers(
+    output_path: Option<&PathBuf>,
+    output_type: u8,
+) -> Result<(Writers, Vec<PathBuf>), String> {
     let mut output_pathes = vec![];
     let mut writers = Writers::new();
 
@@ -709,7 +712,7 @@ pub fn init_writers(output_path: Option<&PathBuf>, output_type: u8) -> (Writers,
                     csv_path.set_extension("csv");
                 }
                 output_pathes.push(csv_path.clone());
-                writers = writers.with_csv(get_writer(&Some(csv_path)));
+                writers = writers.with_csv(get_writer(&Some(csv_path))?);
             }
             _ => {}
         }
@@ -721,7 +724,7 @@ pub fn init_writers(output_path: Option<&PathBuf>, output_type: u8) -> (Writers,
                     json_path.set_extension("json");
                 }
                 output_pathes.push(json_path.clone());
-                writers = writers.with_json(get_json_writer(&Some(json_path)));
+                writers = writers.with_json(get_json_writer(&Some(json_path))?);
             }
             OutputType::Jsonl | OutputType::CsvAndJsonl => {
                 let mut jsonl_path = output_path.clone();
@@ -729,7 +732,7 @@ pub fn init_writers(output_path: Option<&PathBuf>, output_type: u8) -> (Writers,
                     jsonl_path.set_extension("jsonl");
                 }
                 output_pathes.push(jsonl_path.clone());
-                writers = writers.with_jsonl(get_json_writer(&Some(jsonl_path)));
+                writers = writers.with_jsonl(get_json_writer(&Some(jsonl_path))?);
             }
             _ => {}
         }
@@ -740,7 +743,7 @@ pub fn init_writers(output_path: Option<&PathBuf>, output_type: u8) -> (Writers,
         writers = writers.with_stdout(disp_wtr);
     }
 
-    (writers, output_pathes)
+    Ok((writers, output_pathes))
 }
 
 #[cfg(test)]

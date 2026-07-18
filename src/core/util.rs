@@ -1,4 +1,4 @@
-use crate::core::color::SuzakuColor::Green;
+use crate::core::color::SuzakuColor::{Green, Red};
 use crate::core::log_source::LogSource;
 use crate::option::geoip::GeoIPSearch;
 use bytesize::ByteSize;
@@ -9,21 +9,24 @@ use std::path::PathBuf;
 use std::{fs, io};
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
-pub fn get_writer(output: &Option<PathBuf>) -> Writer<Box<dyn Write>> {
+pub fn get_writer(output: &Option<PathBuf>) -> Result<Writer<Box<dyn Write>>, String> {
     let wtr: Writer<Box<dyn io::Write>> = if let Some(output) = output {
-        Writer::from_writer(Box::new(fs::File::create(output).unwrap()))
+        let file = fs::File::create(output)
+            .map_err(|e| format!("Cannot write to output file {}: {e}", output.display()))?;
+        Writer::from_writer(Box::new(file))
     } else {
         Writer::from_writer(Box::new(io::stdout()))
     };
-    wtr
+    Ok(wtr)
 }
 
-pub fn get_json_writer(output: &Option<PathBuf>) -> BufWriter<Box<dyn Write>> {
+pub fn get_json_writer(output: &Option<PathBuf>) -> Result<BufWriter<Box<dyn Write>>, String> {
     if let Some(output) = output {
-        let file = File::create(output).expect("Failed to create file");
-        BufWriter::new(Box::new(file))
+        let file = File::create(output)
+            .map_err(|e| format!("Cannot write to output file {}: {e}", output.display()))?;
+        Ok(BufWriter::new(Box::new(file)))
     } else {
-        BufWriter::new(Box::new(std::io::stdout()))
+        Ok(BufWriter::new(Box::new(std::io::stdout())))
     }
 }
 
@@ -49,6 +52,14 @@ pub fn sanitize_csv_field(field: &str) -> String {
     } else {
         field.to_string()
     }
+}
+
+/// Prints a fatal error in red and exits with a non-zero status, so that
+/// input/filesystem failures end the run with a clean, actionable message
+/// instead of a Rust panic and backtrace.
+pub fn fatal_error(no_color: bool, msg: &str) -> ! {
+    p(Red.rdg(no_color), msg, true);
+    std::process::exit(1);
 }
 
 pub fn check_path_exists(filepath: Option<PathBuf>, dirpath: Option<PathBuf>) -> bool {
@@ -175,5 +186,32 @@ mod tests {
         ] {
             assert_eq!(sanitize_csv_field(f), f);
         }
+    }
+
+    // An unwritable --output path must yield a clean error, not a panic (issue #149, case 3).
+    #[test]
+    fn get_writer_errors_on_unwritable_output_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let bad = dir.path().join("missing_subdir").join("out.csv");
+        match get_writer(&Some(bad)) {
+            Ok(_) => panic!("expected an error for an unwritable output path"),
+            Err(e) => assert!(e.contains("Cannot write to output file"), "got: {e}"),
+        }
+    }
+
+    #[test]
+    fn get_json_writer_errors_on_unwritable_output_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let bad = dir.path().join("missing_subdir").join("out.json");
+        match get_json_writer(&Some(bad)) {
+            Ok(_) => panic!("expected an error for an unwritable output path"),
+            Err(e) => assert!(e.contains("Cannot write to output file"), "got: {e}"),
+        }
+    }
+
+    #[test]
+    fn writers_default_to_stdout_when_no_output() {
+        assert!(get_writer(&None).is_ok());
+        assert!(get_json_writer(&None).is_ok());
     }
 }
