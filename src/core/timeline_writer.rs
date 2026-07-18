@@ -389,22 +389,24 @@ fn get_value_from_event_common(
     geo_ip: &mut Option<GeoIPSearch>,
     localtime: bool,
 ) -> String {
-    // GeoIP処理部分（共通）
-    if let Some(geo) = geo_ip
-        && let Some(ip) = event.get("sourceIPAddress")
-    {
-        let ip = ip.value_to_string();
-        if let Some(ip) = geo.convert(ip.as_str()) {
-            if key == "SrcASN" {
-                return geo.get_asn(ip);
-            } else if key == "SrcCity" {
-                return geo.get_city(ip);
-            } else if key == "SrcCountry" {
-                return geo.get_country(ip);
+    // GeoIP処理部分（共通）: only the three geo columns are enriched. A missing
+    // GeoIP DB, a missing sourceIPAddress, or a non-IP value (e.g. an AWS service
+    // principal like "cloudtrail.amazonaws.com") yields the "-" placeholder for
+    // those columns only — it must never overwrite an unrelated column's value.
+    if matches!(key, "SrcASN" | "SrcCity" | "SrcCountry") {
+        if let Some(geo) = geo_ip
+            && let Some(ip) = event.get("sourceIPAddress")
+        {
+            let ip = ip.value_to_string();
+            if let Some(ip) = geo.convert(ip.as_str()) {
+                return match key {
+                    "SrcASN" => geo.get_asn(ip),
+                    "SrcCity" => geo.get_city(ip),
+                    _ => geo.get_country(ip),
+                };
             }
-        } else {
-            return ip;
         }
+        return "-".to_string();
     }
     // イベントフィールド処理（共通）
     if key.starts_with(".") {
@@ -884,6 +886,46 @@ mod tests {
         assert_eq!(
             format_tags(&tags),
             "G0035 ¦ CredAccess ¦ Disc ¦ T1110 ¦ T1087"
+        );
+    }
+
+    // Regression for #145: with --geo-ip enabled, a `sourceIPAddress` that is not a parseable IP
+    // (routine for AWS-service events like `cloudtrail.amazonaws.com`) must NOT overwrite every
+    // column with the raw string. Only the three GeoIP columns are affected (they show `-` when
+    // the address can't be enriched); all other columns fall through to normal field processing.
+    #[test]
+    fn geoip_non_ip_source_only_affects_geo_columns() {
+        use crate::option::geoip::GeoIPSearch;
+        use sigma_rust::{event_from_json, rule_from_yaml};
+        use std::path::Path;
+
+        // Small GeoLite2 test databases shipped under test_files/mmdb/.
+        let geo = GeoIPSearch::new(Path::new("test_files/mmdb"))
+            .expect("GeoLite2 test .mmdb files must be present under test_files/mmdb/");
+        let mut geo_ip = Some(geo);
+
+        let event = event_from_json(
+            r#"{"sourceIPAddress": "cloudtrail.amazonaws.com", "eventName": "ListBuckets"}"#,
+        )
+        .unwrap();
+        let rule = rule_from_yaml(
+            "title: t\nlogsource:\n    category: test\ndetection:\n    selection:\n        eventName: ListBuckets\n    condition: selection\n",
+        )
+        .unwrap();
+
+        // A normal column keeps its own value — it is NOT clobbered by the non-IP source address.
+        assert_eq!(
+            get_value_from_event(".eventName", &event, Some(&rule), &mut geo_ip, false),
+            "ListBuckets"
+        );
+        // The GeoIP columns can't be enriched from a non-IP value, so they show the placeholder.
+        assert_eq!(
+            get_value_from_event("SrcCountry", &event, Some(&rule), &mut geo_ip, false),
+            "-"
+        );
+        assert_eq!(
+            get_value_from_event("SrcASN", &event, Some(&rule), &mut geo_ip, false),
+            "-"
         );
     }
 }
