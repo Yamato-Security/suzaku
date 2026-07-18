@@ -1,6 +1,6 @@
 use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Green, Orange, Red, White, Yellow};
-use crate::core::util::{get_json_writer, get_writer};
+use crate::core::util::{get_json_writer, get_writer, sanitize_csv_field};
 use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use csv::Writer;
@@ -159,7 +159,8 @@ fn write_to_stdout(
 
 fn write_to_csv(record: &[String], context: &mut OutputContext) {
     if let Some(writer) = &mut context.writers.csv {
-        writer.write_record(record).unwrap();
+        let sanitized: Vec<String> = record.iter().map(|f| sanitize_csv_field(f)).collect();
+        writer.write_record(&sanitized).unwrap();
     }
 }
 

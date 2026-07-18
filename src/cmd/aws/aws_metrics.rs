@@ -1,6 +1,6 @@
 use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::core::util::{get_writer, output_path_info, p};
+use crate::core::util::{get_writer, output_path_info, p, sanitize_csv_field};
 use crate::option::cli::InputOption;
 use crate::option::timefiler::filter_by_time;
 use comfy_table::{Cell, CellAlignment, Table};
@@ -88,11 +88,12 @@ fn print_count_map_desc(
         let count = count.to_string();
         let rate = (count.parse::<f64>().unwrap() / total as f64) * 100.0;
         let rate = format!("{rate:.2}%");
-        let record = vec![event_name, rate.as_str(), count.as_str()];
+        let record = [event_name, rate.as_str(), count.as_str()];
         if output.is_none() {
             table.add_row(record.iter().map(Cell::new));
         } else {
-            wrt.write_record(record).unwrap();
+            let sanitized: Vec<String> = record.iter().map(|f| sanitize_csv_field(f)).collect();
+            wrt.write_record(&sanitized).unwrap();
         }
     }
     wrt.flush().ok();
