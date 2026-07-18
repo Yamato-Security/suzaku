@@ -1,4 +1,5 @@
-use chrono::NaiveDate;
+use crate::option::timefiler::parse_offset;
+use chrono::{DateTime, NaiveDate};
 use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -19,6 +20,23 @@ fn parse_file_date(s: &str) -> Result<String, String> {
     NaiveDate::from_ymd_opt(year, month, day)
         .ok_or_else(|| format!("'{}' is not a valid date", s))?;
     Ok(s.to_string())
+}
+
+/// Validate `--timeline-start` / `--timeline-end` up front so a malformed value is rejected at
+/// the CLI (with a clear message) instead of silently dropping every event during the scan.
+fn parse_time_bound(s: &str) -> Result<String, String> {
+    DateTime::parse_from_rfc3339(s)
+        .map(|_| s.to_string())
+        .map_err(|_| {
+            format!("'{s}' is not a valid RFC 3339 date-time (e.g. \"2022-02-22T23:59:59Z\")")
+        })
+}
+
+/// Validate `--time-offset` up front (e.g. `1y`, `3M`, `30d`, `24h`, `30m`).
+fn parse_time_offset(s: &str) -> Result<String, String> {
+    parse_offset(s)
+        .map(|_| s.to_string())
+        .ok_or_else(|| format!("'{s}' is not a valid time offset (e.g. 1y, 3M, 30d, 24h, 30m)"))
 }
 
 #[derive(Parser)]
@@ -53,15 +71,15 @@ pub struct CommonOptions {
 #[derive(Args, Clone, Debug, Default)]
 pub struct TimeOption {
     /// Start time of the events to load (ex: "2022-02-22T23:59:59Z)
-    #[arg(help_heading = Some("Filtering"), long = "timeline-start", value_name = "DATE", display_order = 210)]
+    #[arg(help_heading = Some("Filtering"), long = "timeline-start", value_name = "DATE", value_parser = parse_time_bound, display_order = 210)]
     pub timeline_start: Option<String>,
 
     /// End time of the events to load (ex: "2020-02-22T00:00:00Z")
-    #[arg(help_heading = Some("Filtering"), long = "timeline-end", value_name = "DATE", display_order = 211)]
+    #[arg(help_heading = Some("Filtering"), long = "timeline-end", value_name = "DATE", value_parser = parse_time_bound, display_order = 211)]
     pub timeline_end: Option<String>,
 
     /// Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
-    #[arg(help_heading = Some("Filtering"), long = "time-offset", value_name = "OFFSET", conflicts_with = "timeline_start", display_order = 212)]
+    #[arg(help_heading = Some("Filtering"), long = "time-offset", value_name = "OFFSET", value_parser = parse_time_offset, conflicts_with = "timeline_start", display_order = 212)]
     pub time_offset: Option<String>,
 }
 
