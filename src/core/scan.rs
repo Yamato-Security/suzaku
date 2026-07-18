@@ -1,4 +1,4 @@
-use crate::core::color::SuzakuColor::{Green, Orange};
+use crate::core::color::SuzakuColor::{Green, Orange, Red};
 use crate::core::log_source::{LogSource, is_match_service};
 use crate::core::summary::DetectionSummary;
 use crate::core::timeline_writer::{OutputContext, write_record};
@@ -79,15 +79,20 @@ pub fn scan_directory<'a>(
             correlation_engine,
         );
     };
-    process_events_from_dir(
+    if let Err(e) = process_events_from_dir(
         process_events,
         d,
         options.output_opt.output.is_some(),
         no_color,
         log,
         &options.input_opt.file_date_opt,
-    )
-    .unwrap();
+    ) {
+        p(
+            Red.rdg(no_color),
+            &format!("Failed to scan directory {}: {e}", d.display()),
+            true,
+        );
+    }
 }
 
 pub fn process_events_from_dir<F>(
@@ -157,7 +162,9 @@ where
 
     for path in file_paths {
         if show_progress {
-            let size = fs::metadata(&path).unwrap().len();
+            // The path may be a lossy rendering of a non-UTF-8 name (so it won't resolve) or
+            // the file may have been removed mid-scan; fall back to 0 rather than panicking.
+            let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
             let size = ByteSize::b(size).display().to_string();
             let pb_msg = format!("{path} ({size})");
             pb.set_message(pb_msg);
@@ -584,13 +591,16 @@ fn count_files_recursive(
             if let Some(ext) = path.extension().and_then(|s| s.to_str())
                 && (ext == "json" || ext == "jsonl" || ext == "gz" || ext == "csv")
             {
-                let path_str = path.to_str().unwrap();
-                if !filter_file_by_date_path(file_date_opt, path_str) {
+                // Filenames need not be valid UTF-8 (e.g. on Linux). Render lossily so a
+                // non-UTF-8 name anywhere in the tree does not panic the count walk that runs
+                // before any file is processed.
+                let path_str = path.to_string_lossy();
+                if !filter_file_by_date_path(file_date_opt, &path_str) {
                     continue;
                 }
                 count += 1;
                 total_size += fs::metadata(&path)?.len();
-                paths.push(path_str.to_string());
+                paths.push(path_str.into_owned());
             }
         } else if path.is_dir() {
             let (sub_count, sub_paths, sub_size) = count_files_recursive(&path, file_date_opt)?;
@@ -1007,5 +1017,53 @@ mod tests {
         let path = dir.path().join("edge.json.gz");
         write_gz(&path, &[b'x'; 32]);
         assert_eq!(read_gz_file_capped(&path, 32).unwrap().len(), 32);
+    }
+
+    // A file whose extension is valid UTF-8 (.json) but whose stem is not must not panic the
+    // count walk that runs before any file is processed (issue #149, case 1).
+    #[cfg(unix)]
+    #[test]
+    fn count_files_recursive_handles_non_utf8_filename() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(OsStr::from_bytes(b"bad-\xff.json"));
+        // Some filesystems reject non-UTF-8 names at creation; only assert when it was created.
+        if fs::write(&path, b"[]").is_err() {
+            return;
+        }
+        let (count, paths, _size) =
+            count_files_recursive(&dir.path().to_path_buf(), &FileDateOption::default())
+                .expect("non-UTF-8 filename must not panic the count walk");
+        assert_eq!(count, 1);
+        assert_eq!(paths.len(), 1);
+    }
+
+    // Regression for the `-o`/progress path: `show_progress = true` previously reached
+    // `fs::metadata(&path).unwrap()` on the lossy (non-resolving) path and panicked.
+    #[cfg(unix)]
+    #[test]
+    fn process_events_from_dir_with_progress_survives_non_utf8_filename() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(OsStr::from_bytes(b"bad-\xff.json"));
+        if fs::write(&path, b"[]").is_err() {
+            return;
+        }
+        let result = process_events_from_dir(
+            |_events: &[Value]| {},
+            &dir.path().to_path_buf(),
+            true, // show_progress (as when -o/--output is set)
+            true, // no_color
+            &LogSource::Aws,
+            &FileDateOption::default(),
+        );
+        assert!(
+            result.is_ok(),
+            "scanning a directory containing a non-UTF-8 filename must not panic"
+        );
     }
 }

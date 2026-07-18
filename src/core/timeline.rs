@@ -6,7 +6,7 @@ use crate::core::summary::{DetectionSummary, print_detected_rule_authors, print_
 use crate::core::timeline_writer::{
     OutputConfig, OutputContext, init_writers, write_correlation_record, write_record,
 };
-use crate::core::util::{load_profile, output_path_info, p};
+use crate::core::util::{fatal_error, load_profile, output_path_info, p};
 use crate::option::cli::{CommonOptions, TimelineOptions};
 use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Utc};
@@ -117,7 +117,8 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
     let (writers, output_pathes) = init_writers(
         options.output_opt.output.as_ref(),
         options.output_opt.output_type,
-    );
+    )
+    .unwrap_or_else(|e| fatal_error(no_color, &e));
     let config = OutputConfig::new(no_color, options.output_opt.raw_output, options.localtime);
     let mut context =
         OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);

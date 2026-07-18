@@ -1,7 +1,7 @@
 use crate::core::color::SuzakuColor::Red;
 use crate::core::log_source::LogSource;
 use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
-use crate::core::util::{get_writer, output_path_info, p, sanitize_csv_field};
+use crate::core::util::{fatal_error, get_writer, output_path_info, p, sanitize_csv_field};
 use crate::option::cli::InputOption;
 use crate::option::geoip::GeoIPSearch;
 use crate::option::timefiler::filter_by_time;
@@ -379,15 +379,20 @@ pub fn aws_summary(
     };
     let abused_aws_api_values: Vec<String> = abused_aws_api_calls.values().cloned().collect();
     if let Some(d) = directory {
-        process_events_from_dir(
+        if let Err(e) = process_events_from_dir(
             summary_func,
             d,
             true,
             no_color,
             &LogSource::Aws,
             &input_opt.file_date_opt,
-        )
-        .unwrap();
+        ) {
+            p(
+                Red.rdg(no_color),
+                &format!("Failed to scan directory {}: {e}", d.display()),
+                true,
+            );
+        }
         output_summary(
             &user_data,
             output,
@@ -497,7 +502,8 @@ fn output_summary(
             format!("| {msg} {total}")
         };
 
-        let mut csv_wtr = get_writer(&Some(csv_path.clone()));
+        let mut csv_wtr =
+            get_writer(&Some(csv_path.clone())).unwrap_or_else(|e| fatal_error(no_color, &e));
         let csv_header = vec![
             "UserARN",
             "NumOfEvents",
