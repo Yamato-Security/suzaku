@@ -161,43 +161,48 @@ where
     }
 
     for path in file_paths {
+        // `path` is the real `PathBuf`, so files with non-UTF-8 names still resolve and are read.
+        // Render lossily only for the extension checks (extensions are ASCII) and the progress
+        // display.
+        let path_str = path.to_string_lossy();
         if show_progress {
-            // The path may be a lossy rendering of a non-UTF-8 name (so it won't resolve) or
-            // the file may have been removed mid-scan; fall back to 0 rather than panicking.
+            // The file may have been removed mid-scan; fall back to 0 rather than panicking.
             let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
             let size = ByteSize::b(size).display().to_string();
-            let pb_msg = format!("{path} ({size})");
+            let pb_msg = format!("{path_str} ({size})");
             pb.set_message(pb_msg);
         }
-        let log_contents =
-            if path.ends_with("json") || path.ends_with("jsonl") || path.ends_with("csv") {
-                match fs::read_to_string(&path) {
-                    Ok(contents) => contents,
-                    Err(_) => {
-                        if show_progress {
-                            pb.inc(1);
-                        }
-                        continue;
+        let log_contents = if path_str.ends_with("json")
+            || path_str.ends_with("jsonl")
+            || path_str.ends_with("csv")
+        {
+            match fs::read_to_string(&path) {
+                Ok(contents) => contents,
+                Err(_) => {
+                    if show_progress {
+                        pb.inc(1);
                     }
+                    continue;
                 }
-            } else if path.ends_with("gz") {
-                match read_gz_file(&PathBuf::from(&path)) {
-                    Ok(contents) => contents,
-                    Err(_) => {
-                        if show_progress {
-                            pb.inc(1);
-                        }
-                        continue;
+            }
+        } else if path_str.ends_with("gz") {
+            match read_gz_file(&path) {
+                Ok(contents) => contents,
+                Err(_) => {
+                    if show_progress {
+                        pb.inc(1);
                     }
+                    continue;
                 }
-            } else {
-                if show_progress {
-                    pb.inc(1);
-                }
-                continue;
-            };
+            }
+        } else {
+            if show_progress {
+                pb.inc(1);
+            }
+            continue;
+        };
 
-        let events = if path.ends_with("csv") {
+        let events = if path_str.ends_with("csv") {
             parse_csv_events(&log_contents)
         } else {
             log_contents_to_events(&log_contents, log)
@@ -580,7 +585,7 @@ fn format_date_display(s: &str) -> String {
 fn count_files_recursive(
     directory: &PathBuf,
     file_date_opt: &FileDateOption,
-) -> Result<(usize, Vec<String>, u64), Box<dyn Error>> {
+) -> Result<(usize, Vec<PathBuf>, u64), Box<dyn Error>> {
     let mut count = 0;
     let mut paths = Vec::new();
     let mut total_size = 0;
@@ -591,16 +596,15 @@ fn count_files_recursive(
             if let Some(ext) = path.extension().and_then(|s| s.to_str())
                 && (ext == "json" || ext == "jsonl" || ext == "gz" || ext == "csv")
             {
-                // Filenames need not be valid UTF-8 (e.g. on Linux). Render lossily so a
-                // non-UTF-8 name anywhere in the tree does not panic the count walk that runs
-                // before any file is processed.
-                let path_str = path.to_string_lossy();
-                if !filter_file_by_date_path(file_date_opt, &path_str) {
+                // The date filter matches on the path string; filenames need not be valid UTF-8
+                // (e.g. on Linux), so render lossily *only for the filter*. The real `PathBuf` is
+                // stored so a non-UTF-8 name still resolves when the file is read later.
+                if !filter_file_by_date_path(file_date_opt, &path.to_string_lossy()) {
                     continue;
                 }
                 count += 1;
                 total_size += fs::metadata(&path)?.len();
-                paths.push(path_str.into_owned());
+                paths.push(path);
             }
         } else if path.is_dir() {
             let (sub_count, sub_paths, sub_size) = count_files_recursive(&path, file_date_opt)?;
@@ -1064,6 +1068,41 @@ mod tests {
         assert!(
             result.is_ok(),
             "scanning a directory containing a non-UTF-8 filename must not panic"
+        );
+    }
+
+    // A non-UTF-8 filename must be actually READ and its events processed, not merely counted
+    // and skipped (the real PathBuf is kept through the pipeline instead of a lossy string).
+    #[cfg(unix)]
+    #[test]
+    fn process_events_from_dir_reads_non_utf8_filename() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(OsStr::from_bytes(b"bad-\xff.json"));
+        // Non-UTF-8 name, but valid JSON content with one event.
+        if fs::write(
+            &path,
+            br#"[{"eventName":"X","eventTime":"2024-01-01T00:00:00Z"}]"#,
+        )
+        .is_err()
+        {
+            return;
+        }
+        let mut processed = 0usize;
+        let result = process_events_from_dir(
+            |events: &[Value]| processed += events.len(),
+            &dir.path().to_path_buf(),
+            false,
+            true,
+            &LogSource::Aws,
+            &FileDateOption::default(),
+        );
+        assert!(result.is_ok());
+        assert_eq!(
+            processed, 1,
+            "the event in the non-UTF-8-named file must be processed, not skipped"
         );
     }
 }

@@ -596,7 +596,12 @@ fn output_summary(
     // --- JSON 出力 ---
     if let Some(json_path) = json_path {
         let records = build_json_records(user_data, *hide_descriptions);
-        let file = File::create(&json_path).unwrap();
+        let file = File::create(&json_path).unwrap_or_else(|e| {
+            fatal_error(
+                no_color,
+                &format!("Cannot write to output file {}: {e}", json_path.display()),
+            )
+        });
         let mut writer = BufWriter::new(file);
         serde_json::to_writer_pretty(&mut writer, &records).unwrap();
         writer.flush().unwrap();
@@ -606,7 +611,12 @@ fn output_summary(
     // --- JSONL 出力 ---
     if let Some(jsonl_path) = jsonl_path {
         let records = build_json_records(user_data, *hide_descriptions);
-        let file = File::create(&jsonl_path).unwrap();
+        let file = File::create(&jsonl_path).unwrap_or_else(|e| {
+            fatal_error(
+                no_color,
+                &format!("Cannot write to output file {}: {e}", jsonl_path.display()),
+            )
+        });
         let mut writer = BufWriter::new(file);
         for record in &records {
             let line = serde_json::to_string(record).unwrap();
