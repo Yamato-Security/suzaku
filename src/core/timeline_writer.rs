@@ -127,7 +127,8 @@ fn write_to_stdout(
 
             for (k, v) in sigma_profile {
                 if let (Some(event), rule) = (event, rule) {
-                    let value = get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
+                    let value =
+                        get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
                     json_record[k] = Value::String(value.to_string());
                 }
             }
@@ -196,7 +197,8 @@ fn write_to_json_format(
 
             for (k, v) in sigma_profile {
                 if let (Some(event), rule) = (event, rule) {
-                    let value = get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
+                    let value =
+                        get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
                     json_record[k] = Value::String(value.to_string());
                 }
             }
@@ -944,16 +946,37 @@ mod tests {
 
         // A normal column keeps its own value — it is NOT clobbered by the non-IP source address.
         assert_eq!(
-            get_value_from_event(".eventName", &event, Some(&rule), &mut geo_ip, false, ".sourceIPAddress"),
+            get_value_from_event(
+                ".eventName",
+                &event,
+                Some(&rule),
+                &mut geo_ip,
+                false,
+                ".sourceIPAddress"
+            ),
             "ListBuckets"
         );
         // The GeoIP columns can't be enriched from a non-IP value, so they show the placeholder.
         assert_eq!(
-            get_value_from_event("SrcCountry", &event, Some(&rule), &mut geo_ip, false, ".sourceIPAddress"),
+            get_value_from_event(
+                "SrcCountry",
+                &event,
+                Some(&rule),
+                &mut geo_ip,
+                false,
+                ".sourceIPAddress"
+            ),
             "-"
         );
         assert_eq!(
-            get_value_from_event("SrcASN", &event, Some(&rule), &mut geo_ip, false, ".sourceIPAddress"),
+            get_value_from_event(
+                "SrcASN",
+                &event,
+                Some(&rule),
+                &mut geo_ip,
+                false,
+                ".sourceIPAddress"
+            ),
             "-"
         );
     }
@@ -992,10 +1015,14 @@ mod tests {
         )
         .unwrap();
         let ip = "8.8.8.8";
-        let aws_event =
-            event_from_json(&format!(r#"{{"sourceIPAddress": "{ip}", "eventName": "E"}}"#)).unwrap();
-        let azure_event =
-            event_from_json(&format!(r#"{{"callerIpAddress": "{ip}", "eventName": "E"}}"#)).unwrap();
+        let aws_event = event_from_json(&format!(
+            r#"{{"sourceIPAddress": "{ip}", "eventName": "E"}}"#
+        ))
+        .unwrap();
+        let azure_event = event_from_json(&format!(
+            r#"{{"callerIpAddress": "{ip}", "eventName": "E"}}"#
+        ))
+        .unwrap();
 
         let mut geo = Some(
             GeoIPSearch::new(Path::new("test_files/mmdb"))
