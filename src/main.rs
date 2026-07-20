@@ -8,6 +8,7 @@ use chrono::Local;
 use clap::{CommandFactory, Parser};
 use cmd::update::start_update_rules;
 use core::color::SuzakuColor::Green;
+use core::timeline_writer::resolve_output_paths;
 use core::util::{check_path_exists, p, set_rayon_threat_number};
 use libmimalloc_sys::mi_stats_print_out;
 use mimalloc::MiMalloc;
@@ -70,17 +71,30 @@ fn main() {
 
             if let Some(output) = &options.output_opt.output
                 && !options.output_opt.clobber
-                && output.exists()
             {
-                p(
-                    None,
-                    &format!(
-                        "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
-                        output.display()
-                    ),
-                    true,
-                );
-                return;
+                // Check every file the selected formats would actually write (e.g. <base>.csv,
+                // <base>.duckdb), not just the literal -o value, so we never overwrite an existing
+                // output — including a DuckDB database — without -C.
+                let existing: Vec<_> =
+                    resolve_output_paths(output, &options.output_opt.output_types)
+                        .into_iter()
+                        .filter(|path| path.exists())
+                        .collect();
+                if !existing.is_empty() {
+                    let names = existing
+                        .iter()
+                        .map(|path| path.display().to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    p(
+                        None,
+                        &format!(
+                            "The output file already exists: {names}. Please specify a different filename or add the -C, --clobber option to overwrite."
+                        ),
+                        true,
+                    );
+                    return;
+                }
             }
 
             if !options.rules.exists() {
@@ -136,17 +150,30 @@ fn main() {
 
             if let Some(output) = &options.output_opt.output
                 && !options.output_opt.clobber
-                && output.exists()
             {
-                p(
-                    None,
-                    &format!(
-                        "The file {} already exists. Please specify a different filename or add the -C, --clobber option to overwrite.",
-                        output.display()
-                    ),
-                    true,
-                );
-                return;
+                // Check every file the selected formats would actually write (e.g. <base>.csv,
+                // <base>.duckdb), not just the literal -o value, so we never overwrite an existing
+                // output — including a DuckDB database — without -C.
+                let existing: Vec<_> =
+                    resolve_output_paths(output, &options.output_opt.output_types)
+                        .into_iter()
+                        .filter(|path| path.exists())
+                        .collect();
+                if !existing.is_empty() {
+                    let names = existing
+                        .iter()
+                        .map(|path| path.display().to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    p(
+                        None,
+                        &format!(
+                            "The output file already exists: {names}. Please specify a different filename or add the -C, --clobber option to overwrite."
+                        ),
+                        true,
+                    );
+                    return;
+                }
             }
 
             if options.output_opt.raw_output

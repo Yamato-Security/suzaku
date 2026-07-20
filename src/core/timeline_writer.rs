@@ -734,6 +734,9 @@ impl<'a> OutputContext<'a> {
             self.writers.csv = None;
             self.writers.json = None;
             self.writers.jsonl = None;
+            // Drop the DuckDB sink too: its open connection holds a lock on the `.duckdb` file on
+            // Windows, so `remove_file` below would fail silently and leave an empty database behind.
+            self.writers.duckdb = None;
 
             for path in &self.output_paths {
                 if path.exists() {
@@ -756,6 +759,49 @@ impl<'a> OutputContext<'a> {
     }
 }
 
+/// File extension written for each output format.
+fn output_format_ext(fmt: OutputFormat) -> &'static str {
+    match fmt {
+        OutputFormat::Csv => "csv",
+        OutputFormat::Json => "json",
+        OutputFormat::Jsonl => "jsonl",
+        OutputFormat::Duckdb => "duckdb",
+    }
+}
+
+/// Resolve the concrete `(format, path)` targets for a base `-o` path: each requested format maps
+/// to `<base>.<ext>` (the base's extension normalized per format), with duplicate formats removed.
+/// Single source of truth for both opening the writers and the `--clobber` preflight.
+fn resolve_output_targets(
+    output_path: &Path,
+    output_types: &[OutputFormat],
+) -> Vec<(OutputFormat, PathBuf)> {
+    let mut seen = HashSet::new();
+    output_types
+        .iter()
+        .copied()
+        .filter(|f| seen.insert(*f))
+        .map(|fmt| {
+            let ext = output_format_ext(fmt);
+            let mut path = output_path.to_path_buf();
+            if path.extension().and_then(|e| e.to_str()) != Some(ext) {
+                path.set_extension(ext);
+            }
+            (fmt, path)
+        })
+        .collect()
+}
+
+/// The concrete output file paths a run would write for `output_types` under a base `-o` path,
+/// e.g. `<base>.csv` / `<base>.duckdb`. Used to preflight `--clobber` against every file that
+/// would actually be created, not just the literal `-o` value.
+pub fn resolve_output_paths(output_path: &Path, output_types: &[OutputFormat]) -> Vec<PathBuf> {
+    resolve_output_targets(output_path, output_types)
+        .into_iter()
+        .map(|(_, path)| path)
+        .collect()
+}
+
 /// Build the output writers for the requested formats. Each format writes to `<output>.<ext>`
 /// (the base path's extension is normalized per format), so a single `-o` base path can fan out
 /// to several files at once. `profile` supplies the column names for the DuckDB table. With no
@@ -769,18 +815,7 @@ pub fn init_writers(
     let mut writers = Writers::new();
 
     if let Some(output_path) = output_path {
-        let mut seen = HashSet::new();
-        for fmt in output_types.iter().copied().filter(|f| seen.insert(*f)) {
-            let ext = match fmt {
-                OutputFormat::Csv => "csv",
-                OutputFormat::Json => "json",
-                OutputFormat::Jsonl => "jsonl",
-                OutputFormat::Duckdb => "duckdb",
-            };
-            let mut path = output_path.clone();
-            if path.extension().and_then(|e| e.to_str()) != Some(ext) {
-                path.set_extension(ext);
-            }
+        for (fmt, path) in resolve_output_targets(output_path, output_types) {
             output_pathes.push(path.clone());
             writers = match fmt {
                 OutputFormat::Csv => writers.with_csv(get_writer(&Some(path))?),
@@ -1116,5 +1151,59 @@ mod tests {
             )
             .unwrap();
         assert_eq!(title, "Rule B");
+    }
+
+    #[test]
+    fn resolve_output_paths_expands_base_per_format_and_dedups() {
+        // Each format maps the base to <base>.<ext>, preserving order.
+        assert_eq!(
+            resolve_output_paths(
+                Path::new("result"),
+                &[OutputFormat::Csv, OutputFormat::Duckdb, OutputFormat::Jsonl]
+            ),
+            vec![
+                PathBuf::from("result.csv"),
+                PathBuf::from("result.duckdb"),
+                PathBuf::from("result.jsonl"),
+            ]
+        );
+        // A base that already carries some extension is normalized to the format's extension.
+        assert_eq!(
+            resolve_output_paths(Path::new("out.csv"), &[OutputFormat::Duckdb]),
+            vec![PathBuf::from("out.duckdb")]
+        );
+        // Repeated formats collapse to a single path.
+        assert_eq!(
+            resolve_output_paths(Path::new("result"), &[OutputFormat::Csv, OutputFormat::Csv]),
+            vec![PathBuf::from("result.csv")]
+        );
+    }
+
+    #[test]
+    fn flush_all_drops_duckdb_sink_and_removes_empty_db_on_no_hits() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("t.duckdb");
+        let profile = vec![("Timestamp".to_string(), ".eventTime".to_string())];
+        let sink = DuckDbSink::new(&path, &["Timestamp".to_string()]).unwrap();
+        // Opening the sink creates the database file.
+        assert!(path.exists());
+
+        let writers = Writers::new().with_duckdb(sink);
+        let config = OutputConfig::new(true, false, false);
+        let mut geo = None;
+        let output_paths = vec![path.clone()];
+        let mut ctx = OutputContext::new(&profile, &mut geo, &config, writers, &output_paths);
+
+        // Never wrote a record, so flush_all takes the no-hit cleanup path.
+        ctx.flush_all();
+
+        assert!(
+            ctx.writers.duckdb.is_none(),
+            "the DuckDB sink must be dropped so its connection releases the file lock"
+        );
+        assert!(
+            !path.exists(),
+            "the empty .duckdb database must be removed when there are no hits"
+        );
     }
 }

@@ -147,6 +147,11 @@ level: informational";
         }
     }
 
+    // Flush the writers and, when nothing matched, clean up the empty output files (mirrors the
+    // timeline command). Without this, aws-ct-search left a zero-row file behind for every format
+    // even though it reports "Results saved: None".
+    context.flush_all();
+
     display_results(matched_events, total_events, no_color);
     if !output_pathes.is_empty() {
         output_path_info(no_color, &output_pathes, context.has_written);
