@@ -58,7 +58,10 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
     let regex_pattern = match options.regex.as_ref() {
         Some(pattern) => match Regex::new(pattern) {
             Ok(re) => Some(re),
-            Err(e) => fatal_error(no_color, &format!("Invalid --regex pattern '{pattern}': {e}")),
+            Err(e) => fatal_error(
+                no_color,
+                &format!("Invalid --regex pattern '{pattern}': {e}"),
+            ),
         },
         None => None,
     };
