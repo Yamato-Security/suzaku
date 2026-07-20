@@ -45,6 +45,23 @@ pub fn print_summary(sum: &DetectionSummary, no_color: bool) {
     print_summary_table(sum, &levels);
 }
 
+/// Compute the "data reduction" count and percentage for the summary header.
+///
+/// `event_with_hits` can exceed `total_events` when correlation results re-count
+/// events already tallied by the base scan, so the subtraction is saturating and
+/// the percentage is guarded against an empty dataset (0/0) — otherwise the
+/// header panics on subtract-overflow in debug builds, wraps to ~1.8e19 in
+/// release, or prints `NaN%` on empty input.
+fn data_reduction(total_events: usize, event_with_hits: usize) -> (usize, f64) {
+    let reduction = total_events.saturating_sub(event_with_hits);
+    let pct = if total_events == 0 {
+        0.0
+    } else {
+        reduction as f64 * 100.0 / total_events as f64
+    };
+    (reduction, pct)
+}
+
 fn print_summary_header(sum: &DetectionSummary, no_color: bool) {
     p(Green.rdg(no_color), "Results Summary:", true);
     p(None, "", false);
@@ -57,12 +74,13 @@ fn print_summary_header(sum: &DetectionSummary, no_color: bool) {
     let msg = sum.total_events.to_formatted_string(&Locale::en);
     p(Cyan.rdg(no_color), msg.as_str(), false);
     p(None, " (", false);
+    let (reduction, reduction_pct) = data_reduction(sum.total_events, sum.event_with_hits);
     p(
         Green.rdg(no_color),
         &format!(
             "Data reduction: {} events ({:.2}%)",
-            (sum.total_events - sum.event_with_hits).to_formatted_string(&Locale::en),
-            (sum.total_events - sum.event_with_hits) as f64 * 100.0 / sum.total_events as f64
+            reduction.to_formatted_string(&Locale::en),
+            reduction_pct
         ),
         false,
     );
@@ -276,5 +294,17 @@ mod tests {
         let out = truncate_author(&name); // must not panic
         assert!(out.ends_with("..."));
         assert_eq!(out.chars().count(), 27);
+    }
+
+    #[test]
+    fn data_reduction_handles_double_count_and_empty() {
+        // Normal case.
+        assert_eq!(data_reduction(100, 5), (95, 95.0));
+        // event_with_hits > total_events (correlation double-count): no underflow.
+        assert_eq!(data_reduction(1, 2), (0, 0.0));
+        // Empty dataset: no 0/0 NaN.
+        let (n, pct) = data_reduction(0, 0);
+        assert_eq!(n, 0);
+        assert!(pct.is_finite() && pct == 0.0);
     }
 }
