@@ -7,6 +7,7 @@
 - Azureログ用のDFIRタイムラインを作成する`azure-timeline`コマンドを追加した。 (#109) (@fukusuket)
 - CloudTrailログを検索するための`aws-ct-search`コマンドを追加した。(#117) (@fukusuket)
 - UUIDを指定してルールを読み込み対象から除外できる除外リストファイル（`config/aws_ignore_rule_list.txt`）に対応した。これにより、置き換えられた重複ルールをリポジトリに残したまま読み込まないようにできる。 (#136) (@YamatoSecurity)
+- AWS系コマンド（`aws-ct-timeline`、`aws-ct-metrics`、`aws-ct-summary`、`aws-ct-search`）の `-f` と `-d` の両方で Parquet（`.parquet`）入力に対応した。各行を1つのJSONイベントに変換する。ネストされたstruct型カラムはネストされたオブジェクトになり、JSON文字列として格納されたCloudTrailの既知のエンベロープフィールド（`userIdentity`、`requestParameters`、`responseElements` など。Athena CTAS / Glue / Firehose パイプラインが生成する形式）はオブジェクトに復元してルールがネストされた値にマッチできるようにし、タイムゾーンなしの `eventTime` TIMESTAMPカラムはUTCとしてマークして時刻フィルタとサマリが機能するようにした。snappy、gzip、zstd、lz4圧縮に対応。 (@nishikawaakira)
 
 **改善:**
 

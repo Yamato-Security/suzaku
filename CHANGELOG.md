@@ -7,6 +7,7 @@
 - Added the `azure-timeline` command to create a DFIR timeline for Azure logs. (#109) (@fukusuket)
 - New `aws-ct-search` command to search through CloudTrail logs. (#117) (@fukusuket)
 - Added support for an ignore-list file (`config/aws_ignore_rule_list.txt`) to skip loading rules by UUID, so superseded/duplicate rules can stay in the repo without being loaded. (#136) (@YamatoSecurity)
+- Added Parquet (`.parquet`) input support to the AWS commands (`aws-ct-timeline`, `aws-ct-metrics`, `aws-ct-summary`, `aws-ct-search`) for both `-f` and `-d`. Each row is converted to one JSON event: nested struct columns become nested objects, the known CloudTrail envelope fields (`userIdentity`, `requestParameters`, `responseElements`, …) stored as serialized JSON strings — the shape Athena CTAS / Glue / Firehose pipelines produce — are parsed back into objects so rules can match nested values, and timezone-less `eventTime` TIMESTAMP columns are marked as UTC so time filtering and summaries keep working. Snappy, gzip, zstd, and lz4 compression are supported. (@nishikawaakira)
 
 **Enhancements:**
 
