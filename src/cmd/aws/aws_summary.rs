@@ -76,7 +76,6 @@ struct CTSummary {
 }
 
 impl CTSummary {
-    #[allow(clippy::too_many_arguments)]
     /// Insert or update a per-key `(count, first_seen, last_seen)` entry, tracking
     /// the first/last event time seen for THAT key. These tuples were previously
     /// seeded once from the dataset-global min/max at insertion time and never
@@ -98,6 +97,7 @@ impl CTSummary {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn add_event(
         &mut self,
         event_time: String,
