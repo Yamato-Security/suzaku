@@ -14,7 +14,7 @@ use mimalloc::MiMalloc;
 use option::cli::Commands::{
     AwsCtMetrics, AwsCtSearch, AwsCtSummary, AwsCtTimeline, AzureTimeline, UpdateRules,
 };
-use option::cli::{Cli, RELEASE_NAME, VERSION};
+use option::cli::{Cli, OutputFormat, RELEASE_NAME, VERSION};
 use std::ptr::null_mut;
 use std::time::Instant;
 use std::{env, fs};
@@ -93,12 +93,16 @@ fn main() {
             }
 
             if options.output_opt.raw_output
-                && options.output_opt.output_type == 1
                 && options.output_opt.output.is_some()
+                && !options
+                    .output_opt
+                    .output_types
+                    .iter()
+                    .any(|f| matches!(f, OutputFormat::Json | OutputFormat::Jsonl))
             {
                 p(
                     None,
-                    "--raw-output option is only available in JSON formats. Please specify an output type of 2-5.",
+                    "--raw-output option is only available in JSON formats. Please add json or jsonl to -t, --output-type.",
                     true,
                 );
                 return;
@@ -146,12 +150,16 @@ fn main() {
             }
 
             if options.output_opt.raw_output
-                && options.output_opt.output_type == 1
                 && options.output_opt.output.is_some()
+                && !options
+                    .output_opt
+                    .output_types
+                    .iter()
+                    .any(|f| matches!(f, OutputFormat::Json | OutputFormat::Jsonl))
             {
                 p(
                     None,
-                    "--raw-output option is only available in JSON formats. Please specify an output type of 2-5.",
+                    "--raw-output option is only available in JSON formats. Please add json or jsonl to -t, --output-type.",
                     true,
                 );
                 return;

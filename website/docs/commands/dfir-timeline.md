@@ -26,7 +26,7 @@ Output:
   -G, --geo-ip <MAXMIND-DB-DIR>    Add GeoIP (ASN, city, country) info to IP addresses
   -m, --min-level <LEVEL>          Minimum level for rules to load (default: informational)
   -o, --output <FILE>              Save the results to a file
-  -t, --output-type <OUTPUT_TYPE>  Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL [default: 1]
+  -t, --output-type <FORMAT,...>   Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [possible values: csv, json, jsonl, duckdb]
   -R, --raw-output                 Output the original JSON logs (only available in JSON formats or stdout)
       --threads <THREAD NUMBER>    Number of threads to use (default: same as CPU cores)
 
@@ -41,7 +41,8 @@ Display Settings:
 
 * Output alerts to screen: `./suzaku aws-ct-timeline -d ../suzaku-sample-data`
 * Save results to a CSV file: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline.csv`
-* Save results to CSV and JSONL files: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline -t 5`
+* Save results to CSV and JSONL files: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline -t csv,jsonl`
+* Save results to a DuckDB database: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline -t duckdb`
 
 ### `aws-ct-timeline` output profile
 
