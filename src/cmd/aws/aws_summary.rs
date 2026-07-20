@@ -127,7 +127,11 @@ impl CTSummary {
         Self::upsert_count_entry(&mut self.user_agents, user_agent, &event_time);
 
         if !abused_api_success.is_empty() {
-            Self::upsert_count_entry(&mut self.abused_api_success, abused_api_success, &event_time);
+            Self::upsert_count_entry(
+                &mut self.abused_api_success,
+                abused_api_success,
+                &event_time,
+            );
         }
         if !abused_api_failed.is_empty() {
             Self::upsert_count_entry(&mut self.abused_api_failed, abused_api_failed, &event_time);
