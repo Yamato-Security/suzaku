@@ -178,7 +178,11 @@ where
         {
             match fs::read_to_string(&path) {
                 Ok(contents) => contents,
-                Err(_) => {
+                Err(e) => {
+                    // The file was counted but could not be read (permissions,
+                    // non-UTF-8 content, removed mid-scan). Warn instead of
+                    // silently skipping, so the run's coverage is not overstated.
+                    eprintln!("[WARNING] Skipping {path_str}: {e}");
                     if show_progress {
                         pb.inc(1);
                     }
@@ -188,7 +192,8 @@ where
         } else if path_str.ends_with("gz") {
             match read_gz_file(&path) {
                 Ok(contents) => contents,
-                Err(_) => {
+                Err(e) => {
+                    eprintln!("[WARNING] Skipping {path_str}: {e}");
                     if show_progress {
                         pb.inc(1);
                     }
@@ -637,14 +642,14 @@ fn read_gz_file_capped(file_path: &PathBuf, max_bytes: u64) -> io::Result<String
     let mut buf = Vec::new();
     decoder.take(max_bytes + 1).read_to_end(&mut buf)?;
     if buf.len() as u64 > max_bytes {
-        eprintln!(
-            "[WARNING] Skipping {}: decompressed size exceeds the {} GiB limit (possible gzip bomb).",
-            file_path.display(),
-            max_bytes / (1024 * 1024 * 1024)
-        );
+        // The descriptive message is carried in the error so the caller's
+        // single "[WARNING] Skipping <file>: <err>" line reports the reason.
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "decompressed size exceeds the maximum allowed limit",
+            format!(
+                "decompressed size exceeds the {} GiB limit (possible gzip bomb)",
+                max_bytes / (1024 * 1024 * 1024)
+            ),
         ));
     }
     String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
@@ -698,13 +703,18 @@ pub fn load_json_from_file(
 
 pub fn get_content(f: &PathBuf) -> String {
     let path = f.display().to_string();
-    if path.ends_with(".json") || path.ends_with(".jsonl") || path.ends_with(".csv") {
-        fs::read_to_string(f).unwrap_or_default()
+    let result = if path.ends_with(".json") || path.ends_with(".jsonl") || path.ends_with(".csv") {
+        fs::read_to_string(f)
     } else if path.ends_with(".gz") {
-        read_gz_file(f).unwrap_or_default()
+        read_gz_file(f)
     } else {
-        "".to_string()
-    }
+        return "".to_string();
+    };
+    // Warn instead of silently returning empty content on a read failure.
+    result.unwrap_or_else(|e| {
+        eprintln!("[WARNING] Skipping {path}: {e}");
+        String::new()
+    })
 }
 
 #[cfg(test)]
