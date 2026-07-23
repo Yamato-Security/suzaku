@@ -43,12 +43,28 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
     let mut context =
         OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
 
+    for filter in &options.filter {
+        if !filter.contains(':') {
+            fatal_error(
+                no_color,
+                &format!(
+                    "Invalid --filter '{filter}': expected FIELD:VALUE (e.g. eventName:ConsoleLogin)"
+                ),
+            );
+        }
+    }
     let filter_conditions = parse_filter_conditions(&options.filter);
 
-    let regex_pattern = options
-        .regex
-        .as_ref()
-        .map(|pattern| Regex::new(pattern).expect("Invalid regex pattern"));
+    let regex_pattern = match options.regex.as_ref() {
+        Some(pattern) => match Regex::new(pattern) {
+            Ok(re) => Some(re),
+            Err(e) => fatal_error(
+                no_color,
+                &format!("Invalid --regex pattern '{pattern}': {e}"),
+            ),
+        },
+        None => None,
+    };
 
     let sigma_rule_content = r"title: Dummy rule for Search command
 id: 2a2466e1-c0da-434b-a327-57da46cc8dae

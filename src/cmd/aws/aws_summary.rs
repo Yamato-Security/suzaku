@@ -639,7 +639,11 @@ fn read_abused_aws_api_calls(file_path: &str) -> HashMap<String, String> {
         Err(_) => {
             p(
                 Some(Color::Rgb(255, 0, 0)),
-                "Failed to open the abused AWS API calls file.",
+                &format!(
+                    "Warning: could not open the abused-AWS-API list at '{file_path}' \
+                     (run from the directory that contains ./rules, or after update-rules). \
+                     All API calls will be classified as non-abused."
+                ),
                 true,
             );
             HashMap::new()
