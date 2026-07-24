@@ -10,6 +10,7 @@
 
 **改善:**
 
+- `aws-ct-timeline`・`azure-timeline` の `-t, --output-type` を数字ではなく形式**名**を指定する方式に変更し、**DuckDB** 出力を追加した。`csv`・`json`・`jsonl`・`duckdb` をカンマ区切り（または繰り返し）で指定して、任意の組み合わせを同時に出力できる（例: `-t csv,duckdb`）。DuckDB 出力は、出力プロファイルの各項目を列に持つ `timeline` テーブルを含む自己完結型の `.duckdb` データベースファイルである。（破壊的変更: 数字 `-t 1..5` は名前指定に置き換えられた。`aws-ct-search` は同じオプションを共有するため同様に名前形式に対応する。） (@YamatoSecurity)
 - `aws-ct-timeline` および `azure-timeline` の出力に `Tags` カラムを追加した。ルールの Sigma `tags` リストを（破棄せずに）Hayabusa のように ` ¦ ` 区切りの1つの文字列として出力する。ATT&CK のタクティクスは Hayabusa と共通の編集可能な `config/mitre_tactics.txt` テーブルを使って略記され（例: `attack.credential-access` は `CredAccess`）、テクニックやグループも短縮される（`attack.t1562.001` は `T1562.001`、`attack.g0035` は `G0035`）。タクティクスのハイフン表記とアンダースコア表記の両方に対応する。JSON 出力では値をフラットな文字列のまま保持する。 (#62) (@YamatoSecurity)
 - `aws-ct-timeline` および `azure-timeline` コマンドに、イベントのタイムスタンプを（UTC ではなく）実行環境のローカルタイムゾーンで明示的な UTC オフセット付きで出力する `-l, --localtime` オプションを追加した（例: JST では `2023-07-10 12:27:45` が `2023-07-10 21:27:45+09:00` になる）。解析できないタイムスタンプは従来どおり UTC 表記にフォールバックする。 (#34) (@YamatoSecurity)
 - `sigma-rust` をリリース版の `v0.7.1` に更新し、その他の依存クレートもすべて最新版に更新した。`sigma-rust` v0.7.1 は suzaku が利用している Sigma の相関（correlation）機能を維持したまま、YAML バックエンドを非推奨の `serde_yml`/`noyalib`（ルールやイベント中の64ビット符号なし整数の大きな値を精度の落ちた浮動小数点として解析していた）から、活発にメンテナンスされている `yaml_serde` に移行し、`u64` の正しい解析を回復した。 (@YamatoSecurity)

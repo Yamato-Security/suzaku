@@ -39,6 +39,12 @@ ureq="*"
 rayon = "1"
 tempfile = "3"
 sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust", tag = "v0.7.1" }
+# DuckDB output. `bundled` compiles the DuckDB engine into the binary so releases stay
+# self-contained (no system libduckdb needed), at the cost of build time / binary size.
+# Require >= 1.10504: earlier bundled builds fail on the current Windows CI MSVC toolset
+# (14.51), whose STL removed `stdext::checked_array_iterator` that DuckDB's vendored fmt
+# used; 1.10504 patches that header and links the Restart Manager lib. (duckdb-rs #786)
+duckdb = { version = "1.10504", features = ["bundled"] }
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.

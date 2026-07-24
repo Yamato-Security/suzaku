@@ -116,7 +116,8 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
 
     let (writers, output_pathes) = init_writers(
         options.output_opt.output.as_ref(),
-        options.output_opt.output_type,
+        &options.output_opt.output_types,
+        &profile,
     )
     .unwrap_or_else(|e| fatal_error(no_color, &e));
     let config = OutputConfig::new(no_color, options.output_opt.raw_output, options.localtime);

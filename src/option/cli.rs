@@ -1,6 +1,6 @@
 use crate::option::timefiler::parse_offset;
 use chrono::{DateTime, NaiveDate};
-use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand};
+use clap::{ArgAction, ArgGroup, Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 use const_format::concatcp;
@@ -37,6 +37,15 @@ fn parse_time_offset(s: &str) -> Result<String, String> {
     parse_offset(s)
         .map(|_| s.to_string())
         .ok_or_else(|| format!("'{s}' is not a valid time offset (e.g. 1y, 3M, 30d, 24h, 30m)"))
+}
+
+/// Output file formats selectable via `-t, --output-type`. Any subset can be written at once.
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum OutputFormat {
+    Csv,
+    Json,
+    Jsonl,
+    Duckdb,
 }
 
 #[derive(Parser)]
@@ -108,9 +117,10 @@ pub struct OutputOption {
     #[arg(help_heading = Some("Output"), short, long, value_name = "FILE", display_order = 302)]
     pub output: Option<PathBuf>,
 
-    /// Output type 1: CSV (default), 2: JSON, 3: JSONL, 4: CSV & JSON, 5: CSV & JSONL
-    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_parser = clap::value_parser!(u8).range(1..=5), default_value = "1", display_order = 303)]
-    pub output_type: u8,
+    /// Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate
+    /// or repeat to write several at once, e.g. -t csv,duckdb
+    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_enum, value_delimiter = ',', default_value = "csv", value_name = "FORMAT,...", display_order = 303)]
+    pub output_types: Vec<OutputFormat>,
 
     /// Output the original JSON logs (only available in JSON formats or stdout)
     #[arg(help_heading = Some("Output"), long = "raw-output", display_order = 304)]

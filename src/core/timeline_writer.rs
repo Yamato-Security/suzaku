@@ -1,15 +1,17 @@
 use crate::core::color::SuzakuColor;
 use crate::core::color::SuzakuColor::{Green, Orange, Red, White, Yellow};
 use crate::core::util::{get_json_writer, get_writer, sanitize_csv_field};
+use crate::option::cli::OutputFormat;
 use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use csv::Writer;
+use duckdb::{Connection, params_from_iter};
 use itertools::Itertools;
 use serde_json::Value;
 use sigma_rust::{Event, Rule, SigmaCorrelationRule, TimestampedEvent};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::{BufWriter, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use termcolor::{BufferWriter, ColorChoice, ColorSpec, WriteColor};
 
 #[derive(Debug)]
@@ -51,7 +53,45 @@ pub struct Writers {
     csv: Option<Writer<Box<dyn Write>>>,
     json: Option<BufWriter<Box<dyn Write>>>,
     jsonl: Option<BufWriter<Box<dyn Write>>>,
+    duckdb: Option<DuckDbSink>,
     std: Option<BufferWriter>,
+}
+
+/// DuckDB output sink: a `.duckdb` database file with a single `timeline` table whose columns
+/// are the output-profile headers (all `VARCHAR`, since every Suzaku value is a string). Unlike
+/// the CSV/JSON sinks this is not a byte stream, so it lives outside the `dyn Write` writers.
+struct DuckDbSink {
+    conn: Connection,
+    insert_sql: String,
+}
+
+impl DuckDbSink {
+    fn new(path: &Path, columns: &[String]) -> Result<Self, String> {
+        let conn = Connection::open(path)
+            .map_err(|e| format!("Cannot write to output file {}: {e}", path.display()))?;
+        let cols_ddl = columns
+            .iter()
+            .map(|c| format!("\"{}\" VARCHAR", c.replace('"', "\"\"")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        // CREATE OR REPLACE so re-running over an existing .duckdb file overwrites the table,
+        // matching the truncate-on-write behavior of the CSV/JSON file writers.
+        conn.execute_batch(&format!("CREATE OR REPLACE TABLE timeline ({cols_ddl});"))
+            .map_err(|e| format!("Cannot create DuckDB table in {}: {e}", path.display()))?;
+        let placeholders = vec!["?"; columns.len()].join(", ");
+        Ok(Self {
+            conn,
+            insert_sql: format!("INSERT INTO timeline VALUES ({placeholders})"),
+        })
+    }
+
+    fn append_row(&self, record: &[String]) {
+        // Errors on a single row shouldn't abort the whole scan; drop the row (rare — schema is
+        // fixed and every value is a string).
+        let _ = self
+            .conn
+            .execute(&self.insert_sql, params_from_iter(record.iter()));
+    }
 }
 
 pub struct OutputContext<'a> {
@@ -74,6 +114,7 @@ pub fn write_record(event: &Event, json: &Value, rule: Option<&Rule>, context: &
         .collect();
     write_to_stdout(&mut record, context, json, Some(event), rule);
     write_to_csv(&record, context);
+    write_to_duckdb(&record, context);
     write_to_json(&record, json, Some(event), rule, context);
     write_to_jsonl(&record, json, Some(event), rule, context);
     context.has_written = true;
@@ -87,6 +128,7 @@ pub fn write_correlation_record(
     let mut record: Vec<String> = build_correlation_record(events, rule, context);
     write_to_stdout(&mut record, context, &Value::Null, None, None);
     write_to_csv(&record, context);
+    write_to_duckdb(&record, context);
     write_to_json(&record, &Value::Null, None, None, context);
     write_to_jsonl(&record, &Value::Null, None, None, context);
 }
@@ -163,6 +205,12 @@ fn write_to_csv(record: &[String], context: &mut OutputContext) {
     if let Some(writer) = &mut context.writers.csv {
         let sanitized: Vec<String> = record.iter().map(|f| sanitize_csv_field(f)).collect();
         writer.write_record(&sanitized).unwrap();
+    }
+}
+
+fn write_to_duckdb(record: &[String], context: &mut OutputContext) {
+    if let Some(sink) = &context.writers.duckdb {
+        sink.append_row(record);
     }
 }
 
@@ -617,12 +665,18 @@ impl Writers {
             csv: None,
             json: None,
             jsonl: None,
+            duckdb: None,
             std: None,
         }
     }
 
     pub fn with_csv(mut self, writer: Writer<Box<dyn Write>>) -> Self {
         self.csv = Some(writer);
+        self
+    }
+
+    fn with_duckdb(mut self, sink: DuckDbSink) -> Self {
+        self.duckdb = Some(sink);
         self
     }
 
@@ -680,6 +734,9 @@ impl<'a> OutputContext<'a> {
             self.writers.csv = None;
             self.writers.json = None;
             self.writers.jsonl = None;
+            // Drop the DuckDB sink too: its open connection holds a lock on the `.duckdb` file on
+            // Windows, so `remove_file` below would fail silently and leave an empty database behind.
+            self.writers.duckdb = None;
 
             for path in &self.output_paths {
                 if path.exists() {
@@ -702,67 +759,73 @@ impl<'a> OutputContext<'a> {
     }
 }
 
-#[derive(Debug)]
-pub enum OutputType {
-    Csv,
-    Json,
-    Jsonl,
-    CsvAndJson,
-    CsvAndJsonl,
-}
-
-impl OutputType {
-    pub fn from_u8(value: u8) -> Option<Self> {
-        match value {
-            1 => Some(OutputType::Csv),
-            2 => Some(OutputType::Json),
-            3 => Some(OutputType::Jsonl),
-            4 => Some(OutputType::CsvAndJson),
-            5 => Some(OutputType::CsvAndJsonl),
-            _ => None,
-        }
+/// File extension written for each output format.
+fn output_format_ext(fmt: OutputFormat) -> &'static str {
+    match fmt {
+        OutputFormat::Csv => "csv",
+        OutputFormat::Json => "json",
+        OutputFormat::Jsonl => "jsonl",
+        OutputFormat::Duckdb => "duckdb",
     }
 }
+
+/// Resolve the concrete `(format, path)` targets for a base `-o` path: each requested format maps
+/// to `<base>.<ext>` (the base's extension normalized per format), with duplicate formats removed.
+/// Single source of truth for both opening the writers and the `--clobber` preflight.
+fn resolve_output_targets(
+    output_path: &Path,
+    output_types: &[OutputFormat],
+) -> Vec<(OutputFormat, PathBuf)> {
+    let mut seen = HashSet::new();
+    output_types
+        .iter()
+        .copied()
+        .filter(|f| seen.insert(*f))
+        .map(|fmt| {
+            let ext = output_format_ext(fmt);
+            let mut path = output_path.to_path_buf();
+            if path.extension().and_then(|e| e.to_str()) != Some(ext) {
+                path.set_extension(ext);
+            }
+            (fmt, path)
+        })
+        .collect()
+}
+
+/// The concrete output file paths a run would write for `output_types` under a base `-o` path,
+/// e.g. `<base>.csv` / `<base>.duckdb`. Used to preflight `--clobber` against every file that
+/// would actually be created, not just the literal `-o` value.
+pub fn resolve_output_paths(output_path: &Path, output_types: &[OutputFormat]) -> Vec<PathBuf> {
+    resolve_output_targets(output_path, output_types)
+        .into_iter()
+        .map(|(_, path)| path)
+        .collect()
+}
+
+/// Build the output writers for the requested formats. Each format writes to `<output>.<ext>`
+/// (the base path's extension is normalized per format), so a single `-o` base path can fan out
+/// to several files at once. `profile` supplies the column names for the DuckDB table. With no
+/// `output_path`, results go to the stdout table and `output_types` is ignored.
 pub fn init_writers(
     output_path: Option<&PathBuf>,
-    output_type: u8,
+    output_types: &[OutputFormat],
+    profile: &[(String, String)],
 ) -> Result<(Writers, Vec<PathBuf>), String> {
     let mut output_pathes = vec![];
     let mut writers = Writers::new();
 
     if let Some(output_path) = output_path {
-        let output_type = OutputType::from_u8(output_type).unwrap_or(OutputType::Csv);
-
-        match output_type {
-            OutputType::Csv | OutputType::CsvAndJson | OutputType::CsvAndJsonl => {
-                let mut csv_path = output_path.clone();
-                if csv_path.extension().and_then(|ext| ext.to_str()) != Some("csv") {
-                    csv_path.set_extension("csv");
+        for (fmt, path) in resolve_output_targets(output_path, output_types) {
+            output_pathes.push(path.clone());
+            writers = match fmt {
+                OutputFormat::Csv => writers.with_csv(get_writer(&Some(path))?),
+                OutputFormat::Json => writers.with_json(get_json_writer(&Some(path))?),
+                OutputFormat::Jsonl => writers.with_jsonl(get_json_writer(&Some(path))?),
+                OutputFormat::Duckdb => {
+                    let columns: Vec<String> = profile.iter().map(|(k, _)| k.clone()).collect();
+                    writers.with_duckdb(DuckDbSink::new(&path, &columns)?)
                 }
-                output_pathes.push(csv_path.clone());
-                writers = writers.with_csv(get_writer(&Some(csv_path))?);
-            }
-            _ => {}
-        }
-
-        match output_type {
-            OutputType::Json | OutputType::CsvAndJson => {
-                let mut json_path = output_path.clone();
-                if json_path.extension().and_then(|ext| ext.to_str()) != Some("json") {
-                    json_path.set_extension("json");
-                }
-                output_pathes.push(json_path.clone());
-                writers = writers.with_json(get_json_writer(&Some(json_path))?);
-            }
-            OutputType::Jsonl | OutputType::CsvAndJsonl => {
-                let mut jsonl_path = output_path.clone();
-                if jsonl_path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
-                    jsonl_path.set_extension("jsonl");
-                }
-                output_pathes.push(jsonl_path.clone());
-                writers = writers.with_jsonl(get_json_writer(&Some(jsonl_path))?);
-            }
-            _ => {}
+            };
         }
     } else {
         let disp_wtr = BufferWriter::stdout(ColorChoice::Always);
@@ -1050,5 +1113,97 @@ mod tests {
         if aws_country != "-" {
             assert_ne!(azure_country, "-");
         }
+    }
+
+    #[test]
+    fn duckdb_sink_creates_named_table_and_appends_rows() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("t.duckdb");
+        // A column name with a hyphen must be quoted correctly in the DDL.
+        let cols = vec![
+            "Timestamp".to_string(),
+            "RuleTitle".to_string(),
+            "AWS-Region".to_string(),
+        ];
+        let sink = DuckDbSink::new(&path, &cols).unwrap();
+        sink.append_row(&[
+            "2024-01-01".to_string(),
+            "Rule A".to_string(),
+            "us-east-1".to_string(),
+        ]);
+        sink.append_row(&[
+            "2024-01-02".to_string(),
+            "Rule B".to_string(),
+            "ap-northeast-1".to_string(),
+        ]);
+        drop(sink); // close the writer connection before re-opening for verification
+
+        let conn = Connection::open(&path).unwrap();
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM timeline", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 2);
+        let title: String = conn
+            .query_row(
+                "SELECT RuleTitle FROM timeline WHERE \"AWS-Region\" = 'ap-northeast-1'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(title, "Rule B");
+    }
+
+    #[test]
+    fn resolve_output_paths_expands_base_per_format_and_dedups() {
+        // Each format maps the base to <base>.<ext>, preserving order.
+        assert_eq!(
+            resolve_output_paths(
+                Path::new("result"),
+                &[OutputFormat::Csv, OutputFormat::Duckdb, OutputFormat::Jsonl]
+            ),
+            vec![
+                PathBuf::from("result.csv"),
+                PathBuf::from("result.duckdb"),
+                PathBuf::from("result.jsonl"),
+            ]
+        );
+        // A base that already carries some extension is normalized to the format's extension.
+        assert_eq!(
+            resolve_output_paths(Path::new("out.csv"), &[OutputFormat::Duckdb]),
+            vec![PathBuf::from("out.duckdb")]
+        );
+        // Repeated formats collapse to a single path.
+        assert_eq!(
+            resolve_output_paths(Path::new("result"), &[OutputFormat::Csv, OutputFormat::Csv]),
+            vec![PathBuf::from("result.csv")]
+        );
+    }
+
+    #[test]
+    fn flush_all_drops_duckdb_sink_and_removes_empty_db_on_no_hits() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("t.duckdb");
+        let profile = vec![("Timestamp".to_string(), ".eventTime".to_string())];
+        let sink = DuckDbSink::new(&path, &["Timestamp".to_string()]).unwrap();
+        // Opening the sink creates the database file.
+        assert!(path.exists());
+
+        let writers = Writers::new().with_duckdb(sink);
+        let config = OutputConfig::new(true, false, false);
+        let mut geo = None;
+        let output_paths = vec![path.clone()];
+        let mut ctx = OutputContext::new(&profile, &mut geo, &config, writers, &output_paths);
+
+        // Never wrote a record, so flush_all takes the no-hit cleanup path.
+        ctx.flush_all();
+
+        assert!(
+            ctx.writers.duckdb.is_none(),
+            "the DuckDB sink must be dropped so its connection releases the file lock"
+        );
+        assert!(
+            !path.exists(),
+            "the empty .duckdb database must be removed when there are no hits"
+        );
     }
 }
