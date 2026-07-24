@@ -1,6 +1,6 @@
 use crate::core::color::SuzakuColor::Red;
 use crate::core::log_source::LogSource;
-use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
+use crate::core::scan::{load_aws_events_from_file, process_events_from_dir};
 use crate::core::util::{fatal_error, get_writer, output_path_info, p, sanitize_csv_field};
 use crate::option::cli::InputOption;
 use crate::option::timefiler::filter_by_time;
@@ -58,8 +58,7 @@ pub fn aws_metrics(input_opt: &InputOption, field: &str, output: &Option<PathBuf
         }
         print_count_map_desc(csv_header, &count_map, wtr, output, no_color);
     } else if let Some(f) = file {
-        let log_contents = get_content(f);
-        let events = load_json_from_file(&log_contents, &LogSource::Aws);
+        let events = load_aws_events_from_file(f);
         if let Ok(events) = events {
             stats_func(&events);
             print_count_map_desc(csv_header, &count_map, wtr, output, no_color);

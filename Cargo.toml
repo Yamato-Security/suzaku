@@ -39,6 +39,11 @@ ureq="*"
 rayon = "1"
 tempfile = "3"
 sigma-rust = { git = "https://github.com/Yamato-Security/sigma-rust", tag = "v0.7.1" }
+# Parquet input support. Compression codecs cover what CloudTrail-to-Parquet
+# pipelines actually emit (Athena/Glue/Firehose): snappy, gzip, zstd, lz4.
+# flate2-zlib-rs matches the zlib-rs backend used by our own flate2 dependency.
+parquet = { version = "59.1.0", default-features = false, features = ["arrow", "snap", "flate2", "flate2-zlib-rs", "zstd", "lz4"] }
+arrow-json = "59.1.0"
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "*", features = ["vendored"] }  #vendored is needed to compile statically.

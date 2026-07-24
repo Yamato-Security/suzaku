@@ -1,6 +1,6 @@
 use crate::core::color::SuzakuColor::Red;
 use crate::core::log_source::LogSource;
-use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
+use crate::core::scan::{load_aws_events_from_file, process_events_from_dir};
 use crate::core::util::{fatal_error, get_writer, output_path_info, p, sanitize_csv_field};
 use crate::option::cli::InputOption;
 use crate::option::geoip::GeoIPSearch;
@@ -390,8 +390,7 @@ pub fn aws_summary(
             clobber,
         );
     } else if let Some(f) = file {
-        let log_contents = get_content(f);
-        let events = load_json_from_file(&log_contents, &LogSource::Aws);
+        let events = load_aws_events_from_file(f);
         if let Ok(events) = events {
             summary_func(&events);
             output_summary(

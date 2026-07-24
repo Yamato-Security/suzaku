@@ -149,11 +149,11 @@ pub struct SearchOptions {
 #[derive(Args, Clone, Debug, Default)]
 #[clap(group(ArgGroup::new("input_filtering").args(["directory", "filepath"]).required(true)))]
 pub struct InputOption {
-    /// Directory of multiple gz/json files
+    /// Directory of multiple gz/json/parquet files
     #[arg(help_heading = Some("Input"), short = 'd', long, value_name = "DIR", conflicts_with_all = ["filepath"], display_order = 100)]
     pub directory: Option<PathBuf>,
 
-    /// File path to one gz/json file
+    /// File path to one gz/json/parquet file
     #[arg(help_heading = Some("Input"), short = 'f', long = "file", value_name = "FILE", conflicts_with_all = ["directory"], display_order = 101)]
     pub filepath: Option<PathBuf>,
 

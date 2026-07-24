@@ -1,6 +1,6 @@
 use crate::core::color::SuzakuColor::{Green, Red};
 use crate::core::log_source::LogSource;
-use crate::core::scan::{get_content, load_json_from_file, process_events_from_dir};
+use crate::core::scan::{load_aws_events_from_file, process_events_from_dir};
 use crate::core::timeline_writer::{OutputConfig, OutputContext, init_writers, write_record};
 use crate::core::util::{fatal_error, load_profile, output_path_info, p};
 use crate::option::cli::{CommonOptions, SearchOptions};
@@ -139,8 +139,7 @@ level: informational";
             );
         }
     } else if let Some(f) = file {
-        let log_contents = get_content(f);
-        let events = load_json_from_file(&log_contents, &LogSource::Aws);
+        let events = load_aws_events_from_file(f);
         if let Ok(events) = events {
             search_func(&events);
         }
