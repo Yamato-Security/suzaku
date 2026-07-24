@@ -66,10 +66,11 @@ pub struct OutputContext<'a> {
 
 pub fn write_record(event: &Event, json: &Value, rule: Option<&Rule>, context: &mut OutputContext) {
     let localtime = context.config.localtime;
+    let src_ip = src_ip_spec(context.profile).to_string();
     let mut record: Vec<String> = context
         .profile
         .iter()
-        .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo, localtime))
+        .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo, localtime, &src_ip))
         .collect();
     write_to_stdout(&mut record, context, json, Some(event), rule);
     write_to_csv(&record, context);
@@ -126,7 +127,8 @@ fn write_to_stdout(
 
             for (k, v) in sigma_profile {
                 if let (Some(event), rule) = (event, rule) {
-                    let value = get_value_from_event(&v, event, rule, geo, localtime);
+                    let value =
+                        get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
                     json_record[k] = Value::String(value.to_string());
                 }
             }
@@ -195,7 +197,8 @@ fn write_to_json_format(
 
             for (k, v) in sigma_profile {
                 if let (Some(event), rule) = (event, rule) {
-                    let value = get_value_from_event(&v, event, rule, geo, localtime);
+                    let value =
+                        get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
                     json_record[k] = Value::String(value.to_string());
                 }
             }
@@ -364,6 +367,7 @@ fn build_correlation_record(
                 rule,
                 context.geo,
                 localtime,
+                src_ip_spec(profile),
             );
             values.insert(value);
         }
@@ -382,28 +386,49 @@ fn build_correlation_record(
         .collect()
 }
 
+/// The `SrcIP` field spec declared by the active output profile — e.g.
+/// `.sourceIPAddress` for AWS, or `.claims.ipaddr|.callerIpAddress|.ClientIP|.ActorIpAddress`
+/// for Azure/M365. Empty when the profile has no `SrcIP` column. Used to resolve
+/// the source IP for GeoIP enrichment without hardcoding an AWS-only field name.
+fn src_ip_spec(profile: &[(String, String)]) -> &str {
+    profile
+        .iter()
+        .find(|(k, _)| k == "SrcIP")
+        .map(|(_, v)| v.as_str())
+        .unwrap_or("")
+}
+
 fn get_value_from_event_common(
     key: &str,
     event: &Event,
     rule_info: RuleInfo,
     geo_ip: &mut Option<GeoIPSearch>,
     localtime: bool,
+    src_ip: &str,
 ) -> String {
-    // GeoIP処理部分（共通）: only the three geo columns are enriched. A missing
-    // GeoIP DB, a missing sourceIPAddress, or a non-IP value (e.g. an AWS service
-    // principal like "cloudtrail.amazonaws.com") yields the "-" placeholder for
-    // those columns only — it must never overwrite an unrelated column's value.
+    // GeoIP処理部分（共通）: only the three geo columns are enriched. The source IP
+    // is resolved from the profile's SrcIP field spec (`.sourceIPAddress` for AWS,
+    // `.callerIpAddress|.ClientIP|...` for Azure/M365) — NOT a hardcoded field name
+    // — so Azure/M365 enrich just like AWS. A missing GeoIP DB, a missing source IP,
+    // or a non-IP value (e.g. a service principal like "cloudtrail.amazonaws.com")
+    // yields the "-" placeholder for those columns only — it must never overwrite
+    // an unrelated column's value.
     if matches!(key, "SrcASN" | "SrcCity" | "SrcCountry") {
-        if let Some(geo) = geo_ip
-            && let Some(ip) = event.get("sourceIPAddress")
-        {
-            let ip = ip.value_to_string();
-            if let Some(ip) = geo.convert(ip.as_str()) {
-                return match key {
-                    "SrcASN" => geo.get_asn(ip),
-                    "SrcCity" => geo.get_city(ip),
-                    _ => geo.get_country(ip),
-                };
+        if let Some(geo) = geo_ip {
+            let ip_value = src_ip
+                .split('|')
+                .map(|k| k.trim_matches('.').trim())
+                .filter(|k| !k.is_empty())
+                .find_map(|k| event.get(k));
+            if let Some(ip) = ip_value {
+                let ip = ip.value_to_string();
+                if let Some(ip) = geo.convert(ip.as_str()) {
+                    return match key {
+                        "SrcASN" => geo.get_asn(ip),
+                        "SrcCity" => geo.get_city(ip),
+                        _ => geo.get_country(ip),
+                    };
+                }
             }
         }
         return "-".to_string();
@@ -548,6 +573,7 @@ fn get_value_from_correlation_event(
     rule: &SigmaCorrelationRule,
     geo_ip: &mut Option<GeoIPSearch>,
     localtime: bool,
+    src_ip: &str,
 ) -> String {
     get_value_from_event_common(
         key,
@@ -555,6 +581,7 @@ fn get_value_from_correlation_event(
         RuleInfo::CorrelationRule(rule),
         geo_ip,
         localtime,
+        src_ip,
     )
 }
 
@@ -564,9 +591,10 @@ fn get_value_from_event(
     rule: Option<&Rule>,
     geo_ip: &mut Option<GeoIPSearch>,
     localtime: bool,
+    src_ip: &str,
 ) -> String {
     if let Some(rule) = rule {
-        get_value_from_event_common(key, event, RuleInfo::Rule(rule), geo_ip, localtime)
+        get_value_from_event_common(key, event, RuleInfo::Rule(rule), geo_ip, localtime, src_ip)
     } else {
         "".to_string()
     }
@@ -918,17 +946,109 @@ mod tests {
 
         // A normal column keeps its own value — it is NOT clobbered by the non-IP source address.
         assert_eq!(
-            get_value_from_event(".eventName", &event, Some(&rule), &mut geo_ip, false),
+            get_value_from_event(
+                ".eventName",
+                &event,
+                Some(&rule),
+                &mut geo_ip,
+                false,
+                ".sourceIPAddress"
+            ),
             "ListBuckets"
         );
         // The GeoIP columns can't be enriched from a non-IP value, so they show the placeholder.
         assert_eq!(
-            get_value_from_event("SrcCountry", &event, Some(&rule), &mut geo_ip, false),
+            get_value_from_event(
+                "SrcCountry",
+                &event,
+                Some(&rule),
+                &mut geo_ip,
+                false,
+                ".sourceIPAddress"
+            ),
             "-"
         );
         assert_eq!(
-            get_value_from_event("SrcASN", &event, Some(&rule), &mut geo_ip, false),
+            get_value_from_event(
+                "SrcASN",
+                &event,
+                Some(&rule),
+                &mut geo_ip,
+                false,
+                ".sourceIPAddress"
+            ),
             "-"
         );
+    }
+
+    #[test]
+    fn src_ip_spec_reads_profile_srcip_field() {
+        let aws = vec![
+            ("EventName".to_string(), ".eventName".to_string()),
+            ("SrcIP".to_string(), ".sourceIPAddress".to_string()),
+        ];
+        assert_eq!(src_ip_spec(&aws), ".sourceIPAddress");
+        let azure = vec![(
+            "SrcIP".to_string(),
+            ".claims.ipaddr|.callerIpAddress|.ClientIP|.ActorIpAddress".to_string(),
+        )];
+        assert_eq!(
+            src_ip_spec(&azure),
+            ".claims.ipaddr|.callerIpAddress|.ClientIP|.ActorIpAddress"
+        );
+        let no_srcip: Vec<(String, String)> = vec![("X".to_string(), ".y".to_string())];
+        assert_eq!(src_ip_spec(&no_srcip), "");
+    }
+
+    // #159: GeoIP enrichment must resolve the source IP from the profile's SrcIP
+    // spec, so an Azure `callerIpAddress` enriches identically to an AWS
+    // `sourceIPAddress`. Before the fix the Azure field was ignored (the lookup
+    // hardcoded `sourceIPAddress`) and the geo columns were always "-".
+    #[test]
+    fn geoip_resolves_source_ip_via_profile_spec() {
+        use crate::option::geoip::GeoIPSearch;
+        use sigma_rust::{event_from_json, rule_from_yaml};
+        use std::path::Path;
+
+        let rule = rule_from_yaml(
+            "title: t\nlogsource:\n    category: test\ndetection:\n    selection:\n        eventName: E\n    condition: selection\n",
+        )
+        .unwrap();
+        let ip = "8.8.8.8";
+        let aws_event = event_from_json(&format!(
+            r#"{{"sourceIPAddress": "{ip}", "eventName": "E"}}"#
+        ))
+        .unwrap();
+        let azure_event = event_from_json(&format!(
+            r#"{{"callerIpAddress": "{ip}", "eventName": "E"}}"#
+        ))
+        .unwrap();
+
+        let mut geo = Some(
+            GeoIPSearch::new(Path::new("test_files/mmdb"))
+                .expect("GeoLite2 test .mmdb files must be present under test_files/mmdb/"),
+        );
+        let aws_country = get_value_from_event(
+            "SrcCountry",
+            &aws_event,
+            Some(&rule),
+            &mut geo,
+            false,
+            ".sourceIPAddress",
+        );
+        let azure_country = get_value_from_event(
+            "SrcCountry",
+            &azure_event,
+            Some(&rule),
+            &mut geo,
+            false,
+            ".callerIpAddress",
+        );
+        // Same IP + same DB must enrich identically regardless of the field name.
+        assert_eq!(aws_country, azure_country);
+        // When the DB actually resolves the IP, the Azure field must enrich (not "-").
+        if aws_country != "-" {
+            assert_ne!(azure_country, "-");
+        }
     }
 }
