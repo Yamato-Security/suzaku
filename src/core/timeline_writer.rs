@@ -455,6 +455,32 @@ pub fn write_correlation_record(
     write_to_jsonl(&record, &Value::Null, None, None, context);
 }
 
+/// Adds the profile-derived fields that raw output promises alongside the original event JSON.
+///
+/// Sigma fields are declared directly by profile values beginning with sigma. GeoIP fields are
+/// injected by load_profile only when SrcIP is present and GeoIP is enabled, where their value is
+/// the same as their column name. Keeping the selection here shared prevents JSON, JSONL, and
+/// terminal raw output from drifting apart.
+fn enrich_raw_record(
+    json_record: &mut Value,
+    event: Option<&Event>,
+    rule: Option<&Rule>,
+    profile: &[(String, String)],
+    geo: &mut Option<GeoIPSearch>,
+    localtime: bool,
+) {
+    let Some(event) = event else {
+        return;
+    };
+
+    for (key, value) in profile.iter().filter(|(key, value)| {
+        value.starts_with("sigma.") || (GEO_COLUMNS.contains(&key.as_str()) && value == key)
+    }) {
+        let value = get_value_from_event(value, event, rule, geo, localtime, src_ip_spec(profile));
+        json_record[key] = Value::String(value);
+    }
+}
+
 fn write_to_stdout(
     record: &mut [String],
     context: &mut OutputContext,
@@ -483,19 +509,7 @@ fn write_to_stdout(
             let localtime = context.config.localtime;
             let geo = &mut context.geo;
             let mut json_record = json.clone();
-            let sigma_profile: Vec<(String, String)> = profile
-                .iter()
-                .filter(|(_, value)| value.starts_with("sigma."))
-                .cloned()
-                .collect();
-
-            for (k, v) in sigma_profile {
-                if let (Some(event), rule) = (event, rule) {
-                    let value =
-                        get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
-                    json_record[k] = Value::String(value.to_string());
-                }
-            }
+            enrich_raw_record(&mut json_record, event, rule, profile, geo, localtime);
 
             let json_string = serde_json::to_string_pretty(&json_record);
             if let Ok(json_string) = json_string {
@@ -559,19 +573,7 @@ fn write_to_json_format(
 
         if let Some(writer) = writer {
             let mut json_record = json.clone();
-            let sigma_profile: Vec<(String, String)> = profile
-                .iter()
-                .filter(|(_, value)| value.starts_with("sigma."))
-                .cloned()
-                .collect();
-
-            for (k, v) in sigma_profile {
-                if let (Some(event), rule) = (event, rule) {
-                    let value =
-                        get_value_from_event(&v, event, rule, geo, localtime, src_ip_spec(profile));
-                    json_record[k] = Value::String(value.to_string());
-                }
-            }
+            enrich_raw_record(&mut json_record, event, rule, profile, geo, localtime);
 
             let json_string = if pretty {
                 serde_json::to_string_pretty(&json_record)
@@ -1831,6 +1833,72 @@ mod tests {
         );
         assert_eq!(aws.get("SrcASN").map(String::as_str), Some("Bredband2 AB"));
         assert_eq!(aws.get("SrcCountry").map(String::as_str), Some("Sweden"));
+    }
+
+    /// Drives the complete raw-output path with the shipped profile and returns the JSON object
+    /// written to either JSON or JSONL output.
+    fn write_raw_record(
+        jsonl: bool,
+        log: &crate::core::log_source::LogSource,
+        event_json: &str,
+        geo: &mut Option<crate::option::geoip::GeoIPSearch>,
+    ) -> Value {
+        use crate::core::util::load_profile;
+        use sigma_rust::{event_from_json, rule_from_yaml};
+
+        let profile = load_profile(log, geo, false);
+        let rule = rule_from_yaml(
+            "title: t\nlogsource:\n    category: test\ndetection:\n    selection:\n        eventName: E\n    condition: selection\n",
+        )
+        .unwrap();
+        let event = event_from_json(event_json).unwrap();
+        let json: Value = serde_json::from_str(event_json).unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        let output_path = dir
+            .path()
+            .join(if jsonl { "out.jsonl" } else { "out.json" });
+        let config = OutputConfig::new(true, true, false);
+        {
+            let file = std::fs::File::create(&output_path).unwrap();
+            let writer = BufWriter::new(Box::new(file) as Box<dyn Write>);
+            let writers = if jsonl {
+                Writers::new().with_jsonl(writer)
+            } else {
+                Writers::new().with_json(writer)
+            };
+            let mut context = OutputContext::new(&profile, geo, &config, writers, &[]);
+            write_record(&event, &json, Some(&rule), &mut context);
+            context.flush_all();
+        }
+
+        serde_json::from_str(&std::fs::read_to_string(&output_path).unwrap()).unwrap()
+    }
+
+    // Raw output retains its original log fields and every relevant profile-derived field.
+    #[test]
+    fn raw_output_preserves_geoip_enrichment() {
+        use crate::core::log_source::LogSource;
+        use crate::option::geoip::GeoIPSearch;
+        use std::path::Path;
+
+        let mut geo = Some(
+            GeoIPSearch::new(Path::new("test_files/mmdb"))
+                .expect("GeoLite2 test .mmdb files must be present under test_files/mmdb/"),
+        );
+        let event_json =
+            r#"{"callerIpAddress": "89.160.20.112", "eventName": "E", "operationName": "op"}"#;
+
+        for jsonl in [false, true] {
+            let record = write_raw_record(jsonl, &LogSource::Azure, event_json, &mut geo);
+            let output_name = if jsonl { "JSONL" } else { "JSON" };
+
+            assert_eq!(record["callerIpAddress"], "89.160.20.112", "{output_name}");
+            assert_eq!(record["RuleTitle"], "t", "{output_name}");
+            assert_eq!(record["SrcASN"], "Bredband2 AB", "{output_name}");
+            assert_eq!(record["SrcCity"], "Link\u{00f6}ping", "{output_name}");
+            assert_eq!(record["SrcCountry"], "Sweden", "{output_name}");
+        }
     }
 
     /// The correlation sibling of `write_record_columns`: drives `write_correlation_record`,

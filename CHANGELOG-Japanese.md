@@ -4,6 +4,7 @@
 
 **バグ修正:**
 
+- `-G, --geo-ip` で一致したタイムラインイベントを GeoIP エンリッチメントしていても、`--raw-output` は `SrcASN`・`SrcCity`・`SrcCountry` を出力せず、GeoIP が無効であるかのように見えていた。生のターミナル出力、JSON、JSONL が同じプロファイル由来のエンリッチメント経路を使用するようにし、元のイベントフィールドと Sigma メタデータを保持したまま GeoIP フィールドを追加するようにした。 (#184) (@vitorparras)
 - イベントのタイムスタンプ取得時に、出力プロファイルのフィールド指定をそのまま `Event::get` に渡していた問題を修正した。プロファイルの指定は先頭にドットが付き `|` 区切りのフォールバックリストにもなる（`.eventTime`、`.time|.eventTimestamp|.CreationTime`）一方、`Event::get` はドットなしのフィールド名を受け取るため、常に `None` が返っていた。この影響で、サマリーの `Dates with most total detections` が `n/a` となり、`first_event_time`/`last_event_time` が設定されず、さらに **Sigma の相関（correlation）ルールが一切発火しなかった**（同梱の相関ルール5本がすべて無効）。該当する3箇所すべてで、`Timestamp` カラムと同じ「存在する最初の候補を採用する」ルールの共通ヘルパー経由で解決するようにし、表示値と分析値が食い違わないようにした。 (#191) (@fukusuket)
 
 **その他:**
