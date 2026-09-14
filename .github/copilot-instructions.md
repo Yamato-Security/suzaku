@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Suzaku** is a cloud log threat detection and fast forensics tool developed by Yamato Security, designed for AWS CloudTrail and Azure logs.  
+**Suzaku** is a cloud log threat detection and fast forensics tool developed by Yamato Security, designed for AWS CloudTrail, Azure, and Google Workspace logs.  
 It analyzes logs using the Sigma rule engine (`sigma-rust`) and outputs timelines in CSV/JSON/JSONL format.
 
 - **Language**: Rust (edition = "2024", rust-version = "1.97.1")
@@ -19,9 +19,10 @@ suzaku/
 ├── Cargo.toml
 ├── config/
 │   ├── aws_profile.yaml      # AWS CloudTrail output profile definition
-│   └── azure_profile.yaml    # Azure output profile definition
+│   ├── azure_profile.yaml    # Azure output profile definition
+│   └── gws_profile.yaml      # Google Workspace output profile definition
 ├── rules/
-│   ├── sigma/                # Sigma rules (AWS / Azure)
+│   ├── sigma/                # Sigma rules (AWS / Azure / GWS)
 │   └── suzaku/               # Suzaku-specific rules
 ├── art/
 │   └── logo.txt              # ASCII art displayed at startup
@@ -34,11 +35,13 @@ suzaku/
     │   │   ├── aws_search.rs     # aws-ct-search command
     │   │   ├── aws_metrics.rs    # aws-ct-metrics command
     │   │   └── aws_summary.rs    # aws-ct-summary command
-    │   └── azure/
-    │       └── azure_timeline.rs # azure-timeline command
+    │   ├── azure/
+    │   │   └── azure_timeline.rs # azure-timeline command
+    │   └── gws/
+    │       └── gws_timeline.rs   # gws-timeline command
     ├── core/                 # Core logic
     │   ├── color.rs          # SuzakuColor enum & terminal colors
-    │   ├── log_source.rs     # LogSource enum (Aws / Azure / All)
+    │   ├── log_source.rs     # LogSource enum (Aws / Azure / Gws / All)
     │   ├── rules.rs          # Sigma rule loading & filtering
     │   ├── scan.rs           # File/directory scanning
     │   ├── summary.rs        # DetectionSummary & detection summary display
@@ -62,6 +65,7 @@ suzaku/
 | `aws-ct-metrics` | Generate per-field metrics from AWS CloudTrail logs |
 | `aws-ct-summary` | Generate a summary from AWS CloudTrail logs |
 | `azure-timeline` | Generate a DFIR timeline from Azure logs |
+| `gws-timeline` | Generate a DFIR timeline from Google Workspace logs |
 | `update-rules` | Update the rules repository via git2 |
 
 ---
@@ -74,6 +78,7 @@ An enum representing the log source type.
 pub enum LogSource {
     Aws,   // CloudTrail: profile = config/aws_profile.yaml
     Azure, // Activity/Audit/SignIn Logs: profile = config/azure_profile.yaml
+    Gws,   // Admin SDK Reports API activities: profile = config/gws_profile.yaml
     All,
 }
 ```
@@ -250,3 +255,4 @@ Test log files are stored in the `test_files/` directory (JSON/gzip format).
 - Existing output files will not be overwritten without the `--clobber (-C)` option (checked upfront in `main.rs`)
 - Thread count for parallel processing is set via `set_rayon_threat_number()` (0 = auto-set to number of CPU cores)
 - Azure logs support both `graph API format` (`value` key array) and `activitylogs format`
+- Gws logs are Google Admin SDK Reports API `activities.list` output (`kind: "admin#reports#activity"`); accepted as bare activities, arrays, or `activities.list` response pages (`{"kind":"admin#reports#activities","items":[...]}` — an empty page carries `"items": null`/`[]` and yields no events). Each activity's `events[]` is split into one record per sub-event before rule matching.

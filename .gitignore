@@ -4,11 +4,15 @@
 /.vscode/
 .DS_Store
 test_*
+# test_files/ holds the shipped fixtures and is tracked: re-include the directory so
+# git descends into it, and its contents again below the extension patterns.
+!test_files/
 .env
 /logs
 *.csv
 *.json
 *.jsonl
+!test_files/**
 *.html
 *.htm
 *.css

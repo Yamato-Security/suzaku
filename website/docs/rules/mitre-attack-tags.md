@@ -1,6 +1,6 @@
 # MITRE ATT&CK Tags
 
-Sigma rules can carry a [`tags`](https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-rules-specification.md#tags) field that classifies a detection against the [MITRE ATT&CK®](https://attack.mitre.org/) framework (tactics, techniques and groups) as well as other taxonomies. Because `tags` is a list, the `aws-ct-timeline` and `azure-timeline` commands render it in a single **`Tags`** column, joining the entries with ` ¦ ` (the same separator Hayabusa uses) and abbreviating each entry so the column stays compact.
+Sigma rules can carry a [`tags`](https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-rules-specification.md#tags) field that classifies a detection against the [MITRE ATT&CK®](https://attack.mitre.org/) framework (tactics, techniques and groups) as well as other taxonomies. Because `tags` is a list, the `aws-ct-timeline`, `azure-timeline` and `gws-timeline` commands render it in a single **`Tags`** column, joining the entries with ` ¦ ` (the same separator Hayabusa uses) and abbreviating each entry so the column stays compact.
 
 ## Example
 

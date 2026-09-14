@@ -9,6 +9,17 @@ static DATE_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
         .expect("DATE_PATH_RE regex pattern is invalid")
 });
 
+/// Resolve a possibly nested, dot-separated key (`id.time`) against a raw log record.
+///
+/// `Value::get` reads a top-level key only, so a profile `Timestamp` spec that names a nested
+/// field — Google Workspace's `.id.time` — resolved to nothing here and every event was dropped
+/// the moment a time filter was given. Flat keys still take the first (and only) step, so the
+/// AWS/Azure behaviour is unchanged.
+fn lookup_path<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
+    key.split('.')
+        .try_fold(value, |current, segment| current.get(segment))
+}
+
 pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
     // With no time constraints, keep every event. Events whose timestamp field is
     // absent or in an unrecognized format must not be silently dropped just
@@ -24,7 +35,7 @@ pub fn filter_by_time(opt: &TimeOption, value: &Value, ts_key: &str) -> bool {
 
     let event_time_str = keys
         .iter()
-        .find_map(|k| value.get(k.trim()).and_then(|v| v.as_str()));
+        .find_map(|k| lookup_path(value, k.trim()).and_then(|v| v.as_str()));
 
     let event_time_str = match event_time_str {
         Some(s) => s,
@@ -139,6 +150,24 @@ mod tests {
     use super::*;
     use crate::option::cli::FileDateOption;
     use serde_json::json;
+
+    // A profile `Timestamp` spec may name a nested field (Google Workspace uses `.id.time`).
+    // Before `lookup_path`, `Value::get("id.time")` returned `None` and a time filter dropped
+    // every Google Workspace event.
+    #[test]
+    fn filter_by_time_resolves_a_nested_timestamp_key() {
+        let opt = TimeOption {
+            timeline_start: Some("2024-01-01T00:00:00Z".to_string()),
+            timeline_end: Some("2024-01-31T00:00:00Z".to_string()),
+            time_offset: None,
+        };
+        let inside = json!({"id": {"time": "2024-01-15T10:20:30.123Z"}});
+        let outside = json!({"id": {"time": "2025-01-01T00:00:00.000Z"}});
+        assert!(filter_by_time(&opt, &inside, "id.time"));
+        assert!(!filter_by_time(&opt, &outside, "id.time"));
+        // A record without the nested field is still excluded rather than panicking.
+        assert!(!filter_by_time(&opt, &json!({"id": {}}), "id.time"));
+    }
 
     // --- filter_file_by_date_path tests ---
 

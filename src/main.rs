@@ -4,6 +4,7 @@ use crate::cmd::aws::aws_summary::aws_summary;
 use crate::cmd::aws::aws_timeline::aws_timeline;
 
 use crate::cmd::azure::azure_timeline::azure_timeline;
+use crate::cmd::gws::gws_timeline::gws_timeline;
 use chrono::Local;
 use clap::{CommandFactory, Parser};
 use cmd::update::start_update_rules;
@@ -14,7 +15,7 @@ use core::util::{check_path_exists, error_msg, p, set_rayon_threat_number};
 use libmimalloc_sys::mi_stats_print_out;
 use mimalloc::MiMalloc;
 use option::cli::Commands::{
-    AwsCtMetrics, AwsCtSearch, AwsCtSummary, AwsCtTimeline, AzureTimeline, UpdateRules,
+    AwsCtMetrics, AwsCtSearch, AwsCtSummary, AwsCtTimeline, AzureTimeline, GwsTimeline, UpdateRules,
 };
 use option::cli::{Cli, OutputFormat, RELEASE_NAME, VERSION};
 use std::ptr::null_mut;
@@ -47,11 +48,16 @@ fn main() {
         | AwsCtMetrics { common_opt, .. }
         | AwsCtSummary { common_opt, .. }
         | UpdateRules { common_opt }
-        | AzureTimeline { common_opt, .. } => common_opt.no_color,
+        | AzureTimeline { common_opt, .. }
+        | GwsTimeline { common_opt, .. } => common_opt.no_color,
     };
 
     match cmd {
         AzureTimeline {
+            options,
+            common_opt,
+        }
+        | GwsTimeline {
             options,
             common_opt,
         }
@@ -128,6 +134,7 @@ fn main() {
             // Execute appropriate timeline function
             match cmd {
                 AzureTimeline { .. } => azure_timeline(options, common_opt),
+                GwsTimeline { .. } => gws_timeline(options, common_opt),
                 AwsCtTimeline { .. } => aws_timeline(options, common_opt),
                 _ => unreachable!(),
             }
@@ -263,11 +270,16 @@ fn main() {
         | AwsCtMetrics { common_opt, .. }
         | AwsCtSummary { common_opt, .. }
         | AzureTimeline { common_opt, .. }
+        | GwsTimeline { common_opt, .. }
         | UpdateRules { common_opt } => common_opt.debug,
     };
 
     // Print issue reporting info for timeline commands
-    if matches!(cmd, AwsCtTimeline { .. } | AzureTimeline { .. }) && !debug {
+    if matches!(
+        cmd,
+        AwsCtTimeline { .. } | AzureTimeline { .. } | GwsTimeline { .. }
+    ) && !debug
+    {
         print_issue_reporting_info(no_color);
     }
 
