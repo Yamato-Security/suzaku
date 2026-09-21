@@ -326,12 +326,28 @@ pub enum Commands {
     #[command(
         author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
         version = FULL_VERSION,
-        help_template = "\nVersion: {version}\n{author-with-newline}\n{usage-heading}\n  suzaku azure-ct-timeline <INPUT> [OPTIONS]\n\n{all-args}",
+        help_template = "\nVersion: {version}\n{author-with-newline}\n{usage-heading}\n  suzaku azure-timeline <INPUT> [OPTIONS]\n\n{all-args}",
         disable_help_flag = true,
         disable_version_flag = true
     )]
     /// Creates an Azure DFIR timeline
     AzureTimeline {
+        #[clap(flatten)]
+        options: TimelineOptions,
+
+        #[clap(flatten)]
+        common_opt: CommonOptions,
+    },
+
+    #[command(
+        author = "Yamato Security (https://github.com/Yamato-Security/suzaku - @SecurityYamato)",
+        version = FULL_VERSION,
+        help_template = "\nVersion: {version}\n{author-with-newline}\n{usage-heading}\n  suzaku gws-timeline <INPUT> [OPTIONS]\n\n{all-args}",
+        disable_help_flag = true,
+        disable_version_flag = true
+    )]
+    /// Creates a Google Workspace DFIR timeline
+    GwsTimeline {
         #[clap(flatten)]
         options: TimelineOptions,
 

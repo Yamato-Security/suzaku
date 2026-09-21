@@ -1,0 +1,5450 @@
+{
+ "kind": "admin#reports#activities",
+ "etag": "\"fixture\"",
+ "items": [
+  {
+   "actor": {
+    "callerType": "EXTERNAL_USER",
+    "email": "ubd469f3227@example-134.test"
+   },
+   "etag": "\"ed47d4f05d5e82fb3b4e017303a/0b937a2571789522ecc19bff0c0\"",
+   "events": [
+    {
+     "name": "delete_event",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id d6718767>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ubf9cccea0a@example-135.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "uea75e9dfee@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 87cda5fa>"
+      },
+      {
+       "name": "notification_message_id",
+       "value": "u4d38631e71@example-136.test"
+      },
+      {
+       "name": "recipient_email",
+       "value": "uea75e9dfee@example-2.test"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63868199765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63868201565",
+       "name": "end_time"
+      },
+      {
+       "name": "api_kind",
+       "value": "ical"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 16f95b79>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/uea75e9dfee@example-2.test/events/d6718767b513f8ef2639ab11b9"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-04-28T07:08:31.216Z",
+    "uniqueQualifier": "531825237942236707"
+   },
+   "kind": "admin#reports#activity",
+   "ownerDomain": "example-2.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/uea75e9dfee@example-2.test/events/d6718767b513f8ef2639ab11b9",
+     "title": "<title 87cda5fa>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "email": "u3766f0cb25@example-2.test",
+    "profileId": "378234386803446815754"
+   },
+   "etag": "\"041b18df3ea8cd07817b27302b2/6144c8f8ccbd13d153f01973fdb\"",
+   "events": [
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua382cd9f24@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue01f2808c4@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "udc3e7e58cf@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "uffefc71141@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u20298b6282@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u02c1cd9161@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ud136e8e777@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u17b48df0cd@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u17b3709068@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue71ce1dbec@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue1278f7ae9@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u0efa6d5c4e@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u8ebd407c0d@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u425c9a8718@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7963d46067@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_inbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u1208197c26@example-2.test"
+      },
+      {
+       "intValue": "1752734165000",
+       "name": "requested_period_start"
+      },
+      {
+       "intValue": "1755326165000",
+       "name": "requested_period_end"
+      }
+     ],
+     "type": "interop"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-04-28T10:25:20.890Z",
+    "uniqueQualifier": "45124345059467147"
+   },
+   "ipAddress": "2001:db8::b608:f340",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65229
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-2.test"
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "uf8bc016ad8@example-4.test",
+    "profileId": "355477548112573859557"
+   },
+   "etag": "\"0b64ca10b8c2d4e99039ec8c387/3735b87ef36e53a265b4519a52a\"",
+   "events": [
+    {
+     "name": "create_event",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u970918bea2@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "change_event_guest_response",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_response_status",
+       "value": "accepted"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ua7e21c9271@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u505ec2fcb8@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u1125a7a0a0@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u39733d64ec@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u08dd608560@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u50da811eef@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ub688bf848b@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id be132ccf>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 8bb0bbc2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881919365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881922965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u7d7875ac2e@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-04-29T04:23:11.293Z",
+    "uniqueQualifier": "909992228007191826"
+   },
+   "ipAddress": "198.51.100.217",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65414
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/ue6dec659fa@example-4.test/events/be132ccffb92e0fe84bf82d3ce",
+     "title": "<title 8bb0bbc2>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "u5e05ef0cb0@example-4.test",
+    "profileId": "469397075407399717238"
+   },
+   "etag": "\"e22777c2d63ea45581e54e8a346/f862757fe765bf7847be5a68387\"",
+   "events": [
+    {
+     "name": "create_appointment_schedule",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "appointment_schedule_title",
+       "value": "<appointment_schedule_title f9f5960d>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "19d0a917a03fc6dc21d4c16c066c48d12937c5f"
+     ],
+     "type": "appointment_schedule_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-04-29T04:28:09.831Z",
+    "uniqueQualifier": "574305377545159274"
+   },
+   "ipAddress": "2001:db8::c4a6:7566",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65356
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "19d0a917a03fc6dc21d4c16c066c48d12937c5f",
+     "title": "u5e05ef0cb0@example-4.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "u777cdaa14b@example-2.test",
+    "profileId": "320856971840319594685"
+   },
+   "etag": "\"b4c6dc6079b672a0d48cbc2d93a/ff9feb227c445bb63e4b6f8a281\"",
+   "events": [
+    {
+     "name": "add_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id d2d3cabc>"
+      },
+      {
+       "intValue": "300",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "caldav"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent d700d3b7>"
+      }
+     ],
+     "resourceIds": [
+      "ddd87414d497ef8693dc862d9cdd"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "add_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id d2d3cabc>"
+      },
+      {
+       "intValue": "600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "caldav"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent d700d3b7>"
+      }
+     ],
+     "resourceIds": [
+      "ddd87414d497ef8693dc862d9cdd"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id fe0b527d>"
+      },
+      {
+       "intValue": "300",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "caldav"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent d700d3b7>"
+      }
+     ],
+     "resourceIds": [
+      "ddd87414d497ef8693dc862d9cdd"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id fe0b527d>"
+      },
+      {
+       "intValue": "600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "caldav"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent d700d3b7>"
+      }
+     ],
+     "resourceIds": [
+      "ddd87414d497ef8693dc862d9cdd"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id c79b2386>"
+      },
+      {
+       "intValue": "300",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "caldav"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent d700d3b7>"
+      }
+     ],
+     "resourceIds": [
+      "ddd87414d497ef8693dc862d9cdd"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id c79b2386>"
+      },
+      {
+       "intValue": "600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "caldav"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent d700d3b7>"
+      }
+     ],
+     "resourceIds": [
+      "ddd87414d497ef8693dc862d9cdd"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u777cdaa14b@example-2.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id 4aca7b30>"
+      },
+      {
+       "intValue": "300",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "caldav"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent d700d3b7>"
+      }
+     ],
+     "resourceIds": [
+      "ddd87414d497ef8693dc862d9cdd"
+     ],
+     "type": "subscription_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-04-29T05:31:05.497Z",
+    "uniqueQualifier": "704881120832773837"
+   },
+   "ipAddress": "198.51.100.215",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64752
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-2.test",
+   "resourceDetails": [
+    {
+     "id": "ddd87414d497ef8693dc862d9cdd",
+     "title": "u777cdaa14b@example-2.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "ub19034e2b1@example-4.test",
+    "profileId": "231121275248010935279"
+   },
+   "etag": "\"430dd105797228427d04e2926a4/77188d7f371bb8f2b5cdf4aa3c4\"",
+   "events": [
+    {
+     "name": "change_appointment_schedule",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "ub19034e2b1@example-4.test"
+      },
+      {
+       "name": "appointment_schedule_title",
+       "value": "<appointment_schedule_title a68fcf8b>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "api_kind",
+       "value": "ical"
+      }
+     ],
+     "resourceIds": [
+      "bb2bd325ba703307261b92cbf6a6c85bf1f52a47d"
+     ],
+     "type": "appointment_schedule_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-04-29T06:38:12.813Z",
+    "uniqueQualifier": "843170331140833002"
+   },
+   "kind": "admin#reports#activity",
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "bb2bd325ba703307261b92cbf6a6c85bf1f52a47d",
+     "title": "ub19034e2b1@example-4.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "uc86dce7f71@example-4.test",
+    "profileId": "118973294711981447011"
+   },
+   "etag": "\"b6a80788c6a34f35151029a07db/3d40415feed026eed6189773b7e\"",
+   "events": [
+    {
+     "name": "change_event_title",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "old_event_title",
+       "value": "<old_event_title 4d3258b4>"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "change_event_start_time",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u7c5be60570@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u1125a7a0a0@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ua7e21c9271@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "uf8bc016ad8@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ua10da8ffc3@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "uc86dce7f71@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u05163b64b7@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u3270475f9e@resource.calendar.google.com"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u8111f0beb1@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 08739954>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ub4d7682b72@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 0b50abf9>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882207365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882209165",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ue6dec659fa@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-04-29T07:20:45.014Z",
+    "uniqueQualifier": "1031132908363136212"
+   },
+   "ipAddress": "203.0.113.212",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65089
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/ub4d7682b72@example-4.test/events/08739954b1a37308b94e9ef47d",
+     "title": "<title 0b50abf9>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "u2f0892dcbb@example-2.test",
+    "profileId": "44941421857019035400"
+   },
+   "etag": "\"5a12efec15ad8e380594eed7f77/c1cef0445f65beb11bf7307fb3e\"",
+   "events": [
+    {
+     "name": "delete_appointment_schedule",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "u2f0892dcbb@example-2.test"
+      },
+      {
+       "name": "appointment_schedule_title",
+       "value": "<appointment_schedule_title be37dc12>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 73f43af9>"
+      }
+     ],
+     "resourceIds": [
+      "3f9bf27a95d4fc09968a23f9f31"
+     ],
+     "type": "appointment_schedule_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-04-30T10:32:04.777Z",
+    "uniqueQualifier": "1114768598385443953"
+   },
+   "ipAddress": "198.51.100.253",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64752
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-2.test",
+   "resourceDetails": [
+    {
+     "id": "3f9bf27a95d4fc09968a23f9f31",
+     "title": "u2f0892dcbb@example-2.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "ua9fa489398@example-2.test",
+    "profileId": "347421003494748461132"
+   },
+   "etag": "\"502f968cdac26458eb0f6418a26/1b5d29d40ff156f345eba0e3b3d\"",
+   "events": [
+    {
+     "name": "change_event_start_time",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u3b902ecaec@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u96057c885c@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ud990df74de@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ua3e28068e8@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "uf87221451a@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u9681905b79@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u41522f0c20@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u6f47cb559c@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u4ac1ad4fec@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id e5da4c35>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ua9fa489398@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 6b794bf7>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63881933765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63881935565",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u7641df4e27@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-04-30T13:23:17.141Z",
+    "uniqueQualifier": "400875906377434589"
+   },
+   "ipAddress": "203.0.113.144",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64752
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-2.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/ua9fa489398@example-2.test/events/e5da4c35f46fcf4009cecb1ffc",
+     "title": "<title 6b794bf7>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "ubeb5771110@example-2.test",
+    "profileId": "182071424294069629731"
+   },
+   "etag": "\"c1e5f55fcd57fdbfea40f04f841/3c4705c62dc862b3283724b1d5a\"",
+   "events": [
+    {
+     "name": "export_calendar",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "ubeb5771110@example-2.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "d6a43ab40aa0fbe1db33306806f6"
+     ],
+     "type": "calendar_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-05-02T10:56:07.555Z",
+    "uniqueQualifier": "1083873968557112825"
+   },
+   "ipAddress": "203.0.113.40",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64752
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-2.test",
+   "resourceDetails": [
+    {
+     "id": "d6a43ab40aa0fbe1db33306806f6",
+     "title": "ubeb5771110@example-2.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "ub203ab3ce2@example-4.test",
+    "profileId": "316413152506314569158"
+   },
+   "etag": "\"4c5d689c045a5a86866f988742c/09d045c6a8931991febd82b545b\"",
+   "events": [
+    {
+     "name": "delete_calendar",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "u33934dec27@group.calendar.google.com"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent b2f67ad9>"
+      }
+     ],
+     "resourceIds": [
+      "1b7666601182e12f91aee99afa5f3e1aa9c7149b14cf"
+     ],
+     "type": "calendar_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-05-03T05:05:55.419Z",
+    "uniqueQualifier": "1047727927132873669"
+   },
+   "ipAddress": "2001:db8::b907:9dfe",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65396
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "1b7666601182e12f91aee99afa5f3e1aa9c7149b14cf",
+     "title": "u33934dec27@group.calendar.google.com",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "u1cedc426f7@example-1.test",
+    "profileId": "231129489697016615231"
+   },
+   "etag": "\"be4d5a6309a039d6799a65bce45/f24c270f17827d779ded5780074\"",
+   "events": [
+    {
+     "name": "change_calendar_acls",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "u1cedc426f7@example-1.test"
+      },
+      {
+       "name": "grantee_email",
+       "value": "u046712ffef@allusers.d.calendar.google.com"
+      },
+      {
+       "name": "access_level",
+       "value": "read"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "6675200c54079b4b7a28ae28537f6c3"
+     ],
+     "type": "calendar_change"
+    },
+    {
+     "name": "change_calendar_acls",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "u1cedc426f7@example-1.test"
+      },
+      {
+       "name": "grantee_email",
+       "value": "ue409a83b17@example-1.test"
+      },
+      {
+       "name": "access_level",
+       "value": "owner"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "6675200c54079b4b7a28ae28537f6c3"
+     ],
+     "type": "calendar_change"
+    },
+    {
+     "name": "change_calendar_acls",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "u1cedc426f7@example-1.test"
+      },
+      {
+       "name": "grantee_email",
+       "value": "u1cedc426f7@example-1.test"
+      },
+      {
+       "name": "access_level",
+       "value": "owner"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "6675200c54079b4b7a28ae28537f6c3"
+     ],
+     "type": "calendar_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cc47aaf3e",
+    "time": "2025-05-03T08:53:55.028Z",
+    "uniqueQualifier": "403863240109537143"
+   },
+   "ipAddress": "198.51.100.135",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64931
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-1.test",
+   "resourceDetails": [
+    {
+     "id": "6675200c54079b4b7a28ae28537f6c3",
+     "title": "u1cedc426f7@example-1.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "EXTERNAL_USER",
+    "email": "ucc9d001c81@example-30.test"
+   },
+   "etag": "\"9e7a6a7b1fbb3ebd499ca9e2e2d/d6b0e7c50778683bd2b94d15ffe\"",
+   "events": [
+    {
+     "name": "change_event",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 569a57b0>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "ue7bc85c301@example-2.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "ue7bc85c301@example-2.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 7b8774c7>"
+      },
+      {
+       "name": "notification_message_id",
+       "value": "ucc66687364@example-31.test"
+      },
+      {
+       "name": "recipient_email",
+       "value": "ue7bc85c301@example-2.test"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63809372165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63809374865",
+       "name": "end_time"
+      },
+      {
+       "name": "api_kind",
+       "value": "ical"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 16f95b79>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/ue7bc85c301@example-2.test/events/569a57b029264bbf64ae7bc4d8"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-05-03T10:25:37.071Z",
+    "uniqueQualifier": "700066588148461830"
+   },
+   "kind": "admin#reports#activity",
+   "ownerDomain": "example-2.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/ue7bc85c301@example-2.test/events/569a57b029264bbf64ae7bc4d8",
+     "title": "<title 7b8774c7>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "u7f628716f6@example-4.test",
+    "profileId": "467247153113244479497"
+   },
+   "etag": "\"f65c6aedcdf92be53a5b1706556/03a62fe575bd44a61ee01a54056\"",
+   "events": [
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id 02dfb5e5>"
+      },
+      {
+       "intValue": "3600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 8ea13037>"
+      }
+     ],
+     "resourceIds": [
+      "df32dbefaef1f3aee4e870137964b576f512a787ff"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id 02dfb5e5>"
+      },
+      {
+       "intValue": "600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 8ea13037>"
+      }
+     ],
+     "resourceIds": [
+      "df32dbefaef1f3aee4e870137964b576f512a787ff"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id 9a0d8876>"
+      },
+      {
+       "intValue": "3600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 8ea13037>"
+      }
+     ],
+     "resourceIds": [
+      "df32dbefaef1f3aee4e870137964b576f512a787ff"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id 9a0d8876>"
+      },
+      {
+       "intValue": "600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 8ea13037>"
+      }
+     ],
+     "resourceIds": [
+      "df32dbefaef1f3aee4e870137964b576f512a787ff"
+     ],
+     "type": "subscription_change"
+    },
+    {
+     "name": "delete_subscription",
+     "parameters": [
+      {
+       "name": "subscriber_calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7f628716f6@example-4.test"
+      },
+      {
+       "name": "notification_type",
+       "value": "event_reminder"
+      },
+      {
+       "name": "notification_method",
+       "value": "alert"
+      },
+      {
+       "name": "event_id",
+       "value": "<event_id 83dfaeeb>"
+      },
+      {
+       "intValue": "3600",
+       "name": "secs_in_advance"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 8ea13037>"
+      }
+     ],
+     "resourceIds": [
+      "df32dbefaef1f3aee4e870137964b576f512a787ff"
+     ],
+     "type": "subscription_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-05-03T12:02:03.070Z",
+    "uniqueQualifier": "133054126642494810"
+   },
+   "ipAddress": "198.51.100.31",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65280,
+     65332
+    ]
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "df32dbefaef1f3aee4e870137964b576f512a787ff",
+     "title": "u7f628716f6@example-4.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "applicationInfo": {
+     "applicationName": "<applicationName 6f43a730>",
+     "oauthClientId": "145181010199891-b19fb6f0fa82e0f876d961a017b9f88d.apps.googleusercontent.com"
+    },
+    "callerType": "USER",
+    "email": "u966a13c024@example-4.test",
+    "profileId": "436442159477277828763"
+   },
+   "etag": "\"4c0f873de8e2e3530a75fbaf6d0/89725c9b334cb507ff02c3abc15\"",
+   "events": [
+    {
+     "name": "create_event",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u7c30c63b38@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u9c8e9a8674@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u9b13546eef@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "change_event_guest_response",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_response_status",
+       "value": "accepted"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "udf9548d665@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u50da811eef@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "uf50c4b07b5@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u9a8ba7df7c@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "uc9d31b4ca0@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id bf196362>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u966a13c024@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title eee45187>"
+      },
+      {
+       "name": "recurring",
+       "value": "yes"
+      },
+      {
+       "name": "recurrence_rule",
+       "value": "<recurrence_rule 26d173be>"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63883667165",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63883668965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u9770cb52b9@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "api_v3"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 635cbf50>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-05-04T03:13:04.870Z",
+    "uniqueQualifier": "1001787005039856298"
+   },
+   "ipAddress": "203.0.113.118",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65089
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/u966a13c024@example-4.test/events/bf196362ead749741d7ff40e35",
+     "title": "<title eee45187>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "ud56a1e3dee@example-4.test",
+    "profileId": "240275590571568446250"
+   },
+   "etag": "\"3dce0a014073f56c02640149189/32dc1b6369a9c523faf5d7be695\"",
+   "events": [
+    {
+     "name": "create_calendar",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "ud56a1e3dee@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "e2fd8c23addbf17713d94b5be17748f269972d04f92"
+     ],
+     "type": "calendar_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-05-04T07:45:38.123Z",
+    "uniqueQualifier": "212289507270883599"
+   },
+   "ipAddress": "2001:db8::b0d8:302c",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64974
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "e2fd8c23addbf17713d94b5be17748f269972d04f92",
+     "title": "ud56a1e3dee@example-4.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "uee43b8b425@example-4.test",
+    "profileId": "643105576197411051836"
+   },
+   "etag": "\"5aa5133aa001dd73c64bb0386f0/179a759471a38d22e4d89f7963b\"",
+   "events": [
+    {
+     "name": "change_calendar_timezone",
+     "parameters": [
+      {
+       "name": "calendar_id",
+       "value": "ud56a1e3dee@example-4.test"
+      },
+      {
+       "name": "calendar_timezone",
+       "value": "<calendar_timezone dd5ccfd9>"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "e2fd8c23addbf17713d94b5be17748f269972d04f92"
+     ],
+     "type": "calendar_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-05-04T07:45:38.353Z",
+    "uniqueQualifier": "337005483841318816"
+   },
+   "ipAddress": "2001:db8::b0d8:302c",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64974
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "e2fd8c23addbf17713d94b5be17748f269972d04f92",
+     "title": "ud56a1e3dee@example-4.test",
+     "type": "CALENDAR"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "u5e97b80c0a@example-4.test",
+    "profileId": "220116124869189518816"
+   },
+   "etag": "\"a9d89a05711770cfe9509ff9af7/dc5cb0af04ca4fc8a037aa3bca2\"",
+   "events": [
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u6bfd2683d5@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ub023eef2e0@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ubfc40d80b1@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u39e5ed8f1c@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "uee43b8b425@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ud9b966b38d@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "change_event_guest_response",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_response_status",
+       "value": "accepted"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u9a8df97d43@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "uc5ed7a944b@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 6163edd5>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e97b80c0a@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 42bb23ea>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882527765",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882642965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u11ccd2db9d@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-05-04T09:25:31.245Z",
+    "uniqueQualifier": "44036244721430561"
+   },
+   "ipAddress": "2001:db8::e072:8700",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64974
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/u5e97b80c0a@example-4.test/events/6163edd507cf61126a223a8362",
+     "title": "<title 42bb23ea>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  },
+  {
+   "actor": {
+    "email": "u17013d1dc9@example-2.test",
+    "profileId": "213239437137022374835"
+   },
+   "etag": "\"184b6e776f700ed5985e2eb1c70/7483cd11d4df29a2c395b905acd\"",
+   "events": [
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u3b014c0187@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7843cba961@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u6f461e2a1a@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u7dee6e15df@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u56d27025f9@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "uc6883c22f5@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u81ed6c90ec@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u25fe45f8f2@example-15.test"
+      }
+     ],
+     "type": "interop"
+    },
+    {
+     "name": "interop_freebusy_lookup_outbound_successful",
+     "parameters": [
+      {
+       "name": "api_kind",
+       "value": "ews"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u9639f09f52@example-15.test"
+      }
+     ],
+     "type": "interop"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "C859690d8",
+    "time": "2025-05-04T11:46:17.476Z",
+    "uniqueQualifier": "1015983059623207702"
+   },
+   "ipAddress": "203.0.113.10",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     64752
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-2.test"
+  },
+  {
+   "actor": {
+    "callerType": "USER",
+    "email": "u5e05ef0cb0@example-4.test",
+    "profileId": "469397075407399717238"
+   },
+   "etag": "\"98946dc3f384397b94c06f1f6d5/d4268f52cfd957bc524acdc0359\"",
+   "events": [
+    {
+     "name": "change_event_guest_response",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 8ddc433e>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 144208b2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882117365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882120965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "event_response_status",
+       "value": "accepted"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e05ef0cb0@example-4.test/events/8ddc433ea350418128d07f9d3d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 8ddc433e>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 144208b2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882117365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882120965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ud20b2243ef@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e05ef0cb0@example-4.test/events/8ddc433ea350418128d07f9d3d"
+     ],
+     "type": "event_change"
+    },
+    {
+     "name": "add_event_guest",
+     "parameters": [
+      {
+       "name": "event_id",
+       "value": "<event_id 8ddc433e>"
+      },
+      {
+       "name": "organizer_calendar_id",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "calendar_id",
+       "value": "u5e05ef0cb0@example-4.test"
+      },
+      {
+       "name": "event_title",
+       "value": "<event_title 144208b2>"
+      },
+      {
+       "name": "recurring",
+       "value": "no"
+      },
+      {
+       "name": "recurrence_rule"
+      },
+      {
+       "name": "calendar_event_type",
+       "value": "default"
+      },
+      {
+       "name": "client_side_encrypted",
+       "value": "no"
+      },
+      {
+       "intValue": "63882117365",
+       "name": "start_time"
+      },
+      {
+       "intValue": "63882120965",
+       "name": "end_time"
+      },
+      {
+       "name": "event_guest",
+       "value": "ucbab905af9@example-4.test"
+      },
+      {
+       "name": "api_kind",
+       "value": "web"
+      },
+      {
+       "name": "user_agent",
+       "value": "<user_agent 640bcaaa>"
+      }
+     ],
+     "resourceIds": [
+      "calendars/u5e05ef0cb0@example-4.test/events/8ddc433ea350418128d07f9d3d"
+     ],
+     "type": "event_change"
+    }
+   ],
+   "id": {
+    "applicationName": "calendar",
+    "customerId": "Cded80cd0",
+    "time": "2025-05-05T02:40:13.338Z",
+    "uniqueQualifier": "271766555539797695"
+   },
+   "ipAddress": "2001:db8::d986:d4b",
+   "kind": "admin#reports#activity",
+   "networkInfo": {
+    "ipAsn": [
+     65356
+    ],
+    "regionCode": "ZZ"
+   },
+   "ownerDomain": "example-4.test",
+   "resourceDetails": [
+    {
+     "id": "calendars/u5e05ef0cb0@example-4.test/events/8ddc433ea350418128d07f9d3d",
+     "title": "<title 144208b2>",
+     "type": "CALENDAR_EVENT"
+    }
+   ]
+  }
+ ]
+}

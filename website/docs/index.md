@@ -14,7 +14,7 @@ generator for cloud logs</strong>, created by <a href="https://github.com/Yamato
 Security</a> and written in <a href="https://www.rust-lang.org/">Rust</a>. Imagine
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>, but for cloud logs instead of
 Windows event logs — with native <a href="https://github.com/SigmaHQ/sigma">Sigma</a> support for
-AWS CloudTrail (Azure and GCP planned).
+AWS CloudTrail, Azure/Entra ID/M365, and Google Workspace.
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ AWS CloudTrail (Azure and GCP planned).
 
     ---
 
-    Native [Sigma](https://github.com/SigmaHQ/sigma) detection for cloud logs — AWS CloudTrail today,
-    Azure and GCP planned. Correlation rules and nearly all field modifiers supported.
+    Native [Sigma](https://github.com/SigmaHQ/sigma) detection for cloud logs — AWS CloudTrail,
+    Azure/Entra ID/M365, and Google Workspace. Correlation rules and nearly all field modifiers supported.
 
 -   :material-timeline-clock:{ .lg .middle } __Fast forensics timelines__
 

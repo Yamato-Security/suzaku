@@ -8,6 +8,13 @@
 
 ## DFIR Timeline Commands:
 * `aws-ct-timeline`: Creates an AWS CloudTrail DFIR timeline
+* `azure-timeline`: Creates an Azure DFIR timeline
+* `gws-timeline`: Creates a Google Workspace DFIR timeline
+
+## Search Commands:
+* `aws-ct-search`: Search AWS CloudTrail logs
+
+## Update Commands:
 * `update-rules`: Updates the Sigma detection rules
 
 ## General Commands:

@@ -3,6 +3,17 @@
 !!! info
     This page mirrors the project [`CHANGELOG.md`](https://github.com/Yamato-Security/suzaku/blob/main/CHANGELOG.md). See the [Releases page](https://github.com/Yamato-Security/suzaku/releases) for downloads.
 
+## Unreleased
+
+**New Features:**
+
+- New: `gws-timeline` command for Google Workspace Reports API logs. Reads Admin SDK Reports API `activities.list` output (`.json`/`.jsonl`/`.json.gz`, bare activities, arrays, or `activities.list` pages), splits each activity's `events[]` into one record per sub-event, folds `parameters[]` into top-level fields (with lowercase aliases for `UPPER_CASE` parameter names, e.g. `NEW_VALUE` → `new_value`), and matches rules declaring `service: google_workspace` or `service: google_workspace.<app>` — SigmaHQ's `gworkspace` rules as well as Suzaku's own `suzaku/gws` rules. Ships with `config/gws_profile.yaml`. (@ecapuano)
+
+**Bug Fixes:**
+
+- A run in which only correlation rules fired reported `Results saved: None` and deleted the output files it had just written. `write_correlation_record` never set the `has_written` flag that tells `flush_all` the run produced results, so every correlation-only run threw its own output away. (@ecapuano)
+- `--timeline-start`/`--timeline-end` and `--time-offset` dropped every event for an output profile whose `Timestamp` spec is a nested path (`.id.time`), because the time filter looked the key up only as a flat field name. Nested specs now resolve; flat keys are unchanged. (@ecapuano)
+
 ## 2.0.1 [2026/08/24] - El Niño Release
 
 **Bug Fixes:**

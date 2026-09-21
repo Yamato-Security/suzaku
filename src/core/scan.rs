@@ -343,10 +343,251 @@ fn normalize_azure_event(mut v: Value) -> Value {
     v
 }
 
-/// Apply `normalize_azure_event` to every event when scanning Azure logs.
+/// True when `map` is a raw Google Workspace Reports API activity object.
+fn is_gws_activity_map(map: &serde_json::Map<String, Value>) -> bool {
+    map.get("kind").and_then(Value::as_str) == Some("admin#reports#activity")
+}
+
+/// Extract the individual Google Workspace activities from one parsed JSON document. Handles the
+/// shapes the Reports API produces: a single activity object, a bare array of activities, and an
+/// `activities.list` response page (`{ "kind": "admin#reports#activities", "items": [...] }`).
+fn gws_records(value: Value) -> Vec<Value> {
+    match value {
+        Value::Array(records) => records.into_iter().flat_map(gws_records).collect(),
+        Value::Object(mut map) => {
+            // Only an envelope carries `items`; an activity is returned as it stands.
+            if !is_gws_activity_map(&map) && map.contains_key("items") {
+                // An `activities.list` response page. A page that matched nothing carries
+                // `"items": null` (or an empty array), which must yield no records at all rather
+                // than one opaque envelope object that matches no rule but is counted as a
+                // scanned event by every statistic in the run.
+                return match map.remove("items") {
+                    Some(Value::Array(items)) => items.into_iter().flat_map(gws_records).collect(),
+                    _ => vec![],
+                };
+            }
+            vec![Value::Object(map)]
+        }
+        _ => vec![],
+    }
+}
+
+/// The value of one `events[].parameters[]` entry, or `None` when the parameter carries no value.
+///
+/// The Reports API puts the value in exactly one of several differently typed fields.
+/// `intValue`/`multiIntValue` arrive as *strings*; they are parsed so numeric Sigma comparisons
+/// work, and left as strings when they do not parse.
+///
+/// A parameter with none of those fields is NOT a set flag. The API elides protobuf default
+/// values, so a bare `{"name": "is_suspicious"}` means *false* and a bare
+/// `{"name": "recurrence_rule"}` means the empty string — `is_suspicious` is emitted on every
+/// `login_success`, valueless roughly 13x more often than as `boolValue: true`. Folding those to
+/// `true` would make a rule on `is_suspicious: true` fire on every successful login in the
+/// tenant. Such a parameter is therefore dropped: `is_suspicious: true` then matches only the
+/// explicit trues, and `is_suspicious: null` matches the elided default.
+fn gws_parameter_value(param: &serde_json::Map<String, Value>) -> Option<Value> {
+    if let Some(value) = param.get("value") {
+        return Some(value.clone());
+    }
+    if let Some(value) = param.get("intValue") {
+        return Some(gws_int_value(value));
+    }
+    if let Some(value) = param.get("boolValue") {
+        return Some(value.clone());
+    }
+    if let Some(Value::Array(items)) = param.get("multiValue") {
+        return Some(Value::Array(items.clone()));
+    }
+    if let Some(Value::Array(items)) = param.get("multiIntValue") {
+        return Some(Value::Array(items.iter().map(gws_int_value).collect()));
+    }
+    if let Some(value) = param.get("messageValue") {
+        return Some(gws_message_value(value));
+    }
+    if let Some(Value::Array(items)) = param.get("multiMessageValue") {
+        return Some(Value::Array(items.iter().map(gws_message_value).collect()));
+    }
+    None
+}
+
+/// Parse a Reports API integer, which is transported as a string (`"63900000000"`). A value that
+/// does not parse is kept verbatim rather than dropped.
+fn gws_int_value(value: &Value) -> Value {
+    match value {
+        Value::String(s) => s
+            .parse::<i64>()
+            .map(Value::from)
+            .unwrap_or_else(|_| value.clone()),
+        other => other.clone(),
+    }
+}
+
+/// Fold a `messageValue` into a plain object. Its payload is itself a `parameter` array (the same
+/// shape as `events[].parameters`), so rules can reach `SETTING_METADATA.rule_type` once folded.
+fn gws_message_value(value: &Value) -> Value {
+    let Value::Object(map) = value else {
+        return value.clone();
+    };
+    let Some(Value::Array(params)) = map.get("parameter") else {
+        return value.clone();
+    };
+    Value::Object(fold_gws_parameters(params))
+}
+
+/// Fold an `events[].parameters` array into a flat object keyed by parameter name.
+fn fold_gws_parameters(params: &[Value]) -> serde_json::Map<String, Value> {
+    let mut folded = serde_json::Map::new();
+    for param in params {
+        if let Value::Object(param) = param
+            && let Some(Value::String(name)) = param.get("name")
+            && let Some(value) = gws_parameter_value(param)
+        {
+            folded.insert(name.clone(), value);
+        }
+    }
+    folded
+}
+
+/// True for an `UPPER_CASE` parameter name, i.e. `^[A-Z0-9_]+$`.
+fn is_gws_upper_case(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+}
+
+/// The most `events[]` entries one activity is split into.
+///
+/// Each sub-event carries a copy of every top-level activity field, so an activity with N
+/// sub-events costs N copies of it. Real activities stay far below this (the largest seen is a
+/// Calendar invite with one `add_event_guest` per guest, in the hundreds), but the array is
+/// attacker-influenced and the input is untrusted JSON: one crafted record with a few million
+/// sub-events would otherwise allocate until the host runs out of memory. Past the cap the
+/// remaining sub-events are dropped with a warning, while `eventCount` keeps reporting the
+/// activity's real length so the truncation is visible in the output.
+const MAX_GWS_SUB_EVENTS: usize = 10_000;
+
+/// Normalize one raw Google Workspace Reports API activity into one record per `events[]` entry.
+///
+/// Unlike the AWS/Azure normalizers this returns MANY records: an activity is a container, and
+/// its sub-events are what a rule actually describes. `CHANGE_PASSWORD` +
+/// `CHANGE_PASSWORD_ON_NEXT_LOGIN` arrive as one activity, and a Calendar `create_event` carries
+/// one `add_event_guest` sub-event per guest. Sigma cannot see inside arrays, so an unsplit
+/// activity would match on at most its first sub-event and hide the rest.
+///
+/// Each record keeps every top-level activity field (`kind`, `id`, `actor`, `ipAddress`,
+/// `networkInfo`, `resourceDetails`, `ownerDomain`, ...) and adds the sub-event's `eventName` /
+/// `eventType` / `resourceIds`, its position (`eventIndex` of `eventCount`), the synthesized
+/// `eventService`, and the sub-event's parameters folded into top-level keys. The folded
+/// parameters are written first and everything else over them, so the activity's own fields and
+/// Suzaku's synthesized keys always win a name collision with a parameter.
+fn normalize_gws_event(v: Value) -> Vec<Value> {
+    let mut activity = match v {
+        Value::Object(map) => map,
+        other => return vec![other],
+    };
+    // Emitted only when the activity names an application: a bare ".googleapis.com" would be a
+    // value no rule means and would hide the fact that `id.applicationName` is missing.
+    let event_service = activity
+        .get("id")
+        .and_then(|id| id.get("applicationName"))
+        .and_then(Value::as_str)
+        .map(|app| format!("{app}.googleapis.com"));
+    let events = match activity.remove("events") {
+        Some(Value::Array(events)) if !events.is_empty() => events,
+        // Nothing to split on -- `events` missing, not an array, or an empty array. Emit the
+        // activity as it stands rather than dropping it, so a malformed or already-flattened
+        // record still reaches the rules.
+        other => {
+            if let Some(other) = other {
+                activity.insert("events".to_string(), other);
+            }
+            if let Some(event_service) = event_service {
+                activity.insert("eventService".to_string(), Value::String(event_service));
+            }
+            return vec![Value::Object(activity)];
+        }
+    };
+
+    let event_count = events.len();
+    let events = if event_count > MAX_GWS_SUB_EVENTS {
+        log_warn(&format!(
+            "Google Workspace activity with {event_count} sub-events: only the first {MAX_GWS_SUB_EVENTS} were scanned"
+        ));
+        &events[..MAX_GWS_SUB_EVENTS]
+    } else {
+        events.as_slice()
+    };
+
+    let last = events.len() - 1;
+    let mut records = Vec::with_capacity(events.len());
+    for (index, event) in events.iter().enumerate() {
+        // The folded parameters go in FIRST. A parameter name is free-form data from the logged
+        // event, so one can be called `eventName`, `id` or `kind`; letting it land on top would
+        // give a record whose `id` resolves no timestamp and whose `kind` matches no service.
+        // Everything Suzaku synthesizes, and every field of the activity itself, is written after
+        // them and therefore wins the collision.
+        let mut record = serde_json::Map::new();
+        if let Value::Object(event) = event
+            && let Some(Value::Array(params)) = event.get("parameters")
+        {
+            let folded = fold_gws_parameters(params);
+            // Lowercase aliases go in only after every parameter is in place, so a real
+            // lowercase parameter is never overwritten by an alias of its UPPER_CASE twin.
+            let aliases: Vec<(String, Value)> = folded
+                .iter()
+                .filter(|(name, _)| is_gws_upper_case(name))
+                .map(|(name, value)| (name.to_ascii_lowercase(), value.clone()))
+                .filter(|(alias, _)| !folded.contains_key(alias))
+                .collect();
+            for (name, value) in folded {
+                record.insert(name, value);
+            }
+            // SigmaHQ's gworkspace admin rules inherited lowercase parameter names
+            // (`new_value`, `setting_name`) from the Elastic Filebeat module, while the
+            // Reports API emits `NEW_VALUE`. Emitting both lets those rules load unmodified.
+            for (alias, value) in aliases {
+                record.entry(alias).or_insert(value);
+            }
+        }
+        // The last record takes the activity instead of copying it one final time.
+        let fields = if index == last {
+            std::mem::take(&mut activity)
+        } else {
+            activity.clone()
+        };
+        for (name, value) in fields {
+            record.insert(name, value);
+        }
+        if let Some(event_service) = &event_service {
+            record.insert(
+                "eventService".to_string(),
+                Value::String(event_service.clone()),
+            );
+        }
+        record.insert("eventIndex".to_string(), Value::from(index as u64));
+        record.insert("eventCount".to_string(), Value::from(event_count as u64));
+        if let Value::Object(event) = event {
+            for (from, to) in [("name", "eventName"), ("type", "eventType")] {
+                if let Some(value) = event.get(from) {
+                    record.insert(to.to_string(), value.clone());
+                }
+            }
+            if let Some(resource_ids) = event.get("resourceIds") {
+                record.insert("resourceIds".to_string(), resource_ids.clone());
+            }
+        }
+        records.push(Value::Object(record));
+    }
+    records
+}
+
+/// Apply the per-source normalizer to every event. Google Workspace is the one source where a
+/// single input record can produce several output records (one per `events[]` entry).
 fn normalize_events(events: Vec<Value>, log: &LogSource) -> Vec<Value> {
     match log {
         LogSource::Azure => events.into_iter().map(normalize_azure_event).collect(),
+        LogSource::Gws => events.into_iter().flat_map(normalize_gws_event).collect(),
         _ => events,
     }
 }
@@ -399,6 +640,19 @@ fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
                 .lines()
                 .filter_map(|line| serde_json::from_str::<Value>(line).ok())
                 .flat_map(azure_records)
+                .collect()
+        }
+        LogSource::Gws => {
+            // Try parsing the whole file as a single JSON document first.
+            if let Ok(json_value) = serde_json::from_str::<Value>(log_contents) {
+                return gws_records(json_value);
+            }
+            // Fall back to JSONL: one JSON document per line, each of which may itself be an
+            // `activities.list` response page or an array.
+            log_contents
+                .lines()
+                .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .flat_map(gws_records)
                 .collect()
         }
         _ => vec![],
@@ -843,6 +1097,23 @@ pub fn load_json_from_file(
                 }
             }
         }
+        LogSource::Gws => {
+            let log_contents_trimmed = log_contents
+                .strip_prefix('\u{FEFF}')
+                .unwrap_or(log_contents);
+            match serde_json::from_str::<Value>(log_contents_trimmed) {
+                // Array, `activities.list` response page, or one activity.
+                Ok(json_value) => events.extend(gws_records(json_value)),
+                Err(_) => {
+                    // Fall back to JSONL (each line may itself be any of those shapes).
+                    log_contents.lines().for_each(|line| {
+                        if let Ok(json_value) = serde_json::from_str::<Value>(line) {
+                            events.extend(gws_records(json_value));
+                        }
+                    });
+                }
+            }
+        }
 
         _ => {}
     }
@@ -868,6 +1139,7 @@ pub fn get_content(f: &PathBuf) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     // The summary's date breakdown and its first/last event times are derived from the event
     // field the output profile NAMES -- `.eventTime` for AWS, `.time|.eventTimestamp|
@@ -900,6 +1172,13 @@ mod tests {
                 "azure",
                 LogSource::Azure,
                 r#"{"time": "2023-07-10T12:27:45Z", "eventName": "E"}"#,
+            ),
+            // Google Workspace names a NESTED Timestamp spec (`.id.time`), which is exactly the
+            // shape `Event::get` does not read verbatim.
+            (
+                "gws",
+                LogSource::Gws,
+                r#"{"kind": "admin#reports#activity", "id": {"applicationName": "login", "time": "2023-07-10T12:27:45Z"}, "eventName": "E"}"#,
             ),
         ] {
             let mut geo = None;
@@ -980,6 +1259,467 @@ mod tests {
         assert!(result.is_ok());
         let event = result.unwrap();
         assert_eq!(event.len(), 29);
+    }
+
+    // --- Google Workspace ---
+
+    /// The Reports API delivers a password reset and the forced change on next login as ONE
+    /// activity with two `events[]` entries. Sigma cannot see inside an array, so an unsplit
+    /// activity would match on at most its first sub-event and the second would be invisible.
+    #[test]
+    fn normalize_gws_event_splits_a_multi_event_activity() {
+        let activity: Value = serde_json::from_str(
+            r#"{
+                "kind": "admin#reports#activity",
+                "id": {"applicationName": "admin", "time": "2024-01-02T03:04:05.678Z",
+                       "customerId": "C0example", "uniqueQualifier": "1234567890123456789"},
+                "actor": {"callerType": "USER", "email": "admin@example.test"},
+                "ipAddress": "203.0.113.86",
+                "events": [
+                    {"name": "CHANGE_PASSWORD", "type": "USER_SETTINGS",
+                     "parameters": [{"name": "USER_EMAIL", "value": "victim@example.test"}]},
+                    {"name": "CHANGE_PASSWORD_ON_NEXT_LOGIN", "type": "USER_SETTINGS",
+                     "parameters": [
+                        {"name": "USER_EMAIL", "value": "victim@example.test"},
+                        {"name": "OLD_VALUE", "value": "false"},
+                        {"name": "NEW_VALUE", "value": "true"}]}
+                ]
+            }"#,
+        )
+        .unwrap();
+
+        let records = normalize_gws_event(activity);
+        assert_eq!(records.len(), 2);
+        for (i, record) in records.iter().enumerate() {
+            assert_eq!(record["eventIndex"], i as u64, "eventIndex");
+            assert_eq!(record["eventCount"], 2, "eventCount");
+            assert_eq!(record["eventService"], "admin.googleapis.com");
+            assert_eq!(record["eventType"], "USER_SETTINGS");
+            // Every top-level activity field is carried onto each record, and `events` is gone.
+            assert_eq!(record["kind"], "admin#reports#activity");
+            assert_eq!(record["id"]["time"], "2024-01-02T03:04:05.678Z");
+            assert_eq!(record["actor"]["email"], "admin@example.test");
+            assert_eq!(record["ipAddress"], "203.0.113.86");
+            assert!(record.get("events").is_none());
+            assert_eq!(record["USER_EMAIL"], "victim@example.test");
+            assert_eq!(record["user_email"], "victim@example.test");
+        }
+        assert_eq!(records[0]["eventName"], "CHANGE_PASSWORD");
+        assert_eq!(records[1]["eventName"], "CHANGE_PASSWORD_ON_NEXT_LOGIN");
+        // The UPPER_CASE parameter and its lowercase alias hold the same value, so an upstream
+        // SigmaHQ gworkspace rule written against `new_value` loads unmodified.
+        assert_eq!(records[1]["NEW_VALUE"], "true");
+        assert_eq!(records[1]["new_value"], "true");
+        assert_eq!(records[1]["OLD_VALUE"], "false");
+        assert_eq!(records[1]["old_value"], "false");
+        // The first sub-event carried no NEW_VALUE, so neither spelling may appear on it.
+        assert!(records[0].get("NEW_VALUE").is_none());
+        assert!(records[0].get("new_value").is_none());
+        // No Cloud-Logging-shaped `protoPayload` is synthesized: a field Suzaku invents would end
+        // up in every output format, including `--raw-output`, for the benefit of two upstream
+        // rules. Those rules are expected to converge on the flat Reports API schema instead.
+        assert!(records.iter().all(|r| r.get("protoPayload").is_none()));
+    }
+
+    /// Every `events[].parameters[]` value shape the Reports API emits folds into a top-level key.
+    #[test]
+    fn normalize_gws_event_folds_every_parameter_shape() {
+        let activity: Value = serde_json::from_str(
+            r#"{
+                "kind": "admin#reports#activity",
+                "id": {"applicationName": "login", "time": "2024-01-02T04:05:06.789Z"},
+                "events": [{"name": "login_success", "type": "login",
+                    "resourceIds": ["fixture00000001"],
+                    "parameters": [
+                        {"name": "login_type", "value": "reauth"},
+                        {"name": "login_challenge_method", "multiValue": ["none", "idv_preregistered_phone"]},
+                        {"name": "is_suspicious", "boolValue": true},
+                        {"name": "start_time", "intValue": "63900000000"},
+                        {"name": "not_a_number", "intValue": "12x"},
+                        {"name": "counts", "multiIntValue": ["1", "2"]},
+                        {"name": "recurrence_rule"},
+                        {"name": "SETTING_METADATA", "messageValue": {"parameter": [
+                            {"name": "rule_type", "value": "ALIAS_TABLE"},
+                            {"name": "hits", "intValue": "3"}]}},
+                        {"name": "SETTINGS", "multiMessageValue": [
+                            {"parameter": [{"name": "k", "value": "v"}]}]}
+                    ]}]
+            }"#,
+        )
+        .unwrap();
+
+        let records = normalize_gws_event(activity);
+        assert_eq!(records.len(), 1);
+        let r = &records[0];
+        assert_eq!(r["eventService"], "login.googleapis.com");
+        assert_eq!(r["eventCount"], 1);
+        assert_eq!(r["resourceIds"], json!(["fixture00000001"]));
+        assert_eq!(r["login_type"], "reauth");
+        // A multiValue stays a list rather than being flattened into a string.
+        assert_eq!(
+            r["login_challenge_method"],
+            json!(["none", "idv_preregistered_phone"])
+        );
+        assert_eq!(r["is_suspicious"], json!(true));
+        // intValue arrives as a string and is parsed so numeric comparisons work; an unparseable
+        // one is kept verbatim instead of being dropped.
+        assert_eq!(r["start_time"], json!(63900000000i64));
+        assert_eq!(r["not_a_number"], "12x");
+        assert_eq!(r["counts"], json!([1, 2]));
+        // A parameter with no value field at all is an elided protobuf default, NOT a set flag.
+        // It is dropped, so `recurrence_rule: null` (and not `: true`) describes it in a rule.
+        assert!(r.get("recurrence_rule").is_none());
+        // A messageValue's own `parameter` array folds recursively into an object.
+        assert_eq!(
+            r["SETTING_METADATA"],
+            json!({"rule_type": "ALIAS_TABLE", "hits": 3})
+        );
+        assert_eq!(r["setting_metadata"]["rule_type"], "ALIAS_TABLE");
+        assert_eq!(r["SETTINGS"], json!([{"k": "v"}]));
+    }
+
+    /// An activity with no `events[]` array must still reach the rules, not be dropped.
+    #[test]
+    fn normalize_gws_event_keeps_an_activity_without_sub_events() {
+        let activity: Value = serde_json::from_str(
+            r#"{"kind": "admin#reports#activity",
+                "id": {"applicationName": "drive", "time": "2024-01-02T05:06:07.890Z"}}"#,
+        )
+        .unwrap();
+        let records = normalize_gws_event(activity);
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["eventService"], "drive.googleapis.com");
+        assert_eq!(records[0]["id"]["applicationName"], "drive");
+    }
+
+    /// An EMPTY `events[]` array is the same situation as a missing one: there is nothing to
+    /// split on, so the activity must survive as one record instead of vanishing from the scan.
+    #[test]
+    fn normalize_gws_event_keeps_an_activity_with_an_empty_sub_event_array() {
+        let activity: Value = serde_json::from_str(
+            r#"{"kind": "admin#reports#activity",
+                "id": {"applicationName": "drive", "time": "2024-01-02T05:06:07.890Z"},
+                "events": []}"#,
+        )
+        .unwrap();
+        let records = normalize_gws_event(activity);
+        assert_eq!(
+            records.len(),
+            1,
+            "an empty events[] must not drop the activity"
+        );
+        assert_eq!(records[0]["eventService"], "drive.googleapis.com");
+        assert_eq!(records[0]["id"]["applicationName"], "drive");
+        // The empty array is put back untouched, exactly as a non-array `events` value is.
+        assert_eq!(records[0]["events"], json!([]));
+    }
+
+    /// `id.applicationName` is what `eventService` is built from. When it is absent there is no
+    /// service to name, and emitting a bare ".googleapis.com" would hand rules and output columns
+    /// a value that looks like a real application but is not one.
+    #[test]
+    fn normalize_gws_event_omits_event_service_without_an_application_name() {
+        for activity in [
+            r#"{"kind": "admin#reports#activity", "id": {"time": "2024-01-02T05:06:07.890Z"},
+                "events": [{"name": "E"}]}"#,
+            // The same must hold on the no-sub-events path.
+            r#"{"kind": "admin#reports#activity", "id": {"time": "2024-01-02T05:06:07.890Z"}}"#,
+        ] {
+            let records = normalize_gws_event(serde_json::from_str(activity).unwrap());
+            assert_eq!(records.len(), 1, "{activity}");
+            assert!(
+                records[0].get("eventService").is_none(),
+                "eventService must be absent, not \".googleapis.com\": {}",
+                records[0]
+            );
+        }
+    }
+
+    /// A parameter name is free-form data from the logged event. One called `eventName` must not
+    /// displace the sub-event's real name, and the same holds for every other key the normalizer
+    /// owns -- a record whose `id` is a parameter string resolves no timestamp at all.
+    #[test]
+    fn normalize_gws_event_parameters_never_clobber_synthesized_keys() {
+        let activity: Value = serde_json::from_str(
+            r#"{
+                "kind": "admin#reports#activity",
+                "id": {"applicationName": "drive", "time": "2024-01-02T03:04:05.678Z"},
+                "actor": {"email": "owner@example.test"},
+                "events": [{"name": "edit", "type": "access", "resourceIds": ["fixture00000001"],
+                    "parameters": [
+                        {"name": "eventName", "value": "SPOOFED"},
+                        {"name": "eventType", "value": "SPOOFED"},
+                        {"name": "eventService", "value": "spoofed.googleapis.com"},
+                        {"name": "eventIndex", "intValue": "99"},
+                        {"name": "eventCount", "intValue": "99"},
+                        {"name": "resourceIds", "multiValue": ["spoofed"]},
+                        {"name": "id", "value": "spoofed"},
+                        {"name": "actor", "value": "spoofed"},
+                        {"name": "kind", "value": "spoofed"},
+                        {"name": "doc_title", "value": "quarterly plan"}
+                    ]}]
+            }"#,
+        )
+        .unwrap();
+
+        let records = normalize_gws_event(activity);
+        let r = &records[0];
+        assert_eq!(r["eventName"], "edit");
+        assert_eq!(r["eventType"], "access");
+        assert_eq!(r["eventService"], "drive.googleapis.com");
+        assert_eq!(r["eventIndex"], 0);
+        assert_eq!(r["eventCount"], 1);
+        assert_eq!(r["resourceIds"], json!(["fixture00000001"]));
+        assert_eq!(r["id"]["time"], "2024-01-02T03:04:05.678Z");
+        assert_eq!(r["actor"]["email"], "owner@example.test");
+        assert_eq!(r["kind"], "admin#reports#activity");
+        // A parameter that collides with nothing is still folded as usual.
+        assert_eq!(r["doc_title"], "quarterly plan");
+    }
+
+    /// Every sub-event copies the whole activity, so the split is bounded: a crafted record with
+    /// an enormous `events[]` must not be allowed to allocate without limit. The records past the
+    /// cap are dropped, but `eventCount` still reports the activity's real length.
+    #[test]
+    fn normalize_gws_event_caps_the_number_of_sub_events() {
+        let over = MAX_GWS_SUB_EVENTS + 5;
+        let events: Vec<Value> = (0..over)
+            .map(|i| json!({"name": format!("sub_event_{i}"), "type": "test"}))
+            .collect();
+        let activity = json!({
+            "kind": "admin#reports#activity",
+            "id": {"applicationName": "drive", "time": "2024-01-02T03:04:05.678Z"},
+            "events": events,
+        });
+
+        let records = normalize_gws_event(activity);
+        assert_eq!(records.len(), MAX_GWS_SUB_EVENTS);
+        assert_eq!(records[0]["eventName"], "sub_event_0");
+        assert_eq!(
+            records[MAX_GWS_SUB_EVENTS - 1]["eventName"],
+            format!("sub_event_{}", MAX_GWS_SUB_EVENTS - 1)
+        );
+        // The count is the activity's, not the truncated slice's, so the loss is visible.
+        assert!(
+            records
+                .iter()
+                .all(|r| r["eventCount"] == json!(over as u64))
+        );
+        assert_eq!(records[0]["id"]["applicationName"], "drive");
+    }
+
+    /// A native lowercase parameter is never clobbered by the alias of an UPPER_CASE twin.
+    /// Drive emits `new_value` natively (as a list) while Admin emits `NEW_VALUE` (as a string),
+    /// so both spellings must be able to hold different values in one record.
+    #[test]
+    fn normalize_gws_event_alias_never_overwrites_an_existing_key() {
+        let activity: Value = serde_json::from_str(
+            r#"{"kind": "admin#reports#activity", "id": {"applicationName": "admin"},
+                "events": [{"name": "E", "parameters": [
+                    {"name": "new_value", "multiValue": ["shared_externally"]},
+                    {"name": "NEW_VALUE", "value": "true"}]}]}"#,
+        )
+        .unwrap();
+        let records = normalize_gws_event(activity);
+        assert_eq!(records[0]["new_value"], json!(["shared_externally"]));
+        // The Reports API transports every `value` as a string, including "true"/"false".
+        // Coercing it to a JSON bool would silently change what a Sigma rule has to write.
+        assert_eq!(records[0]["NEW_VALUE"], json!("true"));
+    }
+
+    /// Nested activity objects stay nested, which is what the profile specs (`.id.time`,
+    /// `.actor.email`, `.networkInfo.regionCode`) and a correlation `group-by: actor.email`
+    /// resolve through. Flattening them would break every one of those paths.
+    #[test]
+    fn normalize_gws_event_keeps_activity_objects_nested() {
+        use sigma_rust::event_from_json;
+
+        let activity: Value = serde_json::from_str(
+            r#"{"kind": "admin#reports#activity",
+                "id": {"applicationName": "calendar", "time": "2024-01-02T03:04:05.678Z"},
+                "actor": {"callerType": "USER", "email": "organizer@example.test"},
+                "networkInfo": {"ipAsn": [64512], "regionCode": "ZZ"},
+                "events": [{"name": "add_event_guest", "parameters": [
+                    {"name": "event_id", "value": "fixtureevent00000000000001"}]}]}"#,
+        )
+        .unwrap();
+        let records = normalize_gws_event(activity);
+        let record = &records[0];
+        assert_eq!(record["actor"]["email"], "organizer@example.test");
+        assert_eq!(record["id"]["time"], "2024-01-02T03:04:05.678Z");
+        assert_eq!(record["networkInfo"]["regionCode"], "ZZ");
+
+        // The paths a correlation rule's `group-by` uses go through `Event::get`, which walks
+        // nested maps but reads nothing from a flattened `"actor.email"` string key.
+        let event = event_from_json(&record.to_string()).unwrap();
+        assert_eq!(
+            event.get("actor.email").map(|v| v.value_to_string()),
+            Some("organizer@example.test".to_string())
+        );
+        assert_eq!(
+            event.get("event_id").map(|v| v.value_to_string()),
+            Some("fixtureevent00000000000001".to_string())
+        );
+        assert_eq!(
+            event.get("id.time").map(|v| v.value_to_string()),
+            Some("2024-01-02T03:04:05.678Z".to_string())
+        );
+    }
+
+    /// The `activities.list` response page is unwrapped down to its `items`.
+    #[test]
+    fn gws_records_unwraps_a_reports_api_page() {
+        let page = r#"{"kind": "admin#reports#activities", "etag": "x", "items": [
+            {"kind": "admin#reports#activity", "id": {"applicationName": "login"},
+             "events": [{"name": "login_success"}]},
+            {"kind": "admin#reports#activity", "id": {"applicationName": "login"},
+             "events": [{"name": "logout"}]}]}"#;
+        let events = load_json_from_file(page, &LogSource::Gws).unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0]["kind"], "admin#reports#activity");
+        let normalized = normalize_events(events, &LogSource::Gws);
+        assert_eq!(normalized.len(), 2);
+        assert_eq!(normalized[0]["eventName"], "login_success");
+        assert_eq!(normalized[1]["eventName"], "logout");
+    }
+
+    /// An `activities.list` page that matched nothing carries `"items": null` (or an empty
+    /// array). It must produce NO records: emitting the envelope itself would put an object no
+    /// rule can match into the scan, inflating `total_events` and the data-reduction figure
+    /// derived from it.
+    #[test]
+    fn gws_records_yields_nothing_for_an_empty_activities_page() {
+        for page in [
+            r#"{"kind": "admin#reports#activities", "etag": "x", "items": null}"#,
+            r#"{"kind": "admin#reports#activities", "etag": "x", "items": []}"#,
+        ] {
+            assert!(
+                load_json_from_file(page, &LogSource::Gws)
+                    .unwrap()
+                    .is_empty(),
+                "{page}"
+            );
+            // The directory-scan path must agree with the file path.
+            assert!(
+                log_contents_to_events(page, &LogSource::Gws).is_empty(),
+                "{page}"
+            );
+        }
+    }
+
+    /// JSONL where the lines are a mix of every accepted shape.
+    #[test]
+    fn gws_jsonl_accepts_mixed_shapes_per_line() {
+        let jsonl = concat!(
+            r#"{"kind":"admin#reports#activity","id":{"applicationName":"login"},"events":[{"name":"login_success"}]}"#,
+            "\n",
+            r#"[{"kind":"admin#reports#activity","id":{"applicationName":"login"},"events":[{"name":"logout"}]}]"#,
+            "\n",
+            r#"{"kind":"admin#reports#activities","items":[{"kind":"admin#reports#activity","id":{"applicationName":"admin"},"events":[{"name":"ASSIGN_ROLE"}]}]}"#,
+            "\n",
+            r#"{"kind":"admin#reports#activity","id":{"applicationName":"admin"},"events":[{"name":"CHANGE_PASSWORD"},{"name":"CHANGE_PASSWORD_ON_NEXT_LOGIN"}]}"#,
+            "\n",
+            "not json at all\n",
+        );
+        let events = load_json_from_file(jsonl, &LogSource::Gws).unwrap();
+        assert_eq!(events.len(), 4, "one activity per parseable line");
+        let normalized = normalize_events(events, &LogSource::Gws);
+        // The last line's activity carries two sub-events, so it yields two records.
+        let names: Vec<&str> = normalized
+            .iter()
+            .map(|r| r["eventName"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                "login_success",
+                "logout",
+                "ASSIGN_ROLE",
+                "CHANGE_PASSWORD",
+                "CHANGE_PASSWORD_ON_NEXT_LOGIN"
+            ]
+        );
+        // `log_contents_to_events` (the directory-scan path) must agree with the file path.
+        assert_eq!(log_contents_to_events(jsonl, &LogSource::Gws).len(), 4);
+    }
+
+    /// The shipped fixtures load, split and normalize end to end.
+    ///
+    /// Asserts shape and invariants rather than exact counts: the fixtures are regenerated from
+    /// freshly redacted data, and a test that pins their row count turns every refresh into a
+    /// failure that says nothing about the code.
+    #[test]
+    fn gws_test_files_load_and_normalize() {
+        let jsonl = fs::read_to_string("test_files/json/gws/login_admin_sample.jsonl").unwrap();
+        let activities = load_json_from_file(&jsonl, &LogSource::Gws).unwrap();
+        assert!(activities.len() > 100, "activities: {}", activities.len());
+        let activity_count = activities.len();
+        let records = normalize_events(activities, &LogSource::Gws);
+        // Splitting multi-event activities yields strictly more records than activities.
+        assert!(
+            records.len() > activity_count,
+            "{} records from {activity_count} activities",
+            records.len()
+        );
+        assert!(records.iter().all(|r| r.get("eventName").is_some()));
+        assert!(records.iter().all(|r| r.get("eventService").is_some()));
+        // The CHANGE_PASSWORD pair survives the split.
+        assert!(
+            records
+                .iter()
+                .any(|r| r["eventName"] == "CHANGE_PASSWORD_ON_NEXT_LOGIN" && r["eventIndex"] == 1)
+        );
+        // A suspicious login is present and its boolValue folded to a real JSON bool.
+        assert!(
+            records
+                .iter()
+                .any(|r| r["eventName"] == "login_success" && r["is_suspicious"] == json!(true))
+        );
+
+        let page = fs::read_to_string("test_files/json/gws/activities_page.json").unwrap();
+        let activities = load_json_from_file(&page, &LogSource::Gws).unwrap();
+        assert!(activities.len() >= 10, "activities: {}", activities.len());
+        let activity_count = activities.len();
+        let records = normalize_events(activities, &LogSource::Gws);
+        assert!(
+            records.len() > activity_count,
+            "{} records from {activity_count} activities",
+            records.len()
+        );
+        // The multi-guest create_event is one activity with several `add_event_guest` siblings.
+        assert!(
+            records
+                .iter()
+                .any(|r| r["eventCount"].as_u64().unwrap() > 5)
+        );
+        assert!(
+            records
+                .iter()
+                .all(|r| r["eventService"] == "calendar.googleapis.com")
+        );
+    }
+
+    /// The `Timestamp` spec the shipped Google Workspace profile names must resolve: it points at
+    /// the NESTED `id.time`, which neither `Event::get` nor `Value::get` reads verbatim.
+    #[test]
+    fn gws_profile_timestamp_resolves_nested_id_time() {
+        use crate::core::util::load_profile;
+        use chrono::{TimeZone, Utc};
+        use sigma_rust::event_from_json;
+
+        let profile = load_profile(&LogSource::Gws, &None, true);
+        let (_, spec) = profile.iter().find(|(k, _)| k == "Timestamp").unwrap();
+        let event = event_from_json(
+            r#"{"kind":"admin#reports#activity","id":{"applicationName":"admin","time":"2024-01-02T03:04:05.678Z"}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            event_timestamp(spec, &event),
+            Some(
+                Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap()
+                    + chrono::Duration::milliseconds(678)
+            )
+        );
     }
 
     #[test]

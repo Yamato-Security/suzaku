@@ -453,6 +453,10 @@ pub fn write_correlation_record(
     write_to_duckdb(&record, context);
     write_to_json(&record, &Value::Null, None, None, context);
     write_to_jsonl(&record, &Value::Null, None, None, context);
+    // A correlation result is a detection like any other. Without this, `flush_all` saw
+    // `has_written == false` on a run where ONLY correlation rules fired, left the DuckDB sink
+    // unfinalized and DELETED every output file it had just written.
+    context.has_written = true;
 }
 
 /// Adds the profile-derived fields that raw output promises alongside the original event JSON.
@@ -1953,6 +1957,73 @@ mod tests {
             .map(|f| f.to_string())
             .collect();
         profile.iter().map(|(k, _)| k.clone()).zip(row).collect()
+    }
+
+    /// A run in which ONLY correlation rules fire must keep its output.
+    ///
+    /// `flush_all` deletes every output file when `has_written` is false, on the theory that a
+    /// run with no detections should not leave empty files behind. `write_correlation_record`
+    /// never set the flag, so a correlation-only run wrote its rows, then deleted the files it
+    /// had just written and reported "Results saved: None". Verified by mutation: removing the
+    /// `has_written = true` in `write_correlation_record` fails this test and nothing else.
+    #[test]
+    fn correlation_only_run_keeps_its_output_files() {
+        use crate::core::log_source::LogSource;
+        use crate::core::util::load_profile;
+        use sigma_rust::{SigmaCorrelationRule, TimestampedEvent, event_from_json, rule_from_yaml};
+
+        let mut geo = None;
+        // `skip_sigma: false` keeps the `RuleTitle` column, so the row can be identified.
+        let profile = load_profile(&LogSource::Gws, &geo, false);
+        let base_rule = rule_from_yaml(
+            "title: t\nlogsource:\n    category: test\ndetection:\n    selection:\n        eventName: E\n    condition: selection\n",
+        )
+        .unwrap();
+        let correlation_rule = SigmaCorrelationRule {
+            title: "correlation-fired".to_string(),
+            ..Default::default()
+        };
+        let timestamped = TimestampedEvent {
+            event: event_from_json(
+                r#"{"kind":"admin#reports#activity","id":{"applicationName":"login","time":"2024-01-02T03:04:05.678Z"},"eventName":"E"}"#,
+            )
+            .unwrap(),
+            timestamp: "2024-01-02T03:04:05Z".parse().unwrap(),
+            rule: &base_rule,
+        };
+
+        let dir = tempfile::tempdir().unwrap();
+        let csv_path = dir.path().join("out.csv");
+        let config = OutputConfig::new(true, false, false);
+        {
+            let file = std::fs::File::create(&csv_path).unwrap();
+            let writers = Writers::new()
+                .with_csv(csv::WriterBuilder::new().from_writer(Box::new(file) as Box<dyn Write>));
+            // The output path is registered, so `flush_all` would remove it on an "empty" run.
+            let mut context = OutputContext::new(
+                &profile,
+                &mut geo,
+                &config,
+                writers,
+                std::slice::from_ref(&csv_path),
+            );
+            write_correlation_record(&vec![&timestamped], &correlation_rule, &mut context);
+            assert!(
+                context.has_written,
+                "a correlation result is a detection and must mark the run as non-empty"
+            );
+            context.flush_all();
+        }
+
+        assert!(
+            csv_path.exists(),
+            "a correlation-only run must not delete its own output"
+        );
+        let text = std::fs::read_to_string(&csv_path).unwrap();
+        assert!(
+            text.contains("correlation-fired"),
+            "the correlation row must be present: {text:?}"
+        );
     }
 
     // Correlation rows go through their own record builder and their own `src_ip_spec` call, so

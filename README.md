@@ -37,7 +37,8 @@ Suzaku (朱雀) — the "Vermilion Bird" that rules the southern heavens above t
 **threat hunting and fast forensics timeline generator for cloud logs**, written in memory-safe
 [Rust](https://www.rust-lang.org/). Think of [Hayabusa](https://github.com/Yamato-Security/hayabusa)
 but for cloud logs instead of Windows event logs, with native
-[Sigma](https://github.com/SigmaHQ/sigma) detection for AWS CloudTrail (Azure and GCP planned).
+[Sigma](https://github.com/SigmaHQ/sigma) detection for AWS CloudTrail, Azure/Entra ID/M365, and
+Google Workspace.
 
 Among thousands of cloud API calls, Suzaku finds the attacks in the noise and gives you a DFIR
 timeline with only the events you need — plus summaries of attacker activity (source IPs,

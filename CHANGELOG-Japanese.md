@@ -1,5 +1,16 @@
 # 変更点
 
+## 未リリース
+
+**新機能:**
+
+- Google WorkspaceのAdmin SDK Reports APIログ用のDFIRタイムラインを作成する`gws-timeline`コマンドを追加した。各アクティビティの`events[]`をサブイベントごとに1レコードへ分割し、`parameters[]`をトップレベルのフィールドに展開する（`UPPER_CASE`のパラメータ名には小文字のエイリアスも付与する。例: `NEW_VALUE` → `new_value`）。`service: google_workspace`および`service: google_workspace.<app>`を宣言したルールにマッチする。`config/gws_profile.yaml`を同梱している。 (@ecapuano)
+
+**バグ修正:**
+
+- 相関（correlation）ルールだけが発火した実行で、`Results saved: None`と表示され、書き込んだばかりの出力ファイルを自分で削除してしまう問題を修正した。`write_correlation_record`が`flush_all`に検知結果があることを伝える`has_written`フラグを設定していなかったことが原因である。 (@ecapuano)
+- 出力プロファイルの`Timestamp`がネストしたパス（`.id.time`）の場合に、`--timeline-start`/`--timeline-end`と`--time-offset`がすべてのイベントを除外してしまう問題を修正した。時刻フィルタがフラットなフィールド名としてしか検索していなかったためである。ネストした指定も解決するようにし、フラットなキーの挙動は変更していない。 (@ecapuano)
+
 ## 2.0.1 [2026/08/24] - El Niño Release
 
 **バグ修正:**

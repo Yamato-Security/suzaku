@@ -6,11 +6,12 @@ Create an AWS CloudTrail DFIR timeline based on Sigma rules in the `rules` folde
 
 ## Command usage
 ```
-Usage: suzaku aws-ct-timeline [OPTIONS] <--directory <DIR>|--file <FILE>>
+Usage:
+  suzaku aws-ct-timeline <INPUT> [OPTIONS]
 
 General Options:
-  -r, --rules <DIR/FILE>  Specify a custom rule directory or file (default: ./rules)
   -h, --help              Show the help menu
+  -r, --rules <DIR/FILE>  Specify a custom rule directory or file (default: ./rules)
 
 Input:
   -d, --directory <DIR>  Directory of multiple gz/json/parquet files
@@ -20,21 +21,25 @@ Filtering:
       --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
       --timeline-end <DATE>    End time of the events to load (ex: "2020-02-22T00:00:00Z")
       --time-offset <OFFSET>   Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
+      --file-date-from <DATE>  Filter files by start date based on AWSLogs S3 path date structure (ex: "20240101")
+      --file-date-to <DATE>    Filter files by end date based on AWSLogs S3 path date structure (ex: "20241231")
 
 Output:
-  -C, --clobber                    Overwrite files when saving
-  -G, --geo-ip <MAXMIND-DB-DIR>    Add GeoIP (ASN, city, country) info to IP addresses
-  -m, --min-level <LEVEL>          Minimum level for rules to load (default: informational)
-  -o, --output <FILE>              Save the results to a file
-  -t, --output-type <FORMAT,...>   Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [possible values: csv, json, jsonl, duckdb]
-  -R, --raw-output                 Output the original JSON logs (only available in JSON formats or stdout)
-      --threads <THREAD NUMBER>    Number of threads to use (default: same as CPU cores)
+  -C, --clobber                   Overwrite files when saving
+  -G, --geo-ip <MAXMIND-DB-DIR>   Add GeoIP (ASN, city, country) info to IP addresses
+  -m, --min-level <LEVEL>         Minimum level for rules to load (default: informational)
+  -o, --output <FILE>             Save the results to a file
+  -t, --output-type <FORMAT,...>  Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [default: csv] [possible values: csv, json, jsonl, duckdb]
+      --raw-output                Output the original JSON logs (only available in JSON formats or stdout)
+      --threads <THREAD NUMBER>   Number of threads to use (default: same as CPU cores)
 
 Display Settings:
-  -K, --no-color               Disable color output
-  -N, --no-summary             Do not display results summary
-  -T, --no-frequency-timeline  Disable event frequency timeline (terminal needs to support Unicode)
-  -q, --quiet                  Quiet mode: do not display the launch banner
+  -K, --no-color    Disable color output
+  -N, --no-summary  Do not display results summary
+  -q, --quiet       Quiet mode: do not display the launch banner
+
+Time Format:
+  -l, --localtime  Output the timestamp in the local timezone (default: UTC)
 ```
 
 ### `aws-ct-timeline` command examples
@@ -74,13 +79,13 @@ RuleID: 'sigma.id'
 * Any field value that starts with `sigma.` (ex: `sigma.title`) will be taken from the Sigma rule.
 * Currently we only support strings but plan on supporting other types of field values.
 
-> Note: If you want to output the original JSON data and make sure you do not loose any field information, just add the `-R, --raw-output` option to `aws-ct-timeline` command.
+> Note: If you want to output the original JSON data and make sure you do not loose any field information, just add the `--raw-output` option to `aws-ct-timeline` command.
 
 ### DuckDB output schema
 
 The CSV and JSON outputs are a *rendering* of the profile above; the DuckDB output is a *data
 interface*, so it is typed and self-describing instead. The differences are deliberate and apply
-to `aws-ct-timeline`, `azure-timeline` and `aws-ct-search`:
+to `aws-ct-timeline`, `azure-timeline`, `gws-timeline` and `aws-ct-search`:
 
 | | CSV / JSON | DuckDB |
 |---|---|---|
@@ -128,3 +133,257 @@ GROUP BY 1 ORDER BY hits DESC;
 
 The database is checkpointed before Suzaku exits, so the `.duckdb` file is complete and can be
 opened read-only (copy it after the command finishes, not while it runs).
+
+## `gws-timeline` command
+
+Create a Google Workspace DFIR timeline based on Sigma rules in the `rules` folder.
+
+### Input
+
+`gws-timeline` reads Google Admin SDK Reports API `activities.list` output
+(`"kind": "admin#reports#activity"`), as `.json`, `.jsonl`, or `.json.gz`. Any of the following
+shapes are accepted:
+
+* A bare activity object, or a JSON array of activity objects.
+* A raw `activities.list` response page: `{"kind": "admin#reports#activities", "items": [...]}`. A
+  page that returned nothing carries `"items": null` (or `[]`) and yields no events at all, so an
+  empty page does not inflate the scanned-event count.
+
+Get activities from the [Admin SDK Reports API `activities.list`
+endpoint](https://developers.google.com/workspace/admin/reports/reference/rest/v1/activities/list)
+(one export per `applicationName`: `admin`, `login`, `drive`, `calendar`, `token`,
+`user_accounts`, `saml`, `groups`, `mobile`, `gmail`, ...), [GAM](https://github.com/GAM-team/GAM),
+or any export that preserves the activity JSON.
+
+> The Admin console's CSV report export is **not** supported — it is a different, lossy schema
+> that drops fields Sigma rules and the output profile depend on. Export via the Reports API (or
+> a tool that wraps it) instead.
+
+### Command usage
+```
+Usage:
+  suzaku gws-timeline <INPUT> [OPTIONS]
+
+General Options:
+  -h, --help              Show the help menu
+  -r, --rules <DIR/FILE>  Specify a custom rule directory or file (default: ./rules)
+
+Input:
+  -d, --directory <DIR>  Directory of multiple gz/json/parquet files
+  -f, --file <FILE>      File path to one gz/json/parquet file
+
+Filtering:
+      --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
+      --timeline-end <DATE>    End time of the events to load (ex: "2020-02-22T00:00:00Z")
+      --time-offset <OFFSET>   Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
+      --file-date-from <DATE>  Filter files by start date based on AWSLogs S3 path date structure (ex: "20240101")
+      --file-date-to <DATE>    Filter files by end date based on AWSLogs S3 path date structure (ex: "20241231")
+
+Output:
+  -C, --clobber                   Overwrite files when saving
+  -G, --geo-ip <MAXMIND-DB-DIR>   Add GeoIP (ASN, city, country) info to IP addresses
+  -m, --min-level <LEVEL>         Minimum level for rules to load (default: informational)
+  -o, --output <FILE>             Save the results to a file
+  -t, --output-type <FORMAT,...>  Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [default: csv] [possible values: csv, json, jsonl, duckdb]
+      --raw-output                Output the original JSON logs (only available in JSON formats or stdout)
+      --threads <THREAD NUMBER>   Number of threads to use (default: same as CPU cores)
+
+Display Settings:
+  -K, --no-color    Disable color output
+  -N, --no-summary  Do not display results summary
+  -q, --quiet       Quiet mode: do not display the launch banner
+
+Time Format:
+  -l, --localtime  Output the timestamp in the local timezone (default: UTC)
+```
+
+> `gws-timeline` shares its input/output options with `aws-ct-timeline` and `azure-timeline`, so
+> the general `-d/-f` help text above mentions `parquet`. Those other formats are still read when
+> they turn up in a scanned directory — they simply will not contain Reports API activities, so
+> they contribute no events. The shapes `gws-timeline` actually understands are the `.json` /
+> `.jsonl` / `.json.gz` ones described under **Input** above.
+
+### `gws-timeline` command examples
+
+* Output alerts to screen: `./suzaku gws-timeline -d ./gws-logs`
+* Save results to a CSV file: `./suzaku gws-timeline -d ./gws-logs -o gws-timeline.csv`
+* Save results to CSV and JSONL files: `./suzaku gws-timeline -d ./gws-logs -o gws-timeline -t csv,jsonl`
+* Save results to a DuckDB database: `./suzaku gws-timeline -d ./gws-logs -o gws-timeline -t duckdb`
+
+### Normalization
+
+Each activity's `events[]` array is split into one output record per sub-event before rules are
+matched — Sigma cannot see inside an array, and a single activity commonly carries more than one
+semantically distinct sub-event (e.g. an admin password reset paired with a forced
+sign-out-on-next-login). For each sub-event, `gws-timeline`:
+
+* Copies every top-level activity field (`id`, `actor`, `ipAddress`, `networkInfo`, ...) except `events`.
+* Folds the sub-event's `parameters[]` array into flat top-level fields, keyed by parameter name,
+  taking whichever value field is present:
+
+    | Parameter field | Becomes |
+    |---|---|
+    | `value` | the string as-is |
+    | `intValue` | an integer (the API transports it as a string; an unparseable one is kept verbatim) |
+    | `boolValue` | a JSON boolean |
+    | `multiValue` | a list of strings |
+    | `multiIntValue` | a list of integers, parsed the same way as `intValue` |
+    | `messageValue` | an object, by folding its own nested `parameter[]` array recursively (so a rule can reach `SETTING_METADATA.rule_type`) |
+    | `multiMessageValue` | a list of such objects |
+
+    A parameter with none of those is dropped: the Reports API omits default values, so a bare
+    `{"name": "is_suspicious"}` means `false`, and rules on `is_suspicious: true` match only
+    explicit trues.
+* Adds a lowercase alias for every `UPPER_CASE` parameter name (e.g. `NEW_VALUE` also becomes
+  `new_value`), so both the upstream SigmaHQ `gworkspace` rules (which use the lowercase Filebeat
+  naming) and rules written against the raw Reports API field names can match. An alias is only
+  ever *added*, never allowed to overwrite: where an application emits a natively lowercase
+  parameter of the same name (Drive's `new_value` is a list, Admin's `NEW_VALUE` a string), the
+  native key keeps its own value and both spellings can hold different values in one record.
+* Adds `eventName` (the sub-event's `name`), `eventType` (the sub-event's `type`), `eventService`
+  (`"<applicationName>.googleapis.com"`, e.g. `admin.googleapis.com`, and omitted entirely when
+  the activity carries no `id.applicationName`), `eventIndex` (the sub-event's position in
+  `events[]`), and `eventCount` (the total number of sub-events in the activity).
+* Copies the sub-event's own `resourceIds` onto its record, so each record carries the resources
+  of the sub-event it came from rather than those of the activity's first sub-event.
+* Writes the folded parameters **first** and everything else over them. A parameter name is
+  free-form data from the logged event, so one can be called `eventName` or `id`; the activity's
+  own fields and the fields Suzaku synthesizes always win such a collision.
+
+An activity is split into at most 10,000 records. Real activities are far below that (the largest
+are Calendar invites with one `add_event_guest` sub-event per guest), and the cap keeps a crafted
+input from exhausting memory. When it applies, a warning is written to the error log and
+`eventCount` still reports the activity's real length.
+
+> Because the timeline's unit is the sub-event, **Total events** in the summary counts normalized
+> records, not the API activities they came from. One activity with three sub-events counts as
+> three.
+
+For example, an admin resetting a user's password and forcing a sign-in change arrives as one
+activity with two sub-events:
+
+Before (one activity, two sub-events):
+```json
+{
+  "kind": "admin#reports#activity",
+  "id": {
+    "time": "2024-01-15T14:22:07.000Z",
+    "uniqueQualifier": "-1234567890123456789",
+    "applicationName": "admin",
+    "customerId": "C0example"
+  },
+  "actor": { "email": "admin@example.test", "callerType": "USER" },
+  "ipAddress": "203.0.113.10",
+  "events": [
+    {
+      "type": "USER_SETTINGS",
+      "name": "CHANGE_PASSWORD",
+      "parameters": [{ "name": "USER_EMAIL", "value": "victim@example.test" }]
+    },
+    {
+      "type": "USER_SETTINGS",
+      "name": "CHANGE_PASSWORD_ON_NEXT_LOGIN",
+      "parameters": [
+        { "name": "USER_EMAIL", "value": "victim@example.test" },
+        { "name": "NEW_VALUE", "value": "true" }
+      ]
+    }
+  ]
+}
+```
+
+After (two normalized records):
+```json
+[
+  {
+    "kind": "admin#reports#activity",
+    "id": { "time": "2024-01-15T14:22:07.000Z", "uniqueQualifier": "-1234567890123456789", "applicationName": "admin", "customerId": "C0example" },
+    "actor": { "email": "admin@example.test", "callerType": "USER" },
+    "ipAddress": "203.0.113.10",
+    "eventName": "CHANGE_PASSWORD",
+    "eventType": "USER_SETTINGS",
+    "eventService": "admin.googleapis.com",
+    "eventIndex": 0,
+    "eventCount": 2,
+    "USER_EMAIL": "victim@example.test",
+    "user_email": "victim@example.test"
+  },
+  {
+    "kind": "admin#reports#activity",
+    "id": { "time": "2024-01-15T14:22:07.000Z", "uniqueQualifier": "-1234567890123456789", "applicationName": "admin", "customerId": "C0example" },
+    "actor": { "email": "admin@example.test", "callerType": "USER" },
+    "ipAddress": "203.0.113.10",
+    "eventName": "CHANGE_PASSWORD_ON_NEXT_LOGIN",
+    "eventType": "USER_SETTINGS",
+    "eventService": "admin.googleapis.com",
+    "eventIndex": 1,
+    "eventCount": 2,
+    "USER_EMAIL": "victim@example.test",
+    "user_email": "victim@example.test",
+    "NEW_VALUE": "true",
+    "new_value": "true"
+  }
+]
+```
+
+### Sigma rules matched
+
+`gws-timeline` selects rules on `logsource.service` alone — `logsource.product` is not consulted.
+A rule is loaded when its service is `google_workspace` or `google_workspace.<applicationName>`
+(e.g. `google_workspace.login`, `google_workspace.drive`), and it matches a record whose `kind` is
+`admin#reports#activity` and, for the dotted form, whose `id.applicationName` is that application.
+This covers SigmaHQ's `rules/cloud/gcp/gworkspace` rule set as well as Suzaku's own rules under
+`suzaku-rules`' `suzaku/gws/` directory.
+
+The application list is a **closed set of 18**: a `google_workspace.<app>` service outside it is
+not loaded at all, so a typo in a rule's `service:` is reported at load time instead of silently
+matching nothing during the scan.
+
+`admin`, `login`, `drive`, `calendar`, `token`, `user_accounts`, `saml`, `groups`, `mobile`,
+`gmail`, `chat`, `meet`, `chrome`, `rules`, `context_aware_access`, `access_transparency`, `keep`,
+`vault`.
+
+As with the AWS and Azure rule sets, an ignore-list file lets a known-superseded or duplicate rule
+stay in the rules repository without being loaded: `config/gws_ignore_rule_list.txt`, read from
+the `config/` directory of the rules folder passed to `-r` (it ships with `suzaku-rules`, not with
+Suzaku itself).
+
+### `gws-timeline` output profile
+
+Suzaku will output information based on the `config/gws_profile.yaml` file:
+```yaml
+Timestamp: '.id.time'
+RuleTitle: 'sigma.title'
+Level: 'sigma.level'
+Application: '.id.applicationName'
+EventName: '.eventName'
+EventType: '.eventType'
+Actor: '.actor.email|.actor.key'
+ActorType: '.actor.callerType'
+SrcIP: '.ipAddress'
+IpASN: '.networkInfo.ipAsn'
+IpRegion: '.networkInfo.regionCode'
+Target: '.USER_EMAIL|.affected_email_address|.doc_title|.event_title|.GROUP_EMAIL|.ROLE_NAME|.APPLICATION_NAME|.API_CLIENT_NAME|.SETTING_NAME'
+OldValue: '.OLD_VALUE|.old_value'
+NewValue: '.NEW_VALUE|.new_value'
+LoginType: '.login_type'
+Challenge: '.login_challenge_method'
+Suspicious: '.is_suspicious'
+Resource: '.doc_id|.event_id'
+CustomerId: '.id.customerId'
+UniqueQualifier: '.id.uniqueQualifier'
+RuleAuthor: 'sigma.author'
+Tags: 'sigma.tags'
+RuleID: 'sigma.id'
+```
+
+* Any field value that starts with `.` (ex: `.id.time`) is taken from the normalized activity
+  record described under **Normalization** above.
+* Any field value that starts with `sigma.` (ex: `sigma.title`) is taken from the Sigma rule.
+* `IpASN` and `IpRegion` are populated directly from Google's own `networkInfo.ipAsn` /
+  `networkInfo.regionCode` fields, at no cost — Google Workspace activities already carry ASN and
+  region. Passing `-G, --geo-ip` additionally appends `SrcASN`, `SrcCity` and `SrcCountry` from the
+  MaxMind databases by looking up `SrcIP`, same as the other commands.
+
+> Note: If you want to output the original JSON data and make sure you do not lose any field
+> information, add the `--raw-output` option to the `gws-timeline` command.
