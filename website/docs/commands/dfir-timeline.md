@@ -32,6 +32,7 @@ Output:
   -t, --output-type <FORMAT,...>  Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [default: csv] [possible values: csv, json, jsonl, duckdb]
       --raw-output                Output the original JSON logs (only available in JSON formats or stdout)
       --threads <THREAD NUMBER>   Number of threads to use (default: same as CPU cores)
+  -s, --sort                      Sort results by timestamp before output (warning: holds every result in memory)
 
 Display Settings:
   -K, --no-color    Disable color output
@@ -48,6 +49,37 @@ Time Format:
 * Save results to a CSV file: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline.csv`
 * Save results to CSV and JSONL files: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline -t csv,jsonl`
 * Save results to a DuckDB database: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline -t duckdb`
+* Save results to a CSV file sorted by time: `./suzaku aws-ct-timeline -d ../suzaku-sample-data -o sample-timeline.csv -s`
+
+### Sorting results (`-s, --sort`)
+
+By default results are written as they are found, so their order follows the order the log files
+were scanned in, which the filesystem decides and which can differ between runs. With `-s`, the
+screen, CSV, JSON and JSONL results are held back and written at the end of the run in time order:
+
+* Rows are ordered by the event time as an instant, so `-l, --localtime` and logs that mix `Z` and
+  `+09:00` offsets still sort correctly.
+* Rows whose time is missing or cannot be parsed are placed last.
+* Rows with the same time are ordered by their content. Given the same detection results and
+  output settings, detection rows have the same order regardless of file scan order.
+  This does not guarantee byte-identical terminal output or DuckDB files. For `temporal_ordered`
+  correlations, the input order of events with identical timestamps can affect whether a rule
+  matches; output sorting does not resolve that detection-side limitation.
+* A correlation result is placed at the time of its latest member event (see below).
+
+The DuckDB output is always sorted by time and is not affected by `-s`; a run that writes only
+DuckDB keeps no extra copy of the results.
+
+Because every result is kept in memory until the end, `-s` uses noticeably more memory: about
+1.3 KB per result, or about 3 KB per result with `--raw-output`. On the flaws.cloud CloudTrail
+dataset (1.9 million detections) the peak grew by 2.4 GB (5.5 GB with `--raw-output`) on top of the
+5.3 GB the run already used, while the run time grew by only about 2-3% (roughly 1-2 seconds on a
+70-second run).
+
+**Correlation timestamps.** A correlation result uses its latest member event's time. The
+`Timestamp` column displays that instant in UTC or, with `-l`, in local time, preserving fractional
+seconds. The summary always counts the result under its UTC date, including when `-l` is set.
+This applies with or without `-s`, including to correlation rows in DuckDB output.
 
 ### `aws-ct-timeline` output profile
 
@@ -187,6 +219,7 @@ Output:
   -t, --output-type <FORMAT,...>  Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [default: csv] [possible values: csv, json, jsonl, duckdb]
       --raw-output                Output the original JSON logs (only available in JSON formats or stdout)
       --threads <THREAD NUMBER>   Number of threads to use (default: same as CPU cores)
+  -s, --sort                      Sort results by timestamp before output (warning: holds every result in memory)
 
 Display Settings:
   -K, --no-color    Disable color output
@@ -209,6 +242,7 @@ Time Format:
 * Save results to a CSV file: `./suzaku gws-timeline -d ./gws-logs -o gws-timeline.csv`
 * Save results to CSV and JSONL files: `./suzaku gws-timeline -d ./gws-logs -o gws-timeline -t csv,jsonl`
 * Save results to a DuckDB database: `./suzaku gws-timeline -d ./gws-logs -o gws-timeline -t duckdb`
+* Save results to a CSV file sorted by time: `./suzaku gws-timeline -d ./gws-logs -o gws-timeline.csv -s` (see **Sorting results** under `aws-ct-timeline`)
 
 ### Normalization
 
