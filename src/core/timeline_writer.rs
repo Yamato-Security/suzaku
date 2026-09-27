@@ -461,6 +461,10 @@ pub struct OutputContext<'a> {
     /// Rows held back for `--sort`. `None` when sorting is off, and also when the only output is
     /// DuckDB, which sorts in [`DuckDbSink::finalize`] and needs no second copy of every row.
     sort_buf: Option<SortBuffer>,
+        /// Whether any open output reads the rendered profile columns. `false` when the only outputs
+    /// are JSON/JSONL under `--raw-output`, which print the raw event instead: rendering (and,
+    /// under `--sort`, holding) every column of every detection would then be pure overhead.
+    render_rows: bool,
 }
 
 /// Position of a row under `--sort`: ascending by instant, with an unknown or unparseable time
@@ -474,6 +478,8 @@ fn sort_key(timestamp: Option<DateTime<Utc>>) -> SortKey {
 /// A row held back by `--sort`, already rendered, so neither the `Event` nor the `Rule` it came
 /// from has to outlive the scan.
 struct PendingRow {
+    /// The rendered profile columns; empty when no output reads them (see
+    /// [`OutputContext::render_rows`]).
     record: Vec<String>,
     /// The enriched raw JSON, only under `--raw-output` with a JSON-shaped output. Stored as its
     /// compact serialization: a `serde_json::Value` tree costs several times the bytes of its text,
@@ -486,7 +492,8 @@ struct PendingRow {
 ///
 /// Only the small `(key, index)` pairs are sorted; the rows stay where they were pushed. Ties are
 /// broken by the rendered row and then the raw JSON, so the output does not depend on the order
-/// files were scanned in.
+/// files were scanned in. A raw-JSON-only run holds no rendered rows and ties on the raw JSON
+/// alone, which is also exactly what it writes, so equal keys mean identical output lines.
 ///
 /// The sort is rayon's `par_sort_by`, a parallel stable merge sort that, like std's driftsort,
 /// merges ascending runs instead of re-sorting them. On 1 M rows (`sort_algorithm_benchmark`) it
@@ -531,13 +538,17 @@ impl SortBuffer {
 }
 
 pub fn write_record(event: &Event, json: &Value, rule: Option<&Rule>, context: &mut OutputContext) {
-    let localtime = context.config.localtime;
-    let src_ip = src_ip_spec(context.profile).to_string();
-    let record: Vec<String> = context
-        .profile
-        .iter()
-        .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo, localtime, &src_ip))
-        .collect();
+    let record: Vec<String> = if context.render_rows {
+        let localtime = context.config.localtime;
+        let src_ip = src_ip_spec(context.profile).to_string();
+        context
+            .profile
+            .iter()
+            .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo, localtime, &src_ip))
+            .collect()
+    } else {
+        Vec::new()
+    };
     let raw = raw_record(json, Some(event), rule, context);
     let timestamp = context
         .sort_buf
@@ -555,7 +566,11 @@ pub fn write_correlation_record(
     timestamp: Option<DateTime<Utc>>,
     context: &mut OutputContext,
 ) {
-    let record: Vec<String> = build_correlation_record(events, rule, timestamp, context);
+    let record: Vec<String> = if context.render_rows {
+        build_correlation_record(events, rule, timestamp, context)
+    } else {
+        Vec::new()
+    };
     let raw = raw_record(&Value::Null, None, None, context);
     emit_record(record, raw, timestamp, context);
 }
@@ -1195,6 +1210,11 @@ impl<'a> OutputContext<'a> {
             || writers.json.is_some()
             || writers.jsonl.is_some();
         let sort_buf = (config.sort && has_sortable_output).then(SortBuffer::default);
+        // Terminal raw output still reads the Level column for its color.
+        let render_rows = writers.std.is_some()
+            || writers.csv.is_some()
+            || writers.duckdb.is_some()
+            || (!config.raw_output && (writers.json.is_some() || writers.jsonl.is_some()));
         Self {
             profile,
             prof_ts_key,
@@ -1204,6 +1224,7 @@ impl<'a> OutputContext<'a> {
             has_written: false,
             output_paths: output_paths.to_vec(),
             sort_buf,
+            render_rows,
         }
     }
 
@@ -3330,6 +3351,31 @@ mod tests {
             &WriterRun::csv(true),
         );
         assert_eq!(csv_column(&text, "RuleTitle"), ["correlation-fired"]);
+    }
+
+    // Raw JSON/JSONL prints the event itself, so a run whose only outputs are those must not
+    // render (or, under --sort, hold) the profile columns; any output that reads them must.
+    #[test]
+    fn rows_are_rendered_only_for_outputs_that_read_them() {
+        let profile: Vec<(String, String)> = vec![];
+        let sink = || Box::new(std::io::sink()) as Box<dyn Write>;
+        let jsonl = || Writers::new().with_jsonl(BufWriter::new(sink()));
+        let json = || Writers::new().with_json(BufWriter::new(sink()));
+        let csv = |w: Writers| w.with_csv(csv::WriterBuilder::new().from_writer(sink()));
+        let cases = [
+            (true, jsonl(), false),
+            (true, json(), false),
+            (false, jsonl(), true),
+            (false, json(), true),
+            (true, csv(Writers::new()), true),
+            (true, csv(jsonl()), true),
+        ];
+        for (raw, writers, expected) in cases {
+            let mut geo = None;
+            let config = OutputConfig::new(true, raw, false, true);
+            let context = OutputContext::new(&profile, &mut geo, &config, writers, &[]);
+            assert_eq!(context.render_rows, expected, "raw={raw}");
+        }
     }
 
     // DuckDB sorts in `finalize`, so a DuckDB-only run must not keep a second copy of every row;
