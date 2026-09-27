@@ -461,7 +461,7 @@ pub struct OutputContext<'a> {
     /// Rows held back for `--sort`. `None` when sorting is off, and also when the only output is
     /// DuckDB, which sorts in [`DuckDbSink::finalize`] and needs no second copy of every row.
     sort_buf: Option<SortBuffer>,
-        /// Whether any open output reads the rendered profile columns. `false` when the only outputs
+    /// Whether any open output reads the rendered profile columns. `false` when the only outputs
     /// are JSON/JSONL under `--raw-output`, which print the raw event instead: rendering (and,
     /// under `--sort`, holding) every column of every detection would then be pure overhead.
     render_rows: bool,
