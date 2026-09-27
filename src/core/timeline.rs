@@ -6,15 +6,18 @@ use crate::core::rules;
 use crate::core::scan::{append_summary_data, scan_directory, scan_file};
 use crate::core::summary::{DetectionSummary, print_detected_rule_authors, print_summary};
 use crate::core::timeline_writer::{
-    OutputConfig, OutputContext, event_timestamp, init_writers, write_correlation_record,
+    OutputConfig, OutputContext, correlation_timestamp, init_writers, write_correlation_record,
     write_record,
 };
 use crate::core::util::{fatal_error, load_profile, output_path_info, p};
 use crate::option::cli::{CommonOptions, TimelineOptions};
 use crate::option::geoip::GeoIPSearch;
+use chrono::{DateTime, Utc};
 use num_format::{Locale, ToFormattedString};
 use serde_json::Value;
-use sigma_rust::{CorrelationEngine, Rule, TimestampedEvent, parse_rules_from_yaml};
+use sigma_rust::{
+    CorrelationEngine, Rule, SigmaCorrelationRule, TimestampedEvent, parse_rules_from_yaml,
+};
 use std::collections::HashMap;
 use terminal_size::{Width, terminal_size};
 
@@ -129,7 +132,12 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
         meta,
     )
     .unwrap_or_else(|e| fatal_error(no_color, &e));
-    let config = OutputConfig::new(no_color, options.output_opt.raw_output, options.localtime);
+    let config = OutputConfig::new(
+        no_color,
+        options.output_opt.raw_output,
+        options.localtime,
+        options.sort,
+    );
     let mut context =
         OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
     let mut summary = DetectionSummary::default();
@@ -232,35 +240,11 @@ fn process_correlation_events(
                         // belongs to, so incrementing here double-counted it.
                         append_summary_data(summary, &event.event, event.rule, generate, context);
                     }
-                    write_correlation_record(&res.events, rule, context);
-                    if let Some(author) = &rule.author {
-                        summary
-                            .author_titles
-                            .entry(author.clone())
-                            .or_default()
-                            .insert(rule.title.clone());
-                    }
-                    if let Some(level) = &rule.level {
-                        let level = level.to_lowercase();
-                        summary
-                            .level_with_hits
-                            .entry(level.clone())
-                            .or_default()
-                            .entry(rule.title.clone())
-                            .and_modify(|e| *e += 1)
-                            .or_insert(1);
-                        let event = &res.events.last().unwrap().event;
-                        if let Some(event_time) = event_timestamp(context.prof_ts_key, event) {
-                            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
-                            summary
-                                .dates_with_hits
-                                .entry(level)
-                                .or_default()
-                                .entry(date)
-                                .and_modify(|e| *e += 1)
-                                .or_insert(1);
-                        }
-                    }
+                    // One representative instant per result, shared by the row, the summary
+                    // and the `--sort` position so they cannot disagree.
+                    let timestamp = correlation_timestamp(&res.events);
+                    write_correlation_record(&res.events, rule, timestamp, context);
+                    record_correlation_summary(summary, rule, timestamp);
                 }
             }
         }
@@ -270,4 +254,89 @@ fn process_correlation_events(
         }
     }
     false
+}
+
+/// Adds one fired correlation result to the summary: its author, its level, and a detection on
+/// the UTC date of its representative `timestamp` (see [`correlation_timestamp`]). The date stays
+/// UTC under `--localtime`, like every other date in the summary. A result without a timestamp
+/// still counts towards its level but is left out of the per-day table.
+fn record_correlation_summary(
+    summary: &mut DetectionSummary,
+    rule: &SigmaCorrelationRule,
+    timestamp: Option<DateTime<Utc>>,
+) {
+    if let Some(author) = &rule.author {
+        summary
+            .author_titles
+            .entry(author.clone())
+            .or_default()
+            .insert(rule.title.clone());
+    }
+    if let Some(level) = &rule.level {
+        let level = level.to_lowercase();
+        summary
+            .level_with_hits
+            .entry(level.clone())
+            .or_default()
+            .entry(rule.title.clone())
+            .and_modify(|e| *e += 1)
+            .or_insert(1);
+        if let Some(event_time) = timestamp {
+            let date = event_time.date_naive().format("%Y-%m-%d").to_string();
+            summary
+                .dates_with_hits
+                .entry(level)
+                .or_default()
+                .entry(date)
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn utc(s: &str) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
+    }
+
+    fn high_rule() -> SigmaCorrelationRule {
+        SigmaCorrelationRule {
+            title: "c".to_string(),
+            level: Some("High".to_string()),
+            ..Default::default()
+        }
+    }
+
+    // A correlation whose members straddle midnight UTC counts on the day of its latest member,
+    // the same instant its row shows — not on whichever member the scan reached last.
+    #[test]
+    fn correlation_summary_counts_the_utc_day_of_the_representative_time() {
+        let mut summary = DetectionSummary::default();
+        record_correlation_summary(
+            &mut summary,
+            &high_rule(),
+            Some(utc("2024-01-02T00:01:00Z")),
+        );
+        // A +09:00 spelling of an instant on 2024-01-01 UTC stays on 2024-01-01.
+        record_correlation_summary(
+            &mut summary,
+            &high_rule(),
+            Some(utc("2024-01-02T08:00:00+09:00")),
+        );
+        let days = &summary.dates_with_hits["high"];
+        assert_eq!(days.get("2024-01-02"), Some(&1));
+        assert_eq!(days.get("2024-01-01"), Some(&1));
+        assert_eq!(summary.level_with_hits["high"]["c"], 2);
+    }
+
+    #[test]
+    fn correlation_summary_without_a_time_counts_the_level_but_no_day() {
+        let mut summary = DetectionSummary::default();
+        record_correlation_summary(&mut summary, &high_rule(), None);
+        assert_eq!(summary.level_with_hits["high"]["c"], 1);
+        assert!(summary.dates_with_hits.is_empty());
+    }
 }

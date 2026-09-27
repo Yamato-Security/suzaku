@@ -141,11 +141,38 @@ fn print_summary_event_times(sum: &DetectionSummary) {
     println!();
 }
 
+/// The date with the most detections. On a tie the earliest date wins, so the answer does not
+/// depend on `HashMap` iteration order, which differs between identical runs.
+fn busiest_date(dates: &HashMap<String, usize>) -> Option<(&String, usize)> {
+    dates
+        .iter()
+        .max_by(|a, b| a.1.cmp(b.1).then_with(|| b.0.cmp(a.0)))
+        .map(|(date, &count)| (date, count))
+}
+
+/// The `n` rules with the most hits, most first. Equal counts are ordered by title: sorting on the
+/// count alone left ties — and which of them made the cut — in `HashMap` order, so identical runs
+/// printed different tables.
+fn top_hits(hits: &HashMap<String, usize>, n: usize) -> Vec<(&String, usize)> {
+    let mut hits: Vec<(&String, usize)> = hits.iter().map(|(rule, &count)| (rule, count)).collect();
+    hits.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+    hits.truncate(n);
+    hits
+}
+
+/// Rule authors by number of detected rules, most first, equal counts by name — for the same
+/// reason as [`top_hits`].
+fn sort_authors(counter: &HashMap<String, i128>) -> Vec<(&String, i128)> {
+    let mut authors: Vec<(&String, i128)> = counter.iter().map(|(a, &n)| (a, n)).collect();
+    authors.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+    authors
+}
+
 fn print_summary_dates_with_hits(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)>) {
     p(None, "Dates with most total detections:", true);
     for (level, color) in levels {
         if let Some(dates) = sum.dates_with_hits.get(*level) {
-            if let Some((date, &max_hits)) = dates.iter().max_by_key(|&(_, &count)| count) {
+            if let Some((date, max_hits)) = busiest_date(dates) {
                 let msg = format!(
                     "{}: {} ({})",
                     level,
@@ -168,10 +195,7 @@ fn print_summary_table(sum: &DetectionSummary, levels: &Vec<(&str, SuzakuColor)>
     let mut table_data = vec![];
     for (level, color) in levels {
         if let Some(hits) = sum.level_with_hits.get(*level) {
-            let mut hits_vec: Vec<(&String, &usize)> = hits.iter().collect();
-            hits_vec.sort_by(|a, b| b.1.cmp(a.1));
-            let top_hits: Vec<(&String, &usize)> = hits_vec.into_iter().take(5).collect();
-            let mut msgs: Vec<String> = top_hits
+            let mut msgs: Vec<String> = top_hits(hits, 5)
                 .into_iter()
                 .map(|(rule, count)| {
                     format!("{} ({})", rule, count.to_formatted_string(&Locale::en))
@@ -237,8 +261,7 @@ pub fn print_detected_rule_authors(
     table_column_num: usize,
     no_color: bool,
 ) {
-    let mut sorted_authors: Vec<(&String, &i128)> = rule_author_counter.iter().collect();
-    sorted_authors.sort_by_key(|a| -a.1);
+    let sorted_authors = sort_authors(rule_author_counter);
     let authors_num = sorted_authors.len();
     let div = if authors_num <= table_column_num {
         1
@@ -342,6 +365,77 @@ mod tests {
         assert_eq!(detection_totals(&sum), (100, 3));
         assert_eq!(percentage(10, 100), 10.0);
         assert!((percentage(1, 3) - 33.333).abs() < 0.01);
+    }
+
+    /// The same entries inserted in different orders. `HashMap` iteration order also depends on
+    /// the per-map random seed, so several maps are built; with a count-only sort at least one of
+    /// them came out in a different order.
+    fn shuffled_maps<V: Copy>(entries: &[(&str, V)]) -> Vec<HashMap<String, V>> {
+        (0..16)
+            .map(|i| {
+                let mut v = entries.to_vec();
+                v.rotate_left(i % entries.len());
+                if i % 2 == 1 {
+                    v.reverse();
+                }
+                v.into_iter().map(|(k, n)| (k.to_string(), n)).collect()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn top_hits_breaks_count_ties_by_title() {
+        let entries = [
+            ("S3 Enum", 2usize),
+            ("Many Recon Events", 9),
+            ("AWS CloudWatchLogs CreateLogStream", 2),
+            ("Attempt To Stop Logging", 2),
+            ("AWS STS AssumeRole", 5),
+            ("Zeta", 2),
+            ("Alpha", 2),
+        ];
+        for hits in shuffled_maps(&entries) {
+            let top: Vec<(&str, usize)> = top_hits(&hits, 5)
+                .into_iter()
+                .map(|(r, n)| (r.as_str(), n))
+                .collect();
+            // The cut at five falls inside the tie on 2: the first three titles by name make it.
+            assert_eq!(
+                top,
+                [
+                    ("Many Recon Events", 9),
+                    ("AWS STS AssumeRole", 5),
+                    ("AWS CloudWatchLogs CreateLogStream", 2),
+                    ("Alpha", 2),
+                    ("Attempt To Stop Logging", 2),
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn busiest_date_prefers_the_earliest_on_a_tie() {
+        let entries = [("2024-01-03", 7usize), ("2024-01-01", 7), ("2024-01-02", 3)];
+        for dates in shuffled_maps(&entries) {
+            let (date, count) = busiest_date(&dates).unwrap();
+            assert_eq!((date.as_str(), count), ("2024-01-01", 7));
+        }
+        assert_eq!(busiest_date(&HashMap::new()), None);
+    }
+
+    #[test]
+    fn sort_authors_breaks_count_ties_by_name() {
+        let entries = [("carol", 1i128), ("alice", 3), ("bob", 1), ("dave", 3)];
+        for counter in shuffled_maps(&entries) {
+            let sorted: Vec<(&str, i128)> = sort_authors(&counter)
+                .into_iter()
+                .map(|(a, n)| (a.as_str(), n))
+                .collect();
+            assert_eq!(
+                sorted,
+                [("alice", 3), ("dave", 3), ("bob", 1), ("carol", 1)]
+            );
+        }
     }
 
     #[test]

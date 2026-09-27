@@ -1183,7 +1183,7 @@ mod tests {
         ] {
             let mut geo = None;
             let profile = load_profile(&log, &geo, true);
-            let config = OutputConfig::new(true, false, false);
+            let config = OutputConfig::new(true, false, false, false);
             let mut context = OutputContext::new(&profile, &mut geo, &config, Writers::new(), &[]);
             let mut summary = DetectionSummary::default();
             let event = event_from_json(event_json).unwrap();

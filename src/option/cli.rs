@@ -223,6 +223,10 @@ pub struct TimelineOptions {
     #[arg(help_heading = Some("Display Settings"), short = 'N', long = "no-summary", display_order = 401)]
     pub no_summary: bool,
 
+    /// Sort results by timestamp before output (warning: holds every result in memory)
+    #[arg(help_heading = Some("Output"), short = 's', long = "sort", display_order = 306)]
+    pub sort: bool,
+
     /// Minimum level for rules to load (default: informational)
     #[arg(help_heading = Some("Output"), short = 'm', long = "min-level", default_value = "informational", hide_default_value = true, value_name = "LEVEL", display_order = 302)]
     pub min_level: String,

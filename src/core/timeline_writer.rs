@@ -5,15 +5,18 @@ use crate::core::duckdb_out::{
     list_expr, nullable, quote_ident, timestamp_expr,
 };
 use crate::core::errorlog::log_error;
-use crate::core::util::{get_json_writer, get_writer, sanitize_csv_field};
+use crate::core::util::{get_json_writer, get_writer, p, sanitize_csv_field};
 use crate::option::cli::OutputFormat;
 use crate::option::geoip::{GeoIPSearch, parse_ip};
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use csv::Writer;
 use duckdb::{Connection, ToSql};
 use itertools::Itertools;
+use num_format::{Locale, ToFormattedString};
+use rayon::slice::ParallelSliceMut;
 use serde_json::Value;
 use sigma_rust::{Event, Rule, SigmaCorrelationRule, TimestampedEvent};
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::{BufWriter, Write};
 use std::net::IpAddr;
@@ -25,6 +28,8 @@ pub struct OutputConfig {
     pub no_color: bool,
     pub raw_output: bool,
     pub localtime: bool,
+    /// `--sort`: hold the stdout/CSV/JSON/JSONL rows back and write them in time order at the end.
+    pub sort: bool,
 }
 
 /// Formats an event timestamp for output.
@@ -89,6 +94,35 @@ fn resolve_field_spec<'a>(spec: &'a str, event: &Event) -> Option<(&'a str, Stri
 /// caller may assume it cannot happen: cloud logs carry malformed timestamps.
 pub fn event_timestamp(spec: &str, event: &Event) -> Option<DateTime<Utc>> {
     resolve_field_spec(spec, event).and_then(|(_, value)| parse_event_time(&value))
+}
+
+/// The single instant a correlation result is placed at: the latest of its member events.
+///
+/// The engine keeps members in input order, so "the last member" is whichever event the scan
+/// happened to reach last — which depends on `read_dir` order — and not the moment the
+/// correlation completed. The maximum does not depend on that order, so the `Timestamp` column,
+/// the summary's per-day counts and the `--sort` position all agree run to run. The members'
+/// `timestamp` was already resolved through [`event_timestamp`] when they were collected, so
+/// nothing is re-parsed here. `None` only for an empty result.
+pub fn correlation_timestamp(events: &[&TimestampedEvent<'_>]) -> Option<DateTime<Utc>> {
+    events.iter().map(|event| event.timestamp).max()
+}
+
+/// Renders a correlation's representative instant for the `Timestamp` column.
+///
+/// Built from the instant rather than by picking one member's original string, so members that
+/// record the same moment as `Z` and as `+09:00` render identically whatever order they arrive in.
+/// The shape matches [`format_timestamp`] (`T`/`Z` stripped in UTC, an explicit offset under
+/// `--localtime`); fractional seconds are kept in both, trimmed to 3/6/9 digits by `%.f`.
+fn format_correlation_timestamp(timestamp: Option<DateTime<Utc>>, localtime: bool) -> String {
+    match timestamp {
+        Some(t) if localtime => t
+            .with_timezone(&Local)
+            .format("%Y-%m-%d %H:%M:%S%.f%:z")
+            .to_string(),
+        Some(t) => t.format("%Y-%m-%d %H:%M:%S%.f").to_string(),
+        None => "-".to_string(),
+    }
 }
 
 pub struct Writers {
@@ -424,39 +458,182 @@ pub struct OutputContext<'a> {
     pub writers: Writers,
     pub has_written: bool,
     pub output_paths: Vec<PathBuf>,
+    /// Rows held back for `--sort`. `None` when sorting is off, and also when the only output is
+    /// DuckDB, which sorts in [`DuckDbSink::finalize`] and needs no second copy of every row.
+    sort_buf: Option<SortBuffer>,
+    /// Whether any open output reads the rendered profile columns. `false` when the only outputs
+    /// are JSON/JSONL under `--raw-output`, which print the raw event instead: rendering (and,
+    /// under `--sort`, holding) every column of every detection would then be pure overhead.
+    render_rows: bool,
+}
+
+/// Position of a row under `--sort`: ascending by instant, with an unknown or unparseable time
+/// after every known one — the same place DuckDB's default `NULLS LAST` puts it.
+type SortKey = (bool, Option<DateTime<Utc>>);
+
+fn sort_key(timestamp: Option<DateTime<Utc>>) -> SortKey {
+    (timestamp.is_none(), timestamp)
+}
+
+/// A row held back by `--sort`, already rendered, so neither the `Event` nor the `Rule` it came
+/// from has to outlive the scan.
+struct PendingRow {
+    /// The rendered profile columns; empty when no output reads them (see
+    /// [`OutputContext::render_rows`]).
+    record: Vec<String>,
+    /// The enriched raw JSON, only under `--raw-output` with a JSON-shaped output. Stored as its
+    /// compact serialization: a `serde_json::Value` tree costs several times the bytes of its text,
+    /// and this buffer holds every detection of the run. It is also exactly the JSONL line, so
+    /// only the pretty-printed outputs have to parse it back.
+    raw: Option<String>,
+}
+
+/// Every stdout/CSV/JSON/JSONL row of a `--sort` run, ordered once at the end.
+///
+/// Only the small `(key, index)` pairs are sorted; the rows stay where they were pushed. Ties are
+/// broken by the rendered row and then the raw JSON, so the output does not depend on the order
+/// files were scanned in. A raw-JSON-only run holds no rendered rows and ties on the raw JSON
+/// alone, which is also exactly what it writes, so equal keys mean identical output lines.
+///
+/// The sort is rayon's `par_sort_by`, a parallel stable merge sort that, like std's driftsort,
+/// merges ascending runs instead of re-sorting them. On 1 M rows (`sort_algorithm_benchmark`) it
+/// beat std `sort_by` 4-8x on random, per-file-run and whole-second-tie inputs, and std
+/// `sort_unstable_by` 2-7x. Std's driftsort only pulled ahead of the unstable sort on runs of ~20 k
+/// rows, longer than a file's worth of detections. The sort runs after the scan, when the pool
+/// `--threads` configured is otherwise idle.
+#[derive(Default)]
+struct SortBuffer {
+    keys: Vec<(SortKey, u32)>,
+    rows: Vec<PendingRow>,
+}
+
+/// Output order under `--sort`: by instant, then by the rendered row, then by the raw JSON.
+fn compare_rows(rows: &[PendingRow], a: &(SortKey, u32), b: &(SortKey, u32)) -> Ordering {
+    let (row_a, row_b) = (&rows[a.1 as usize], &rows[b.1 as usize]);
+    a.0.cmp(&b.0)
+        .then_with(|| row_a.record.cmp(&row_b.record))
+        .then_with(|| row_a.raw.cmp(&row_b.raw))
+}
+
+impl SortBuffer {
+    fn push(&mut self, timestamp: Option<DateTime<Utc>>, record: Vec<String>, raw: Option<&Value>) {
+        let index = u32::try_from(self.rows.len()).expect("more than u32::MAX rows to sort");
+        self.keys.push((sort_key(timestamp), index));
+        self.rows.push(PendingRow {
+            record,
+            // The same serialization `write_to_json_format` writes for JSONL, so that output can
+            // take this text verbatim. A value that cannot serialize is dropped, as it would be
+            // unsorted.
+            raw: raw.and_then(|v| serde_json::to_string(v).ok()),
+        });
+    }
+
+    fn into_sorted(self) -> impl Iterator<Item = PendingRow> {
+        let SortBuffer { mut keys, rows } = self;
+        keys.par_sort_by(|a, b| compare_rows(&rows, a, b));
+        let mut rows: Vec<Option<PendingRow>> = rows.into_iter().map(Some).collect();
+        keys.into_iter()
+            .map(move |(_, i)| rows[i as usize].take().expect("each index is sorted once"))
+    }
 }
 
 pub fn write_record(event: &Event, json: &Value, rule: Option<&Rule>, context: &mut OutputContext) {
-    let localtime = context.config.localtime;
-    let src_ip = src_ip_spec(context.profile).to_string();
-    let mut record: Vec<String> = context
-        .profile
-        .iter()
-        .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo, localtime, &src_ip))
-        .collect();
-    write_to_stdout(&mut record, context, json, Some(event), rule);
-    write_to_csv(&record, context);
-    write_to_duckdb(&record, context);
-    write_to_json(&record, json, Some(event), rule, context);
-    write_to_jsonl(&record, json, Some(event), rule, context);
-    context.has_written = true;
+    let record: Vec<String> = if context.render_rows {
+        let localtime = context.config.localtime;
+        let src_ip = src_ip_spec(context.profile).to_string();
+        context
+            .profile
+            .iter()
+            .map(|(_k, v)| get_value_from_event(v, event, rule, context.geo, localtime, &src_ip))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let raw = raw_record(json, Some(event), rule, context);
+    let timestamp = context
+        .sort_buf
+        .is_some()
+        .then(|| event_timestamp(context.prof_ts_key, event))
+        .flatten();
+    emit_record(record, raw, timestamp, context);
 }
 
+/// Writes one correlation result. `timestamp` is its representative instant from
+/// [`correlation_timestamp`], computed once by the caller so the row and the summary share it.
 pub fn write_correlation_record(
-    events: &Vec<&TimestampedEvent>,
+    events: &[&TimestampedEvent],
     rule: &SigmaCorrelationRule,
+    timestamp: Option<DateTime<Utc>>,
     context: &mut OutputContext,
 ) {
-    let mut record: Vec<String> = build_correlation_record(events, rule, context);
-    write_to_stdout(&mut record, context, &Value::Null, None, None);
-    write_to_csv(&record, context);
+    let record: Vec<String> = if context.render_rows {
+        build_correlation_record(events, rule, timestamp, context)
+    } else {
+        Vec::new()
+    };
+    let raw = raw_record(&Value::Null, None, None, context);
+    emit_record(record, raw, timestamp, context);
+}
+
+/// The enriched raw JSON for `--raw-output`, built once per detection and shared by every
+/// JSON-shaped output. `None` when raw output is off or nothing would print it.
+fn raw_record(
+    json: &Value,
+    event: Option<&Event>,
+    rule: Option<&Rule>,
+    context: &mut OutputContext,
+) -> Option<Value> {
+    let writers = &context.writers;
+    if !context.config.raw_output
+        || (writers.std.is_none() && writers.json.is_none() && writers.jsonl.is_none())
+    {
+        return None;
+    }
+    let mut json_record = json.clone();
+    enrich_raw_record(
+        &mut json_record,
+        event,
+        rule,
+        context.profile,
+        context.geo,
+        context.config.localtime,
+    );
+    Some(json_record)
+}
+
+/// Sends one rendered detection to every output: DuckDB directly, the rest either directly or,
+/// under `--sort`, into the sort buffer at `timestamp`.
+fn emit_record(
+    mut record: Vec<String>,
+    raw: Option<Value>,
+    timestamp: Option<DateTime<Utc>>,
+    context: &mut OutputContext,
+) {
     write_to_duckdb(&record, context);
-    write_to_json(&record, &Value::Null, None, None, context);
-    write_to_jsonl(&record, &Value::Null, None, None, context);
-    // A correlation result is a detection like any other. Without this, `flush_all` saw
+    match &mut context.sort_buf {
+        Some(buf) => buf.push(timestamp, record, raw.as_ref()),
+        None => write_rendered(&mut record, raw.as_ref(), context),
+    }
+    // A detection, correlation results included. Without this, `flush_all` saw
     // `has_written == false` on a run where ONLY correlation rules fired, left the DuckDB sink
     // unfinalized and DELETED every output file it had just written.
     context.has_written = true;
+}
+
+/// Writes one row to the stdout/CSV/JSON/JSONL outputs, whichever are open.
+fn write_rendered(record: &mut [String], raw: Option<&Value>, context: &mut OutputContext) {
+    write_to_stdout(record, raw, context);
+    write_to_csv(record, context);
+    write_to_json_format(record, raw, context, true);
+    write_to_json_format(record, raw, context, false);
+}
+
+/// Writes an already-serialized raw JSONL line, as held by the `--sort` buffer.
+fn write_jsonl_line(line: &str, context: &mut OutputContext) {
+    if let Some(writer) = &mut context.writers.jsonl {
+        writer.write_all(line.as_bytes()).unwrap();
+        writer.write_all(b"\n").unwrap();
+    }
 }
 
 /// Adds the profile-derived fields that raw output promises alongside the original event JSON.
@@ -485,13 +662,7 @@ fn enrich_raw_record(
     }
 }
 
-fn write_to_stdout(
-    record: &mut [String],
-    context: &mut OutputContext,
-    json: &Value,
-    event: Option<&Event>,
-    rule: Option<&Rule>,
-) {
+fn write_to_stdout(record: &mut [String], raw: Option<&Value>, context: &mut OutputContext) {
     if let Some(writer) = &mut context.writers.std {
         let level_index = context.profile.iter().position(|(k, _)| k == "Level");
         let level = if let Some(index) = level_index {
@@ -509,14 +680,8 @@ fn write_to_stdout(
         if context.config.raw_output {
             buf.set_color(ColorSpec::new().set_fg(color.rdg(context.config.no_color)))
                 .ok();
-            let profile = context.profile;
-            let localtime = context.config.localtime;
-            let geo = &mut context.geo;
-            let mut json_record = json.clone();
-            enrich_raw_record(&mut json_record, event, rule, profile, geo, localtime);
-
-            let json_string = serde_json::to_string_pretty(&json_record);
-            if let Ok(json_string) = json_string {
+            let json_string = raw.map(serde_json::to_string_pretty);
+            if let Some(Ok(json_string)) = json_string {
                 write!(buf, "{}\n\n", json_string).ok();
                 writer.print(&buf).ok();
             }
@@ -556,85 +721,44 @@ fn write_to_duckdb(record: &[String], context: &mut OutputContext) {
 
 fn write_to_json_format(
     record: &[String],
-    json: &Value,
-    event: Option<&Event>,
-    rule: Option<&Rule>,
+    raw: Option<&Value>,
     context: &mut OutputContext,
     pretty: bool,
 ) {
-    let raw_output = context.config.raw_output;
+    let writer = if pretty {
+        &mut context.writers.json
+    } else {
+        &mut context.writers.jsonl
+    };
+    let Some(writer) = writer else {
+        return;
+    };
 
-    if raw_output {
-        let profile = context.profile;
-        let localtime = context.config.localtime;
-        let geo = &mut context.geo;
-
-        let writer = if pretty {
-            &mut context.writers.json
-        } else {
-            &mut context.writers.jsonl
+    let json_string = if context.config.raw_output {
+        let Some(raw) = raw else {
+            return;
         };
-
-        if let Some(writer) = writer {
-            let mut json_record = json.clone();
-            enrich_raw_record(&mut json_record, event, rule, profile, geo, localtime);
-
-            let json_string = if pretty {
-                serde_json::to_string_pretty(&json_record)
-            } else {
-                serde_json::to_string(&json_record)
-            };
-
-            if let Ok(json_string) = json_string {
-                writer.write_all(json_string.as_bytes()).unwrap();
-                writer.write_all(b"\n").unwrap();
-            }
+        if pretty {
+            serde_json::to_string_pretty(raw)
+        } else {
+            serde_json::to_string(raw)
         }
     } else {
-        let writer = if pretty {
-            &mut context.writers.json
-        } else {
-            &mut context.writers.jsonl
-        };
-
-        if let Some(writer) = writer {
-            let mut json_record: BTreeMap<String, String> = BTreeMap::new();
-            for ((k, _), value) in context.profile.iter().zip(record.iter()) {
-                json_record.insert(k.clone(), value.clone());
-            }
-
-            let json_string = if pretty {
-                serde_json::to_string_pretty(&json_record)
-            } else {
-                serde_json::to_string(&json_record)
-            };
-
-            if let Ok(json_string) = json_string {
-                writer.write_all(json_string.as_bytes()).unwrap();
-                writer.write_all(b"\n").unwrap();
-            }
+        let mut json_record: BTreeMap<String, String> = BTreeMap::new();
+        for ((k, _), value) in context.profile.iter().zip(record.iter()) {
+            json_record.insert(k.clone(), value.clone());
         }
+        if pretty {
+            serde_json::to_string_pretty(&json_record)
+        } else {
+            serde_json::to_string(&json_record)
+        }
+    };
+
+    if let Ok(json_string) = json_string {
+        writer.write_all(json_string.as_bytes()).unwrap();
+        writer.write_all(b"\n").unwrap();
     }
-}
-
-fn write_to_json(
-    record: &[String],
-    json: &Value,
-    event: Option<&Event>,
-    rule: Option<&Rule>,
-    context: &mut OutputContext,
-) {
-    write_to_json_format(record, json, event, rule, context, true);
-}
-
-fn write_to_jsonl(
-    record: &[String],
-    json: &Value,
-    event: Option<&Event>,
-    rule: Option<&Rule>,
-    context: &mut OutputContext,
-) {
-    write_to_json_format(record, json, event, rule, context, false);
 }
 
 fn get_level_color(level: &str) -> SuzakuColor {
@@ -722,42 +846,43 @@ fn format_tags(tags: &[String]) -> String {
         .join(" ¦ ")
 }
 
+/// One output row for a correlation result. The `Timestamp` column is the representative instant
+/// from [`correlation_timestamp`]; every other column is the sorted, de-duplicated set of the
+/// members' values joined with ` ¦ `.
+///
+/// The `Timestamp` column is recognised by its profile *name*, not its field spec. Matching the
+/// spec against a literal `".eventTime"` only ever worked for AWS: the Azure
+/// (`.time|.eventTimestamp|.CreationTime`) and GWS (`.id.time`) specs fell through to the
+/// concatenation and rendered every member's time in one cell.
 fn build_correlation_record(
-    events: &Vec<&TimestampedEvent>,
+    events: &[&TimestampedEvent],
     rule: &SigmaCorrelationRule,
+    timestamp: Option<DateTime<Utc>>,
     context: &mut OutputContext,
 ) -> Vec<String> {
-    let events: Vec<Event> = events.iter().map(|e| e.event.clone()).collect();
-    let profile = &context.profile;
+    let profile = context.profile;
     let localtime = context.config.localtime;
-    let mut correlation_map: HashMap<String, String> = HashMap::new();
-    for (_, profile_value) in profile.iter() {
-        let mut values = HashSet::new();
-        for (i, event) in events.iter().enumerate() {
-            if profile_value == ".eventTime" && i < events.len() - 1 {
-                continue;
-            }
-            let value = get_value_from_correlation_event(
-                profile_value,
-                event,
-                rule,
-                context.geo,
-                localtime,
-                src_ip_spec(profile),
-            );
-            values.insert(value);
-        }
-        let values: Vec<String> = values.into_iter().sorted().collect();
-        let concatenated = values.join(" ¦ ");
-        correlation_map.insert(profile_value.clone(), concatenated);
-    }
+    let src_ip = src_ip_spec(profile);
     profile
         .iter()
-        .map(|(_, profile_value)| {
-            correlation_map
-                .get(profile_value)
-                .cloned()
-                .unwrap_or_else(|| "-".to_string())
+        .map(|(name, profile_value)| {
+            if name == "Timestamp" {
+                return format_correlation_timestamp(timestamp, localtime);
+            }
+            let values: HashSet<String> = events
+                .iter()
+                .map(|e| {
+                    get_value_from_correlation_event(
+                        profile_value,
+                        &e.event,
+                        rule,
+                        context.geo,
+                        localtime,
+                        src_ip,
+                    )
+                })
+                .collect();
+            values.into_iter().sorted().join(" ¦ ")
         })
         .collect()
 }
@@ -1020,11 +1145,12 @@ fn get_value_from_event(
 
 // 使用例
 impl OutputConfig {
-    pub fn new(no_color: bool, raw_output: bool, localtime: bool) -> Self {
+    pub fn new(no_color: bool, raw_output: bool, localtime: bool, sort: bool) -> Self {
         Self {
             no_color,
             raw_output,
             localtime,
+            sort,
         }
     }
 }
@@ -1079,6 +1205,16 @@ impl<'a> OutputContext<'a> {
             .find(|(k, _)| k == "Timestamp")
             .map(|(_k, v)| v.as_str())
             .unwrap_or(".eventTime|.time|.eventTimestamp");
+        let has_sortable_output = writers.std.is_some()
+            || writers.csv.is_some()
+            || writers.json.is_some()
+            || writers.jsonl.is_some();
+        let sort_buf = (config.sort && has_sortable_output).then(SortBuffer::default);
+        // Terminal raw output still reads the Level column for its color.
+        let render_rows = writers.std.is_some()
+            || writers.csv.is_some()
+            || writers.duckdb.is_some()
+            || (!config.raw_output && (writers.json.is_some() || writers.jsonl.is_some()));
         Self {
             profile,
             prof_ts_key,
@@ -1087,6 +1223,47 @@ impl<'a> OutputContext<'a> {
             writers,
             has_written: false,
             output_paths: output_paths.to_vec(),
+            sort_buf,
+            render_rows,
+        }
+    }
+
+    /// Write the rows held back by `--sort`, in time order. Runs at the start of
+    /// [`Self::flush_all`], so the rows are on disk before an empty run's files are removed.
+    fn flush_sorted(&mut self) {
+        let Some(buf) = self.sort_buf.take() else {
+            return;
+        };
+        if buf.rows.is_empty() {
+            return;
+        }
+        // Without `-o` there is no progress bar, so a long silence here would look like a hang.
+        p(
+            Orange.rdg(self.config.no_color),
+            &format!(
+                "Sorting {} results...",
+                buf.rows.len().to_formatted_string(&Locale::en)
+            ),
+            true,
+        );
+        println!();
+        // Re-parsing every held raw line and serializing it again was most of the cost of a sorted
+        // `--raw-output` run (8.6 s of 1.9 M rows). JSONL is written from the held text as is; only
+        // the pretty-printed JSON and terminal outputs need the tree back.
+        let needs_tree =
+            self.config.raw_output && (self.writers.std.is_some() || self.writers.json.is_some());
+        for PendingRow { mut record, raw } in buf.into_sorted() {
+            let tree: Option<Value> = raw
+                .as_deref()
+                .filter(|_| needs_tree)
+                .and_then(|s| serde_json::from_str(s).ok());
+            write_to_stdout(&mut record, tree.as_ref(), self);
+            write_to_csv(&record, self);
+            write_to_json_format(&record, tree.as_ref(), self, true);
+            match raw.as_deref() {
+                Some(line) if self.config.raw_output => write_jsonl_line(line, self),
+                _ => write_to_json_format(&record, None, self, false),
+            }
         }
     }
 
@@ -1100,6 +1277,7 @@ impl<'a> OutputContext<'a> {
     }
 
     pub fn flush_all(&mut self) {
+        self.flush_sorted();
         if let Some(ref mut writer) = self.writers.csv {
             writer.flush().unwrap();
         }
@@ -1771,7 +1949,7 @@ mod tests {
 
         let dir = tempfile::tempdir().unwrap();
         let csv_path = dir.path().join("out.csv");
-        let config = OutputConfig::new(true, false, false);
+        let config = OutputConfig::new(true, false, false, false);
         {
             let file = std::fs::File::create(&csv_path).unwrap();
             let writers = Writers::new()
@@ -1843,6 +2021,7 @@ mod tests {
     /// written to either JSON or JSONL output.
     fn write_raw_record(
         jsonl: bool,
+        sort: bool,
         log: &crate::core::log_source::LogSource,
         event_json: &str,
         geo: &mut Option<crate::option::geoip::GeoIPSearch>,
@@ -1862,7 +2041,7 @@ mod tests {
         let output_path = dir
             .path()
             .join(if jsonl { "out.jsonl" } else { "out.json" });
-        let config = OutputConfig::new(true, true, false);
+        let config = OutputConfig::new(true, true, false, sort);
         {
             let file = std::fs::File::create(&output_path).unwrap();
             let writer = BufWriter::new(Box::new(file) as Box<dyn Write>);
@@ -1893,9 +2072,16 @@ mod tests {
         let event_json =
             r#"{"callerIpAddress": "89.160.20.112", "eventName": "E", "operationName": "op"}"#;
 
-        for jsonl in [false, true] {
-            let record = write_raw_record(jsonl, &LogSource::Azure, event_json, &mut geo);
-            let output_name = if jsonl { "JSONL" } else { "JSON" };
+        // `--sort` holds the enriched JSON back as text and re-emits it, which must not lose the
+        // enrichment either.
+        for (jsonl, sort) in [(false, false), (true, false), (false, true), (true, true)] {
+            let record = write_raw_record(jsonl, sort, &LogSource::Azure, event_json, &mut geo);
+            let output_name = match (jsonl, sort) {
+                (false, false) => "JSON",
+                (true, false) => "JSONL",
+                (false, true) => "JSON --sort",
+                (true, true) => "JSONL --sort",
+            };
 
             assert_eq!(record["callerIpAddress"], "89.160.20.112", "{output_name}");
             assert_eq!(record["RuleTitle"], "t", "{output_name}");
@@ -1934,13 +2120,18 @@ mod tests {
 
         let dir = tempfile::tempdir().unwrap();
         let csv_path = dir.path().join("out.csv");
-        let config = OutputConfig::new(true, false, false);
+        let config = OutputConfig::new(true, false, false, false);
         {
             let file = std::fs::File::create(&csv_path).unwrap();
             let writers = Writers::new()
                 .with_csv(csv::WriterBuilder::new().from_writer(Box::new(file) as Box<dyn Write>));
             let mut context = OutputContext::new(&profile, geo, &config, writers, &[]);
-            write_correlation_record(&vec![&timestamped], &correlation_rule, &mut context);
+            write_correlation_record(
+                &[&timestamped],
+                &correlation_rule,
+                Some(timestamped.timestamp),
+                &mut context,
+            );
             context.flush_all();
         }
 
@@ -1988,13 +2179,13 @@ mod tests {
                 r#"{"kind":"admin#reports#activity","id":{"applicationName":"login","time":"2024-01-02T03:04:05.678Z"},"eventName":"E"}"#,
             )
             .unwrap(),
-            timestamp: "2024-01-02T03:04:05Z".parse().unwrap(),
+            timestamp: "2024-01-02T03:04:05.678Z".parse().unwrap(),
             rule: &base_rule,
         };
 
         let dir = tempfile::tempdir().unwrap();
         let csv_path = dir.path().join("out.csv");
-        let config = OutputConfig::new(true, false, false);
+        let config = OutputConfig::new(true, false, false, false);
         {
             let file = std::fs::File::create(&csv_path).unwrap();
             let writers = Writers::new()
@@ -2007,7 +2198,12 @@ mod tests {
                 writers,
                 std::slice::from_ref(&csv_path),
             );
-            write_correlation_record(&vec![&timestamped], &correlation_rule, &mut context);
+            write_correlation_record(
+                &[&timestamped],
+                &correlation_rule,
+                Some(timestamped.timestamp),
+                &mut context,
+            );
             assert!(
                 context.has_written,
                 "a correlation result is a detection and must mark the run as non-empty"
@@ -2697,7 +2893,7 @@ mod tests {
         assert!(path.exists());
 
         let writers = Writers::new().with_duckdb(sink);
-        let config = OutputConfig::new(true, false, false);
+        let config = OutputConfig::new(true, false, false, false);
         let mut geo = None;
         let output_paths = vec![path.clone()];
         let mut ctx = OutputContext::new(&profile, &mut geo, &config, writers, &output_paths);
@@ -2713,5 +2909,598 @@ mod tests {
             !path.exists(),
             "the empty .duckdb database must be removed when there are no hits"
         );
+    }
+
+    // ---- Correlation representative time and `--sort` ----
+
+    const MATCH_E_RULE: &str = "title: t\nlogsource:\n    category: test\ndetection:\n    selection:\n        eventName: E\n    condition: selection\n";
+
+    fn utc(s: &str) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
+    }
+
+    /// One thing pushed through the writer: a plain detection, or a correlation result made of the
+    /// given member events (each timestamped through the profile, as the scan does).
+    enum Detection<'a> {
+        Event(&'a str),
+        Correlation(&'a str, Vec<&'a str>),
+    }
+
+    struct WriterRun {
+        sort: bool,
+        raw: bool,
+        localtime: bool,
+        format: OutputFormat,
+    }
+
+    impl WriterRun {
+        fn csv(sort: bool) -> Self {
+            Self {
+                sort,
+                raw: false,
+                localtime: false,
+                format: OutputFormat::Csv,
+            }
+        }
+    }
+
+    /// Drives `write_record` / `write_correlation_record` with a shipped profile and returns the
+    /// text of the single output file.
+    fn run_writer(
+        log: &crate::core::log_source::LogSource,
+        detections: &[Detection],
+        run: &WriterRun,
+    ) -> String {
+        use crate::core::util::load_profile;
+        use sigma_rust::{SigmaCorrelationRule, event_from_json, rule_from_yaml};
+
+        let mut geo = None;
+        let profile = load_profile(log, &geo, false);
+        let rule = rule_from_yaml(MATCH_E_RULE).unwrap();
+        let config = OutputConfig::new(true, run.raw, run.localtime, run.sort);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("out");
+        {
+            let file = Box::new(std::fs::File::create(&path).unwrap()) as Box<dyn Write>;
+            let writers = match run.format {
+                OutputFormat::Csv => {
+                    Writers::new().with_csv(csv::WriterBuilder::new().from_writer(file))
+                }
+                OutputFormat::Json => Writers::new().with_json(BufWriter::new(file)),
+                OutputFormat::Jsonl => Writers::new().with_jsonl(BufWriter::new(file)),
+                OutputFormat::Duckdb => unreachable!("DuckDB is covered by its own tests"),
+            };
+            let mut context = OutputContext::new(&profile, &mut geo, &config, writers, &[]);
+            context.write_header();
+            for detection in detections {
+                match detection {
+                    Detection::Event(json) => {
+                        let event = event_from_json(json).unwrap();
+                        let value: Value = serde_json::from_str(json).unwrap();
+                        write_record(&event, &value, Some(&rule), &mut context);
+                    }
+                    Detection::Correlation(title, members) => {
+                        let members: Vec<TimestampedEvent> = members
+                            .iter()
+                            .map(|json| {
+                                let event = event_from_json(json).unwrap();
+                                TimestampedEvent {
+                                    timestamp: event_timestamp(context.prof_ts_key, &event)
+                                        .expect("member events carry a parseable time"),
+                                    event,
+                                    rule: &rule,
+                                }
+                            })
+                            .collect();
+                        let members: Vec<&TimestampedEvent> = members.iter().collect();
+                        let correlation_rule = SigmaCorrelationRule {
+                            title: title.to_string(),
+                            ..Default::default()
+                        };
+                        let timestamp = correlation_timestamp(&members);
+                        write_correlation_record(
+                            &members,
+                            &correlation_rule,
+                            timestamp,
+                            &mut context,
+                        );
+                    }
+                }
+            }
+            context.flush_all();
+        }
+        std::fs::read_to_string(&path).unwrap_or_default()
+    }
+
+    /// The values of one named column of a CSV produced by [`run_writer`].
+    fn csv_column(text: &str, column: &str) -> Vec<String> {
+        let mut reader = csv::Reader::from_reader(text.as_bytes());
+        let at = reader
+            .headers()
+            .unwrap()
+            .iter()
+            .position(|h| h == column)
+            .unwrap_or_else(|| panic!("no {column} column"));
+        reader
+            .records()
+            .map(|r| r.unwrap().get(at).unwrap().to_string())
+            .collect()
+    }
+
+    fn aws_event(time: &str, id: &str) -> String {
+        format!(r#"{{"eventTime":"{time}","eventName":"E","eventID":"{id}"}}"#)
+    }
+
+    #[test]
+    fn correlation_timestamp_is_the_latest_member_in_any_order() {
+        use sigma_rust::{event_from_json, rule_from_yaml};
+        let rule = rule_from_yaml(MATCH_E_RULE).unwrap();
+        let member = |t: &str| TimestampedEvent {
+            event: event_from_json("{}").unwrap(),
+            timestamp: utc(t),
+            rule: &rule,
+        };
+        let (early, late) = (
+            member("2024-01-01T10:01:00Z"),
+            member("2024-01-01T10:04:00Z"),
+        );
+        let latest = Some(utc("2024-01-01T10:04:00Z"));
+        assert_eq!(correlation_timestamp(&[&early, &late]), latest);
+        assert_eq!(correlation_timestamp(&[&late, &early]), latest);
+        assert_eq!(correlation_timestamp(&[]), None);
+    }
+
+    // AWS used to take the last member's time; Azure and GWS, whose specs are not `.eventTime`,
+    // used to concatenate every member's time. All three must now show one instant, the latest,
+    // whatever order the members arrive in, while other columns keep the sorted ` ¦ ` join.
+    #[test]
+    fn correlation_row_shows_the_latest_member_time_in_every_profile() {
+        use crate::core::log_source::LogSource;
+        let cases = [
+            (
+                LogSource::Aws,
+                r#"{"eventTime":"2024-01-01T10:04:00Z","eventName":"B"}"#,
+                r#"{"eventTime":"2024-01-01T10:01:00Z","eventName":"A"}"#,
+                "EventName",
+            ),
+            (
+                LogSource::Azure,
+                r#"{"time":"2024-01-01T10:04:00Z","operationName":"opB"}"#,
+                r#"{"time":"2024-01-01T10:01:00Z","operationName":"opA"}"#,
+                "Operation",
+            ),
+            (
+                LogSource::Gws,
+                r#"{"id":{"time":"2024-01-01T10:04:00Z","applicationName":"login"},"eventName":"B"}"#,
+                r#"{"id":{"time":"2024-01-01T10:01:00Z","applicationName":"login"},"eventName":"A"}"#,
+                "EventName",
+            ),
+        ];
+        for (log, late, early, joined_column) in cases {
+            for members in [vec![early, late], vec![late, early]] {
+                let text = run_writer(
+                    &log,
+                    &[Detection::Correlation("c", members)],
+                    &WriterRun::csv(false),
+                );
+                assert_eq!(
+                    csv_column(&text, "Timestamp"),
+                    ["2024-01-01 10:04:00"],
+                    "{}",
+                    log.command_name()
+                );
+                let joined = csv_column(&text, joined_column);
+                assert!(
+                    joined[0].ends_with("A ¦ opB") || joined[0] == "A ¦ B",
+                    "{}: {joined:?}",
+                    log.command_name()
+                );
+            }
+        }
+    }
+
+    // The same instant spelled `Z` and `+09:00` must render one way, independent of which member
+    // came first: the cell is rendered from the instant, not copied from a member's string.
+    #[test]
+    fn correlation_timestamp_does_not_depend_on_offset_spelling() {
+        use crate::core::log_source::LogSource;
+        let zulu = aws_event("2024-01-01T10:04:00Z", "z");
+        let tokyo = aws_event("2024-01-01T19:04:00+09:00", "t");
+        let early = aws_event("2024-01-01T10:01:00Z", "e");
+        for members in [
+            vec![early.as_str(), zulu.as_str(), tokyo.as_str()],
+            vec![tokyo.as_str(), early.as_str(), zulu.as_str()],
+        ] {
+            let text = run_writer(
+                &LogSource::Aws,
+                &[Detection::Correlation("c", members)],
+                &WriterRun::csv(false),
+            );
+            assert_eq!(csv_column(&text, "Timestamp"), ["2024-01-01 10:04:00"]);
+        }
+    }
+
+    #[test]
+    fn correlation_timestamp_keeps_fractional_seconds() {
+        use crate::core::log_source::LogSource;
+        let text = run_writer(
+            &LogSource::Aws,
+            &[Detection::Correlation(
+                "c",
+                vec![
+                    &aws_event("2024-01-01T10:04:00.5Z", "b"),
+                    &aws_event("2024-01-01T10:04:00.123Z", "a"),
+                ],
+            )],
+            &WriterRun::csv(false),
+        );
+        assert_eq!(csv_column(&text, "Timestamp"), ["2024-01-01 10:04:00.500"]);
+
+        // Under --localtime the offset depends on the machine, so check the rendering parses back
+        // to the same instant and still carries the fraction.
+        let local = format_correlation_timestamp(Some(utc("2024-01-01T10:04:00.5Z")), true);
+        assert!(local.contains(":00.500"), "{local}");
+        assert_eq!(
+            DateTime::parse_from_str(&local, "%Y-%m-%d %H:%M:%S%.f%:z")
+                .unwrap()
+                .with_timezone(&Utc),
+            utc("2024-01-01T10:04:00.5Z")
+        );
+    }
+
+    #[test]
+    fn empty_correlation_renders_a_placeholder_timestamp() {
+        use crate::core::log_source::LogSource;
+        let text = run_writer(
+            &LogSource::Aws,
+            &[Detection::Correlation("c", vec![])],
+            &WriterRun::csv(false),
+        );
+        // `'-`: the CSV writer escapes a leading `-` against formula injection.
+        assert_eq!(csv_column(&text, "Timestamp"), ["'-"]);
+    }
+
+    #[test]
+    fn sort_orders_rows_by_instant_with_unknown_times_last() {
+        use crate::core::log_source::LogSource;
+        let events = [
+            aws_event("2023-07-10T13:00:00Z", "c"),
+            aws_event("not a time", "x"),
+            // 12:27:45Z: before 13:00Z although it reads later as a string.
+            aws_event("2023-07-10T21:27:45+09:00", "b"),
+            r#"{"eventName":"E","eventID":"y"}"#.to_string(),
+            aws_event("2023-07-10T12:00:00Z", "a"),
+        ];
+        let detections: Vec<Detection> = events.iter().map(|e| Detection::Event(e)).collect();
+        let text = run_writer(&LogSource::Aws, &detections, &WriterRun::csv(true));
+        // `x` and `y` tie on "no time" and fall back to the row, where `-` (absent) sorts before
+        // `not a time`.
+        assert_eq!(csv_column(&text, "EventID"), ["a", "b", "c", "y", "x"]);
+
+        // --localtime renders every time differently but must order by the same instants.
+        let run = WriterRun {
+            localtime: true,
+            ..WriterRun::csv(true)
+        };
+        let text = run_writer(&LogSource::Aws, &detections, &run);
+        assert_eq!(csv_column(&text, "EventID"), ["a", "b", "c", "y", "x"]);
+    }
+
+    #[test]
+    fn sort_disabled_keeps_arrival_order() {
+        use crate::core::log_source::LogSource;
+        let events = [
+            aws_event("2023-07-10T13:00:00Z", "c"),
+            aws_event("2023-07-10T12:00:00Z", "a"),
+        ];
+        let detections: Vec<Detection> = events.iter().map(|e| Detection::Event(e)).collect();
+        let text = run_writer(&LogSource::Aws, &detections, &WriterRun::csv(false));
+        assert_eq!(csv_column(&text, "EventID"), ["c", "a"]);
+    }
+
+    // The point of the tie-breaks: a run over the same detections must produce the same bytes
+    // whatever order the files were scanned in. `raw-only` differs from its twin only in a field
+    // no profile column shows, so under --raw-output only the raw JSON tells the two apart.
+    #[test]
+    fn sort_output_does_not_depend_on_arrival_order() {
+        use crate::core::log_source::LogSource;
+        let same_time = "2024-01-01T10:00:00Z";
+        let events = [
+            aws_event(same_time, "b"),
+            aws_event(same_time, "a"),
+            format!(r#"{{"eventTime":"{same_time}","eventName":"E","eventID":"a","raw":"2"}}"#),
+            format!(r#"{{"eventTime":"{same_time}","eventName":"E","eventID":"a","raw":"1"}}"#),
+            aws_event("2024-01-01T09:00:00Z", "early"),
+        ];
+        let member = aws_event("2024-01-01T10:00:00Z", "m");
+        let mut detections: Vec<Detection> = events.iter().map(|e| Detection::Event(e)).collect();
+        detections.push(Detection::Correlation("c", vec![&member]));
+
+        for run in [
+            WriterRun::csv(true),
+            WriterRun {
+                raw: true,
+                format: OutputFormat::Jsonl,
+                ..WriterRun::csv(true)
+            },
+            WriterRun {
+                raw: true,
+                format: OutputFormat::Json,
+                ..WriterRun::csv(true)
+            },
+            WriterRun {
+                format: OutputFormat::Jsonl,
+                ..WriterRun::csv(true)
+            },
+        ] {
+            let forward = run_writer(&LogSource::Aws, &detections, &run);
+            detections.reverse();
+            let reversed = run_writer(&LogSource::Aws, &detections, &run);
+            detections.reverse();
+            assert!(!forward.is_empty());
+            assert_eq!(forward, reversed, "{:?} raw={}", run.format, run.raw);
+        }
+    }
+
+    // The sorted path writes JSONL from the held text and re-parses only for pretty output. Input
+    // that already arrives in order must therefore come out byte-for-byte as it does unsorted.
+    #[test]
+    fn sort_writes_the_same_bytes_as_unsorted_for_ordered_input() {
+        use crate::core::log_source::LogSource;
+        let (a, b) = (
+            r#"{"eventTime":"2024-01-01T10:00:00Z","eventName":"E","eventID":"a","n":1.5,"u":"\u00e9"}"#
+                .to_string(),
+            aws_event("2024-01-01T10:02:00Z", "b"),
+        );
+        let member = aws_event("2024-01-01T10:01:00Z", "m");
+        let detections = [
+            Detection::Event(&a),
+            Detection::Correlation("c", vec![&member]),
+            Detection::Event(&b),
+        ];
+        for format in [OutputFormat::Jsonl, OutputFormat::Json] {
+            for raw in [true, false] {
+                let run = |sort| WriterRun {
+                    sort,
+                    raw,
+                    localtime: false,
+                    format,
+                };
+                let unsorted = run_writer(&LogSource::Aws, &detections, &run(false));
+                let sorted = run_writer(&LogSource::Aws, &detections, &run(true));
+                assert!(!unsorted.is_empty());
+                assert_eq!(sorted, unsorted, "{format:?} raw={raw}");
+            }
+        }
+    }
+
+    // A correlation row sits at its representative time among ordinary rows; the members written
+    // by `generate: true` sit at their own times; an empty correlation (no time) goes last.
+    #[test]
+    fn sort_places_correlations_at_their_representative_time() {
+        use crate::core::log_source::LogSource;
+        let (m1, m2) = (
+            aws_event("2024-01-01T10:01:00Z", "m1"),
+            aws_event("2024-01-01T10:04:00Z", "m2"),
+        );
+        let (e1, e2) = (
+            aws_event("2024-01-01T10:02:00Z", "e1"),
+            aws_event("2024-01-01T10:05:00Z", "e2"),
+        );
+        let detections = [
+            // Never produced by the engine; renders no member values, only a `-` time.
+            Detection::Correlation("empty", vec![]),
+            Detection::Event(&e2),
+            Detection::Correlation("corr", vec![&m2, &m1]),
+            Detection::Event(&m2),
+            Detection::Event(&m1),
+            Detection::Event(&e1),
+        ];
+        let text = run_writer(&LogSource::Aws, &detections, &WriterRun::csv(true));
+        let rows: Vec<(String, String)> = csv_column(&text, "Timestamp")
+            .into_iter()
+            .zip(csv_column(&text, "RuleTitle"))
+            .collect();
+        let expected = [
+            ("2024-01-01 10:01:00", "t"),
+            ("2024-01-01 10:02:00", "t"),
+            // Same instant as its latest member; the row itself breaks the tie.
+            ("2024-01-01 10:04:00", "corr"),
+            ("2024-01-01 10:04:00", "t"),
+            ("2024-01-01 10:05:00", "t"),
+            ("'-", ""),
+        ];
+        let rows: Vec<(&str, &str)> = rows.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+        assert_eq!(rows, expected);
+    }
+
+    #[test]
+    fn sort_run_without_detections_removes_its_files() {
+        use crate::core::log_source::LogSource;
+        use crate::core::util::load_profile;
+        let mut geo = None;
+        let profile = load_profile(&LogSource::Aws, &geo, false);
+        let dir = tempfile::tempdir().unwrap();
+        let csv_path = dir.path().join("out.csv");
+        let config = OutputConfig::new(true, false, false, true);
+        let file = std::fs::File::create(&csv_path).unwrap();
+        let writers = Writers::new()
+            .with_csv(csv::WriterBuilder::new().from_writer(Box::new(file) as Box<dyn Write>));
+        let mut context = OutputContext::new(
+            &profile,
+            &mut geo,
+            &config,
+            writers,
+            std::slice::from_ref(&csv_path),
+        );
+        context.write_header();
+        context.flush_all();
+        assert!(
+            !csv_path.exists(),
+            "an empty --sort run must not leave a file"
+        );
+    }
+
+    #[test]
+    fn sort_correlation_only_run_keeps_its_output() {
+        use crate::core::log_source::LogSource;
+        let member = aws_event("2024-01-01T10:00:00Z", "m");
+        let text = run_writer(
+            &LogSource::Aws,
+            &[Detection::Correlation("correlation-fired", vec![&member])],
+            &WriterRun::csv(true),
+        );
+        assert_eq!(csv_column(&text, "RuleTitle"), ["correlation-fired"]);
+    }
+
+    // Raw JSON/JSONL prints the event itself, so a run whose only outputs are those must not
+    // render (or, under --sort, hold) the profile columns; any output that reads them must.
+    #[test]
+    fn rows_are_rendered_only_for_outputs_that_read_them() {
+        let profile: Vec<(String, String)> = vec![];
+        let sink = || Box::new(std::io::sink()) as Box<dyn Write>;
+        let jsonl = || Writers::new().with_jsonl(BufWriter::new(sink()));
+        let json = || Writers::new().with_json(BufWriter::new(sink()));
+        let csv = |w: Writers| w.with_csv(csv::WriterBuilder::new().from_writer(sink()));
+        let cases = [
+            (true, jsonl(), false),
+            (true, json(), false),
+            (false, jsonl(), true),
+            (false, json(), true),
+            (true, csv(Writers::new()), true),
+            (true, csv(jsonl()), true),
+        ];
+        for (raw, writers, expected) in cases {
+            let mut geo = None;
+            let config = OutputConfig::new(true, raw, false, true);
+            let context = OutputContext::new(&profile, &mut geo, &config, writers, &[]);
+            assert_eq!(context.render_rows, expected, "raw={raw}");
+        }
+    }
+
+    // DuckDB sorts in `finalize`, so a DuckDB-only run must not keep a second copy of every row;
+    // alongside CSV the buffer exists, and each output still gets every row exactly once.
+    #[test]
+    fn sort_buffer_is_only_built_for_outputs_that_need_it() {
+        use crate::core::log_source::LogSource;
+        use crate::core::util::load_profile;
+        use sigma_rust::{event_from_json, rule_from_yaml};
+
+        let rule = rule_from_yaml(MATCH_E_RULE).unwrap();
+        let events: Vec<String> = ["10:02", "10:01", "10:03"]
+            .iter()
+            .enumerate()
+            .map(|(i, t)| aws_event(&format!("2024-01-01T{t}:00Z"), &i.to_string()))
+            .collect();
+
+        for with_csv in [false, true] {
+            let mut geo = None;
+            let profile = load_profile(&LogSource::Aws, &geo, false);
+            let keys: Vec<String> = profile.iter().map(|(k, _)| k.clone()).collect();
+            let dir = tempfile::tempdir().unwrap();
+            let db_path = dir.path().join("out.duckdb");
+            let csv_path = dir.path().join("out.csv");
+            let mut writers = Writers::new().with_duckdb(
+                DuckDbSink::new(&db_path, &keys, SuzakuMeta::new("aws-ct-timeline")).unwrap(),
+            );
+            if with_csv {
+                let file = std::fs::File::create(&csv_path).unwrap();
+                writers = writers.with_csv(
+                    csv::WriterBuilder::new().from_writer(Box::new(file) as Box<dyn Write>),
+                );
+            }
+            let config = OutputConfig::new(true, false, false, true);
+            {
+                let mut context = OutputContext::new(&profile, &mut geo, &config, writers, &[]);
+                assert_eq!(context.sort_buf.is_some(), with_csv);
+                context.write_header();
+                for json in &events {
+                    let event = event_from_json(json).unwrap();
+                    let value: Value = serde_json::from_str(json).unwrap();
+                    write_record(&event, &value, Some(&rule), &mut context);
+                }
+                context.flush_all();
+            }
+
+            let conn = Connection::open(&db_path).unwrap();
+            assert_eq!(duckdb_out::count_rows(&conn, "timeline").unwrap(), 3);
+            if with_csv {
+                let text = std::fs::read_to_string(&csv_path).unwrap();
+                assert_eq!(csv_column(&text, "EventID"), ["1", "0", "2"]);
+            }
+        }
+    }
+
+    /// Not a correctness test: compares the candidate sorts with the real comparator on the
+    /// shapes `--sort` sees. Run with
+    /// `cargo test --release sort_algorithm_benchmark -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn sort_algorithm_benchmark() {
+        use std::time::Instant;
+
+        type Keys = Vec<(SortKey, u32)>;
+        const N: usize = 1_000_000;
+        // A small xorshift keeps the benchmark free of a `rand` dependency.
+        let mut state = 0x2545_f491_4f6c_dd1du64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let base = utc("2024-01-01T00:00:00Z");
+
+        // Offsets from `base`, in milliseconds, for each input shape.
+        let shuffled_runs = |next: &mut dyn FnMut() -> u64, run: usize, step_ms: i64| {
+            let mut runs: Vec<Vec<i64>> = (0..N / run)
+                .map(|f| (0..run).map(|j| (f * run + j) as i64 * step_ms).collect())
+                .collect();
+            for i in (1..runs.len()).rev() {
+                runs.swap(i, (next() % (i as u64 + 1)) as usize);
+            }
+            runs.into_iter().flatten().collect::<Vec<i64>>()
+        };
+        let shapes: Vec<(&str, Vec<i64>)> = vec![
+            (
+                "random",
+                (0..N).map(|_| (next() % 86_400_000) as i64).collect(),
+            ),
+            ("runs 300", shuffled_runs(&mut next, 300, 1000)),
+            ("runs 20k", shuffled_runs(&mut next, 20_000, 1000)),
+            // CloudTrail times have whole-second resolution: ~10 detections per second, so most
+            // comparisons fall through to the row tie-break.
+            (
+                "ties",
+                (0..N).map(|_| (next() % 100_000) as i64 * 1000).collect(),
+            ),
+        ];
+
+        for (name, offsets) in shapes {
+            let mut buf = SortBuffer::default();
+            for (i, ms) in offsets.iter().enumerate() {
+                let t = base + chrono::Duration::milliseconds(*ms);
+                let record = vec![
+                    t.format("%Y-%m-%d %H:%M:%S").to_string(),
+                    "Rule title".to_string(),
+                    format!("{:08x}", next() as u32 ^ i as u32),
+                ];
+                buf.push(Some(t), record, None);
+            }
+            let rows = &buf.rows;
+            let time = |sort: &dyn Fn(&mut Keys)| {
+                let mut keys = buf.keys.clone();
+                let start = Instant::now();
+                sort(&mut keys);
+                start.elapsed()
+            };
+            println!(
+                "{name:>8}: sort_by {:>10.1?} | sort_unstable_by {:>10.1?} | par_sort_by {:>10.1?} | par_sort_unstable_by {:>10.1?}",
+                time(&|k| k.sort_by(|a, b| compare_rows(rows, a, b))),
+                time(&|k| k.sort_unstable_by(|a, b| compare_rows(rows, a, b))),
+                time(&|k| k.par_sort_by(|a, b| compare_rows(rows, a, b))),
+                time(&|k| k.par_sort_unstable_by(|a, b| compare_rows(rows, a, b))),
+            );
+        }
     }
 }

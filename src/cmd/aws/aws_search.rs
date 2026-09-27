@@ -42,7 +42,7 @@ pub fn aws_search(options: &SearchOptions, common_opt: &CommonOptions) {
         SuzakuMeta::new("aws-ct-search").with_geoip(geo_search.is_some()),
     )
     .unwrap_or_else(|e| fatal_error(no_color, &e));
-    let config = OutputConfig::new(no_color, options.output_opt.raw_output, false);
+    let config = OutputConfig::new(no_color, options.output_opt.raw_output, false, false);
     let mut context =
         OutputContext::new(&profile, &mut geo_search, &config, writers, &output_pathes);
 
