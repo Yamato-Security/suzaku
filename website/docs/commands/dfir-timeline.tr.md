@@ -74,3 +74,50 @@ RuleID: 'sigma.id'
 * Şu anda yalnızca dizeleri destekliyoruz ancak diğer alan değeri türlerini de desteklemeyi planlıyoruz.
 
 > Not: Orijinal JSON verisini çıktılamak ve herhangi bir alan bilgisini kaybetmediğinizden emin olmak istiyorsanız, `aws-ct-timeline` komutuna sadece `-R, --raw-output` seçeneğini ekleyin.
+
+### DuckDB çıktı şeması {#duckdb-output-schema}
+
+CSV ve JSON çıktıları yukarıdaki profilin bir *görüntülemesidir*; DuckDB çıktısı ise bir *veri arayüzüdür*, bu nedenle tiplidir ve kendi kendini tanımlar. Farklar kasıtlıdır ve `aws-ct-timeline`, `azure-timeline`, `gws-timeline` ve `aws-ct-search` için geçerlidir:
+
+| | CSV / JSON | DuckDB |
+|---|---|---|
+| Eksik değer | `-` (veya boş) | `NULL` |
+| `Timestamp` | biçimlendirilmiş metin | `TIMESTAMP` |
+| `Level` | metin | `suzaku_level` (önem derecesine göre sıralı bir `ENUM`) |
+| `AWS-Region` | `AWS-Region` | `AwsRegion` (SQL'de tırnak gerektirmez) |
+| `Tags` | ` ¦ ` ile birleştirilmiş tek bir dize | `Tactics`, `TechniqueIDs`, `OtherTags` (her biri `VARCHAR[]`) |
+| `SrcASN` / `SrcCity` / `SrcCountry` | yalnızca `-G, --geo-ip` ile eklenir | her zaman bulunur (profilde `SrcIP` varsa), `-G` kullanılmadığında `NULL` |
+| Yinelenen satırlar | korunur | tam yinelenenler kaldırılır, sayısı `suzaku_meta` içinde raporlanır |
+
+Her dosya ayrıca tek satırlık bir `suzaku_meta` tablosu içerir; böylece dosyayı neyin ürettiği tahmin etmeden anlaşılabilir:
+
+| Sütun | Anlamı |
+|---|---|
+| `schema_version` | Düzen sürümü. Diğer tabloları okumadan önce bunu kontrol edin. |
+| `suzaku_version`, `command`, `command_line` | Hangi Suzaku, hangi alt komut, tam olarak hangi çağrı. |
+| `generated_at` | Dosyanın yazıldığı zaman. |
+| `timestamp_tz` | `Timestamp` sütununun ifade edildiği saat dilimi — `UTC` veya `-l, --localtime` ile yerel ofset. |
+| `rules_version`, `rules_count` | Kural seti revizyonu (kurallar klasörü bir git checkout ise) ve yüklenen kural sayısı. |
+| `geoip_enabled` | `-G, --geo-ip` çalıştırılıp çalıştırılmadığı. Tamamı `NULL` olan bir `SrcCountry` sütununu ("zenginleştirme kapalıydı"), zenginleştirilmiş bir dosyadaki `NULL` hücreden ("bu değer bir IP adresi değil") ayırt eder. |
+| `scanned_files`, `scanned_events` | Çalıştırmanın kapsamı. |
+| `output_rows`, `duplicate_rows_removed` | Yazılan satırlar ve yazma sırasında kaldırılan tam yinelenenler. |
+
+Kural tabanlı zaman çizelgesi komutlarında bir `timeline` satırı **bir olay × bir kural eşleşmesidir**: birden fazla kurala uyan bir olay her eşleşme için bir satır üretir, bu nedenle `EventID` benzersiz *değildir*. `aws-ct-search` için eşleşen her olay bir satır üretir.
+
+```sql
+-- Critical and high alerts in a time range, with their ATT&CK techniques.
+-- `Level` is an ENUM, so cast the literal to compare by severity rather than alphabetically.
+SELECT Timestamp, RuleTitle, EventName, SrcIP, TechniqueIDs
+FROM timeline
+WHERE Level >= 'high'::suzaku_level
+  AND Timestamp BETWEEN TIMESTAMP '2024-01-01' AND TIMESTAMP '2024-02-01'
+  AND ErrorCode IS NULL          -- the call succeeded
+ORDER BY Timestamp;
+
+-- ATT&CK technique coverage, no string parsing required
+SELECT technique, count(*) AS hits
+FROM (SELECT unnest(TechniqueIDs) AS technique FROM timeline)
+GROUP BY 1 ORDER BY hits DESC;
+```
+
+Veritabanı Suzaku çıkmadan önce checkpoint edilir, bu nedenle `.duckdb` dosyası eksiksizdir ve salt okunur olarak açılabilir (dosyayı komut çalışırken değil, bittikten sonra kopyalayın).

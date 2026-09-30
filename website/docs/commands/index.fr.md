@@ -10,5 +10,8 @@
 * `aws-ct-timeline` : Crée une chronologie DFIR AWS CloudTrail
 * `update-rules` : Met à jour les règles de détection Sigma
 
+## Commandes de recherche :
+* `aws-ct-search`: Recherche dans les journaux AWS CloudTrail
+
 ## Commandes générales :
 * `help` : Affiche le menu d'aide des commandes

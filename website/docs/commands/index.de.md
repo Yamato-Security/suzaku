@@ -10,5 +10,8 @@
 * `aws-ct-timeline`: Erstellt eine AWS-CloudTrail-DFIR-Zeitleiste
 * `update-rules`: Aktualisiert die Sigma-Erkennungsregeln
 
+## Suchbefehle:
+* `aws-ct-search`: Durchsucht AWS-CloudTrail-Logs
+
 ## Allgemeine Befehle:
 * `help`: Gibt das Hilfemenü für Befehle aus

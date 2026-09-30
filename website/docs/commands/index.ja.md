@@ -8,6 +8,13 @@
 
 ## DFIRタイムラインコマンド
 * `aws-ct-timeline`: AWS CloudTrailログのDFIRタイムラインを作成する
+* `azure-timeline`: AzureのDFIRタイムラインを作成する
+* `gws-timeline`: Google WorkspaceのDFIRタイムラインを作成する
+
+## 検索コマンド
+* `aws-ct-search`: AWS CloudTrailログを検索する
+
+## アップデートコマンド
 * `update-rules`: Sigmaルールを更新する
 
 ## 一般コマンド

@@ -74,3 +74,50 @@ RuleID: 'sigma.id'
 * 目前我們僅支援字串，但計劃支援其他類型的欄位值。
 
 > 注意：如果您想輸出原始 JSON 資料並確保不遺失任何欄位資訊，只需在 `aws-ct-timeline` 指令中加上 `-R, --raw-output` 選項即可。
+
+### DuckDB 輸出結構 {#duckdb-output-schema}
+
+CSV 與 JSON 輸出是上述設定檔的*呈現結果*；DuckDB 輸出則是*資料介面*，因此採用具型別且自我描述的格式。這些差異是刻意設計的，適用於 `aws-ct-timeline`、`azure-timeline`、`gws-timeline` 與 `aws-ct-search`：
+
+| | CSV / JSON | DuckDB |
+|---|---|---|
+| 缺少的值 | `-` (或空白) | `NULL` |
+| `Timestamp` | 格式化後的文字 | `TIMESTAMP` |
+| `Level` | 文字 | `suzaku_level` (依嚴重程度排序的 `ENUM`) |
+| `AWS-Region` | `AWS-Region` | `AwsRegion` (在 SQL 中不需加引號) |
+| `Tags` | 以 ` ¦ ` 串接的單一字串 | `Tactics`, `TechniqueIDs`, `OtherTags` (皆為 `VARCHAR[]`) |
+| `SrcASN` / `SrcCity` / `SrcCountry` | 僅在使用 `-G, --geo-ip` 時加入 | 一律存在（設定檔含有 `SrcIP` 時），未使用 `-G` 時為 `NULL` |
+| 重複的列 | 保留 | 完全相同的重複列會被移除，數量記錄於 `suzaku_meta` |
+
+每個檔案也都包含一列的 `suzaku_meta` 資料表，讓讀取者無需猜測就能得知檔案的產生來源：
+
+| 欄位 | 說明 |
+|---|---|
+| `schema_version` | 版面配置版本。讀取其他資料表前請先檢查此值。 |
+| `suzaku_version`, `command`, `command_line` | Suzaku 版本、子指令，以及實際執行的指令列。 |
+| `generated_at` | 檔案寫入的時間。 |
+| `timestamp_tz` | `Timestamp` 欄位所使用的時區：`UTC`，或使用 `-l, --localtime` 時的本地時差。 |
+| `rules_version`, `rules_count` | 規則集的修訂版本（當 rules 資料夾為 git checkout 時）以及載入的規則數量。 |
+| `geoip_enabled` | 是否執行了 `-G, --geo-ip`。可藉此區分 `SrcCountry` 全為 `NULL`（未啟用補充資訊）與已補充檔案中的 `NULL` 儲存格（該值不是 IP 位址）。 |
+| `scanned_files`, `scanned_events` | 此次執行所涵蓋的範圍。 |
+| `output_rows`, `duplicate_rows_removed` | 寫入的列數，以及寫入時移除的完全重複列數。 |
+
+對於以規則為基礎的時間軸指令，`timeline` 的一列代表**一個事件 × 一個規則比對**：符合多條規則的事件會依每次比對各產生一列，因此 `EventID` *並非*唯一。在 `aws-ct-search` 中，每個符合的事件會產生一列。
+
+```sql
+-- Critical and high alerts in a time range, with their ATT&CK techniques.
+-- `Level` is an ENUM, so cast the literal to compare by severity rather than alphabetically.
+SELECT Timestamp, RuleTitle, EventName, SrcIP, TechniqueIDs
+FROM timeline
+WHERE Level >= 'high'::suzaku_level
+  AND Timestamp BETWEEN TIMESTAMP '2024-01-01' AND TIMESTAMP '2024-02-01'
+  AND ErrorCode IS NULL          -- the call succeeded
+ORDER BY Timestamp;
+
+-- ATT&CK technique coverage, no string parsing required
+SELECT technique, count(*) AS hits
+FROM (SELECT unnest(TechniqueIDs) AS technique FROM timeline)
+GROUP BY 1 ORDER BY hits DESC;
+```
+
+Suzaku 結束前會對資料庫執行 checkpoint，因此 `.duckdb` 檔案是完整的，可以唯讀方式開啟（請在指令執行結束後再複製，不要在執行期間複製）。

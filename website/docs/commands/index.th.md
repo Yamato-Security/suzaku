@@ -10,5 +10,8 @@
 * `aws-ct-timeline`: สร้างไทม์ไลน์ DFIR ของ AWS CloudTrail
 * `update-rules`: อัปเดตกฎการตรวจจับของ Sigma
 
+## คำสั่งการค้นหา:
+* `aws-ct-search`: ค้นหาในล็อก AWS CloudTrail
+
 ## คำสั่งทั่วไป:
 * `help`: แสดงเมนูช่วยเหลือสำหรับคำสั่งต่าง ๆ
