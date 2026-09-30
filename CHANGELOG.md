@@ -8,6 +8,10 @@
 
 - New: `-s, --sort` for `aws-ct-timeline`, `azure-timeline` and `gws-timeline` writes the screen, CSV, JSON and JSONL results in time order instead of the order the log files happened to be scanned in. Rows are ordered by the event time as an instant (so `-l` and mixed `Z`/`+09:00` offsets sort correctly), rows without a parseable time go last, and ties are broken by row content, so the same detection results and output settings produce the same detection-row order regardless of file scan order. This guarantee excludes complete terminal output and DuckDB file bytes; equal-timestamp input order can still affect `temporal_ordered` correlation matches. Results are held in memory until the end of the run: about 1.3 KB per result, 3 KB with `--raw-output`. On 1.9 million CloudTrail detections that added 2.4 GB (5.5 GB with `--raw-output`) to the peak memory and 1-2 seconds to a 70-second run. DuckDB's sorting is unaffected by `-s`; a DuckDB-only run keeps no extra copy. The correlation timestamp fix below also applies to DuckDB. (@fukusuket)
 
+**Enhancements:**
+
+- `aws-ct-timeline`'s default output profile (`config/aws_profile.yaml`) now orders its columns like the Azure and Google Workspace profiles: `Timestamp, RuleTitle, Level`, then service, action, result, who and where (`EventSource, EventName, ErrorCode, UserName, UserType, SrcIP`), then the remaining details, ending with `RuleAuthor, Tags, RuleID`. `RuleAuthor` was the third column, which pushed `Level`, `UserName` and `SrcIP` off narrow screens such as laptops. Tools that read the CSV output by column position rather than by header name need updating. (@fukusuket)
+
 **Bug Fixes:**
 
 - The results summary could print differently on identical runs. The "Top alerts" tables and the rule-author table sorted by count only, so equal counts — and which of them made the top 5 — came out in `HashMap` order, and "Dates with most total detections" picked an arbitrary date among equal counts. Equal counts are now ordered by rule title / author name, and the earliest date wins a tie. (@fukusuket)
