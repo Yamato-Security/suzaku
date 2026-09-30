@@ -10,5 +10,8 @@
 * `aws-ct-timeline`：建立 AWS CloudTrail DFIR 時間軸
 * `update-rules`：更新 Sigma 偵測規則
 
+## 搜尋指令：
+* `aws-ct-search`: 搜尋 AWS CloudTrail 日誌
+
 ## 一般命令：
 * `help`：印出命令的說明選單

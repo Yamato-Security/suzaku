@@ -74,3 +74,50 @@ RuleID: 'sigma.id'
 * Наразі ми підтримуємо лише рядки, але плануємо підтримку інших типів значень полів.
 
 > Примітка: Якщо ви хочете вивести оригінальні дані JSON і переконатися, що не втратите жодної інформації про поля, просто додайте опцію `-R, --raw-output` до команди `aws-ct-timeline`.
+
+### Схема виводу DuckDB {#duckdb-output-schema}
+
+Вивід CSV і JSON — це *відображення* наведеного вище профілю; вивід DuckDB — це *інтерфейс даних*, тому він типізований і самоописовий. Ці відмінності навмисні й стосуються `aws-ct-timeline`, `azure-timeline`, `gws-timeline` та `aws-ct-search`:
+
+| | CSV / JSON | DuckDB |
+|---|---|---|
+| Відсутнє значення | `-` (або порожньо) | `NULL` |
+| `Timestamp` | відформатований текст | `TIMESTAMP` |
+| `Level` | текст | `suzaku_level` (`ENUM`, упорядкований за рівнем серйозності) |
+| `AWS-Region` | `AWS-Region` | `AwsRegion` (у SQL не потрібні лапки) |
+| `Tags` | один рядок, об'єднаний через ` ¦ ` | `Tactics`, `TechniqueIDs`, `OtherTags` (кожен типу `VARCHAR[]`) |
+| `SrcASN` / `SrcCity` / `SrcCountry` | додаються лише з `-G, --geo-ip` | присутні завжди (якщо профіль містить `SrcIP`), `NULL`, якщо `-G` не використовувався |
+| Дублікати рядків | зберігаються | точні дублікати видаляються, їх кількість вказується в `suzaku_meta` |
+
+Кожен файл також містить однорядкову таблицю `suzaku_meta`, щоб без здогадок можна було визначити, що його створило:
+
+| Стовпець | Значення |
+|---|---|
+| `schema_version` | Версія структури. Перевірте її, перш ніж читати інші таблиці. |
+| `suzaku_version`, `command`, `command_line` | Яка версія Suzaku, яка підкоманда, який саме виклик. |
+| `generated_at` | Коли файл було записано. |
+| `timestamp_tz` | Часовий пояс стовпця `Timestamp` — `UTC` або локальне зміщення з `-l, --localtime`. |
+| `rules_version`, `rules_count` | Ревізія набору правил (якщо тека rules є git-checkout) і кількість завантажених правил. |
+| `geoip_enabled` | Чи запускався `-G, --geo-ip`. Дозволяє відрізнити повністю `NULL` стовпець `SrcCountry` («збагачення було вимкнено») від `NULL`-клітинки у збагаченому файлі («це значення не є IP-адресою»). |
+| `scanned_files`, `scanned_events` | Охоплення запуску. |
+| `output_rows`, `duplicate_rows_removed` | Записані рядки та точні дублікати, видалені під час запису. |
+
+Для команд часової шкали на основі правил рядок `timeline` — це **одна подія × один збіг правила**: подія, що збігається з кількома правилами, дає по рядку на кожен збіг, тому `EventID` *не* є унікальним. У `aws-ct-search` кожна відповідна подія дає один рядок.
+
+```sql
+-- Critical and high alerts in a time range, with their ATT&CK techniques.
+-- `Level` is an ENUM, so cast the literal to compare by severity rather than alphabetically.
+SELECT Timestamp, RuleTitle, EventName, SrcIP, TechniqueIDs
+FROM timeline
+WHERE Level >= 'high'::suzaku_level
+  AND Timestamp BETWEEN TIMESTAMP '2024-01-01' AND TIMESTAMP '2024-02-01'
+  AND ErrorCode IS NULL          -- the call succeeded
+ORDER BY Timestamp;
+
+-- ATT&CK technique coverage, no string parsing required
+SELECT technique, count(*) AS hits
+FROM (SELECT unnest(TechniqueIDs) AS technique FROM timeline)
+GROUP BY 1 ORDER BY hits DESC;
+```
+
+Перед завершенням Suzaku виконує checkpoint бази даних, тому файл `.duckdb` повний і його можна відкрити лише для читання (копіюйте його після завершення команди, а не під час її виконання).

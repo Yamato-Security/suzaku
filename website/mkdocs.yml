@@ -133,6 +133,7 @@ plugins:
             Analysis Commands: 分析コマンド
             DFIR Summary Commands: DFIRサマリーコマンド
             DFIR Timeline Commands: DFIRタイムラインコマンド
+            Search Commands: 検索コマンド
             Rules: ルール
             Native Sigma Support: ネイティブSigmaサポート
             MITRE ATT&CK Tags: MITRE ATT&CK タグ
@@ -159,6 +160,7 @@ plugins:
             "Analysis Commands": "分析指令"
             "DFIR Summary Commands": "DFIR 摘要指令"
             "DFIR Timeline Commands": "DFIR 時間軸指令"
+            "Search Commands": "搜尋指令"
             "Rules": "規則"
             "Native Sigma Support": "原生 Sigma 支援"
             "MITRE ATT&CK Tags": "MITRE ATT&CK 標籤"
@@ -185,6 +187,7 @@ plugins:
             "Analysis Commands": "분석 명령어"
             "DFIR Summary Commands": "DFIR 요약 명령어"
             "DFIR Timeline Commands": "DFIR 타임라인 명령어"
+            "Search Commands": "검색 명령어"
             "Rules": "규칙"
             "Native Sigma Support": "네이티브 Sigma 지원"
             "MITRE ATT&CK Tags": "MITRE ATT&CK 태그"
@@ -211,6 +214,7 @@ plugins:
             "Analysis Commands": "Analysebefehle"
             "DFIR Summary Commands": "DFIR-Zusammenfassungsbefehle"
             "DFIR Timeline Commands": "DFIR-Zeitleistenbefehle"
+            "Search Commands": "Suchbefehle"
             "Rules": "Regeln"
             "Native Sigma Support": "Native Sigma-Unterstützung"
             "MITRE ATT&CK Tags": "MITRE ATT&CK Tags"
@@ -237,6 +241,7 @@ plugins:
             "Analysis Commands": "Analiz Komutları"
             "DFIR Summary Commands": "DFIR Özet Komutları"
             "DFIR Timeline Commands": "DFIR Zaman Çizelgesi Komutları"
+            "Search Commands": "Arama Komutları"
             "Rules": "Kurallar"
             "Native Sigma Support": "Yerel Sigma Desteği"
             "MITRE ATT&CK Tags": "MITRE ATT&CK Etiketleri"
@@ -263,6 +268,7 @@ plugins:
             "Analysis Commands": "Commandes d'analyse"
             "DFIR Summary Commands": "Commandes de résumé DFIR"
             "DFIR Timeline Commands": "Commandes de chronologie DFIR"
+            "Search Commands": "Commandes de recherche"
             "Rules": "Règles"
             "Native Sigma Support": "Prise en charge native de Sigma"
             "MITRE ATT&CK Tags": "MITRE ATT&CK Étiquettes"
@@ -289,6 +295,7 @@ plugins:
             "Analysis Commands": "Comandos de análisis"
             "DFIR Summary Commands": "Comandos de resumen DFIR"
             "DFIR Timeline Commands": "Comandos de línea de tiempo DFIR"
+            "Search Commands": "Comandos de búsqueda"
             "Rules": "Reglas"
             "Native Sigma Support": "Soporte nativo de Sigma"
             "MITRE ATT&CK Tags": "MITRE ATT&CK Etiquetas"
@@ -315,6 +322,7 @@ plugins:
             "Analysis Commands": "Comandos de Análise"
             "DFIR Summary Commands": "Comandos de Resumo DFIR"
             "DFIR Timeline Commands": "Comandos de Linha do Tempo DFIR"
+            "Search Commands": "Comandos de Busca"
             "Rules": "Regras"
             "Native Sigma Support": "Suporte Nativo a Sigma"
             "MITRE ATT&CK Tags": "MITRE ATT&CK Etiquetas"
@@ -341,6 +349,7 @@ plugins:
             "Analysis Commands": "Команди аналізу"
             "DFIR Summary Commands": "Команди підсумків DFIR"
             "DFIR Timeline Commands": "Команди хронології DFIR"
+            "Search Commands": "Команди пошуку"
             "Rules": "Правила"
             "Native Sigma Support": "Нативна підтримка Sigma"
             "MITRE ATT&CK Tags": "MITRE ATT&CK Теги"
@@ -367,6 +376,7 @@ plugins:
             "Analysis Commands": "विश्लेषण कमांड"
             "DFIR Summary Commands": "DFIR सारांश कमांड"
             "DFIR Timeline Commands": "DFIR टाइमलाइन कमांड"
+            "Search Commands": "खोज कमांड"
             "Rules": "नियम"
             "Native Sigma Support": "मूल Sigma समर्थन"
             "MITRE ATT&CK Tags": "MITRE ATT&CK टैग"
@@ -393,6 +403,7 @@ plugins:
             "Analysis Commands": "Perintah Analisis"
             "DFIR Summary Commands": "Perintah Ringkasan DFIR"
             "DFIR Timeline Commands": "Perintah Linimasa DFIR"
+            "Search Commands": "Perintah Pencarian"
             "Rules": "Aturan"
             "Native Sigma Support": "Dukungan Sigma Native"
             "MITRE ATT&CK Tags": "MITRE ATT&CK Tag"
@@ -419,6 +430,7 @@ plugins:
             "Analysis Commands": "ခွဲခြမ်းစိတ်ဖြာမှု ညွှန်ကြားချက်များ"
             "DFIR Summary Commands": "DFIR အကျဉ်းချုပ် ညွှန်ကြားချက်များ"
             "DFIR Timeline Commands": "DFIR အချိန်ဇယား ညွှန်ကြားချက်များ"
+            "Search Commands": "ရှာဖွေရေး ညွှန်ကြားချက်များ"
             "Rules": "စည်းမျဉ်းများ"
             "Native Sigma Support": "Native Sigma ပံ့ပိုးမှု"
             "MITRE ATT&CK Tags": "MITRE ATT&CK တဂ်များ"
@@ -445,6 +457,7 @@ plugins:
             "Analysis Commands": "คำสั่งวิเคราะห์"
             "DFIR Summary Commands": "คำสั่งสรุป DFIR"
             "DFIR Timeline Commands": "คำสั่งไทม์ไลน์ DFIR"
+            "Search Commands": "คำสั่งการค้นหา"
             "Rules": "กฎ"
             "Native Sigma Support": "การรองรับ Sigma แบบเนทีฟ"
             "MITRE ATT&CK Tags": "MITRE ATT&CK แท็ก"
@@ -471,6 +484,7 @@ plugins:
             "Analysis Commands": "أوامر التحليل"
             "DFIR Summary Commands": "أوامر ملخص DFIR"
             "DFIR Timeline Commands": "أوامر الجدول الزمني لـ DFIR"
+            "Search Commands": "أوامر البحث"
             "Rules": "القواعد"
             "Native Sigma Support": "دعم Sigma الأصلي"
             "MITRE ATT&CK Tags": "وسوم MITRE ATT&CK"
@@ -505,6 +519,7 @@ nav:
       - Analysis Commands: commands/analysis.md
       - DFIR Summary Commands: commands/dfir-summary.md
       - DFIR Timeline Commands: commands/dfir-timeline.md
+      - Search Commands: commands/search.md
   - Rules:
       - Native Sigma Support: rules/index.md
       - MITRE ATT&CK Tags: rules/mitre-attack-tags.md

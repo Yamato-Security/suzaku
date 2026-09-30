@@ -10,5 +10,8 @@
 * `aws-ct-timeline`: يُنشئ جدولًا زمنيًا لـ DFIR من AWS CloudTrail
 * `update-rules`: يُحدّث قواعد الكشف الخاصة بـ Sigma
 
+## أوامر البحث:
+* `aws-ct-search`: البحث في سجلات AWS CloudTrail
+
 ## الأوامر العامة:
 * `help`: يطبع قائمة المساعدة للأوامر

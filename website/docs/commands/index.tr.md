@@ -10,5 +10,8 @@
 * `aws-ct-timeline`: Bir AWS CloudTrail DFIR zaman çizelgesi oluşturur
 * `update-rules`: Sigma tespit kurallarını günceller
 
+## Arama Komutları:
+* `aws-ct-search`: AWS CloudTrail günlüklerinde arama yapar
+
 ## Genel Komutlar:
 * `help`: Komutlar için yardım menüsünü yazdırır
