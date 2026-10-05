@@ -91,3 +91,50 @@ RuleID: 'sigma.id'
 * 現在は文字列のみをサポートしていますが、将来的には他の型のフィールド値にも対応する予定です。
 
 > 注意：元のJSONデータを出力し、フィールド情報を失わないようにしたい場合は、`aws-ct-timeline`コマンドに`-R, --raw-output`オプションを追加してください。
+
+### DuckDB出力スキーマ {#duckdb-output-schema}
+
+CSVとJSONの出力は上記プロフィールを*表示用に整形*したものですが、DuckDB出力は*データのインターフェース*であるため、型付きで自己記述的な形式になっています。この違いは意図的なもので、`aws-ct-timeline`、`azure-timeline`、`gws-timeline`、`aws-ct-search`に共通です:
+
+| | CSV / JSON | DuckDB |
+|---|---|---|
+| 値がない場合 | `-` (または空) | `NULL` |
+| `Timestamp` | 整形済みのテキスト | `TIMESTAMP` |
+| `Level` | テキスト | `suzaku_level` (重大度順の`ENUM`) |
+| `AWS-Region` | `AWS-Region` | `AwsRegion` (SQLで引用符が不要) |
+| `Tags` | ` ¦ `で連結した1つの文字列 | `Tactics`, `TechniqueIDs`, `OtherTags` (それぞれ`VARCHAR[]`) |
+| `SrcASN` / `SrcCity` / `SrcCountry` | `-G, --geo-ip`指定時のみ追加 | 常に存在(プロフィールに`SrcIP`がある場合)。`-G`未指定時は`NULL` |
+| 重複行 | そのまま残る | 完全に一致する重複は削除され、件数は`suzaku_meta`に記録される |
+
+どのファイルにも1行の`suzaku_meta`テーブルが含まれるため、何がそのファイルを生成したのかを推測せずに確認できます:
+
+| 列 | 意味 |
+|---|---|
+| `schema_version` | レイアウトのバージョン。他のテーブルを読む前に確認してください。 |
+| `suzaku_version`, `command`, `command_line` | Suzakuのバージョン、サブコマンド、実行したコマンドライン。 |
+| `generated_at` | ファイルを書き出した日時。 |
+| `timestamp_tz` | `Timestamp`列のタイムゾーン。`UTC`、または`-l, --localtime`指定時はローカルのオフセット。 |
+| `rules_version`, `rules_count` | ルールセットのリビジョン(rulesフォルダがgitのチェックアウトの場合)と読み込んだルール数。 |
+| `geoip_enabled` | `-G, --geo-ip`が実行されたかどうか。`SrcCountry`がすべて`NULL`の場合(付与が無効だった)と、付与済みファイルの`NULL`セル(その値はIPアドレスではない)を区別できます。 |
+| `scanned_files`, `scanned_events` | 実行時にスキャンした範囲。 |
+| `output_rows`, `duplicate_rows_removed` | 書き出した行数と、書き込み時に削除した完全一致の重複行数。 |
+
+ルールベースのタイムラインコマンドでは、`timeline`の1行は**イベント × ルールのマッチ1件**です。複数のルールにマッチしたイベントはマッチごとに1行になるため、`EventID`は一意では*ありません*。`aws-ct-search`では、マッチしたイベントごとに1行が生成されます。
+
+```sql
+-- Critical and high alerts in a time range, with their ATT&CK techniques.
+-- `Level` is an ENUM, so cast the literal to compare by severity rather than alphabetically.
+SELECT Timestamp, RuleTitle, EventName, SrcIP, TechniqueIDs
+FROM timeline
+WHERE Level >= 'high'::suzaku_level
+  AND Timestamp BETWEEN TIMESTAMP '2024-01-01' AND TIMESTAMP '2024-02-01'
+  AND ErrorCode IS NULL          -- the call succeeded
+ORDER BY Timestamp;
+
+-- ATT&CK technique coverage, no string parsing required
+SELECT technique, count(*) AS hits
+FROM (SELECT unnest(TechniqueIDs) AS technique FROM timeline)
+GROUP BY 1 ORDER BY hits DESC;
+```
+
+Suzakuは終了前にデータベースをチェックポイントするため、`.duckdb`ファイルは完全な状態になっており、読み取り専用で開けます(コマンドの実行中ではなく、終了後にコピーしてください)。

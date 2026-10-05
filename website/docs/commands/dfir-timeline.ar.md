@@ -74,3 +74,50 @@ RuleID: 'sigma.id'
 * حاليًا ندعم السلاسل النصية فقط ولكننا نخطط لدعم أنواع أخرى من قيم الحقول.
 
 > ملاحظة: إذا كنت ترغب في إخراج بيانات JSON الأصلية والتأكد من عدم فقدان أي معلومات حقل، فقط أضف الخيار `-R, --raw-output` إلى الأمر `aws-ct-timeline`.
+
+### مخطط إخراج DuckDB {#duckdb-output-schema}
+
+مخرجات CSV وJSON هي *عرض* لملف التعريف أعلاه؛ أما مخرجات DuckDB فهي *واجهة بيانات*، لذا فهي محددة الأنواع وذاتية الوصف. هذه الاختلافات مقصودة وتنطبق على `aws-ct-timeline` و`azure-timeline` و`gws-timeline` و`aws-ct-search`:
+
+| | CSV / JSON | DuckDB |
+|---|---|---|
+| قيمة مفقودة | `-` (أو فارغة) | `NULL` |
+| `Timestamp` | نص منسق | `TIMESTAMP` |
+| `Level` | نص | `suzaku_level` (`ENUM` مرتب حسب الخطورة) |
+| `AWS-Region` | `AWS-Region` | `AwsRegion` (لا حاجة لعلامات الاقتباس في SQL) |
+| `Tags` | سلسلة واحدة مدمجة بـ ` ¦ ` | `Tactics`, `TechniqueIDs`, `OtherTags` (كل منها `VARCHAR[]`) |
+| `SrcASN` / `SrcCity` / `SrcCountry` | تُضاف فقط مع `-G, --geo-ip` | موجودة دائمًا (عندما يحتوي ملف التعريف على `SrcIP`)، و`NULL` عند عدم استخدام `-G` |
+| الصفوف المكررة | تُحتفظ بها | تُزال التكرارات المطابقة تمامًا، ويُسجَّل عددها في `suzaku_meta` |
+
+يحتوي كل ملف أيضًا على جدول `suzaku_meta` من صف واحد، حتى يعرف القارئ ما الذي أنتجه دون تخمين:
+
+| العمود | المعنى |
+|---|---|
+| `schema_version` | إصدار البنية. تحقق منه قبل قراءة الجداول الأخرى. |
+| `suzaku_version`, `command`, `command_line` | أي إصدار من Suzaku، وأي أمر فرعي، وأي استدعاء بالضبط. |
+| `generated_at` | وقت كتابة الملف. |
+| `timestamp_tz` | المنطقة الزمنية لعمود `Timestamp` — `UTC`، أو الإزاحة المحلية مع `-l, --localtime`. |
+| `rules_version`, `rules_count` | مراجعة مجموعة القواعد (عندما يكون مجلد rules نسخة git) وعدد القواعد المحمّلة. |
+| `geoip_enabled` | ما إذا تم تشغيل `-G, --geo-ip`. يميّز بين `SrcCountry` الذي كله `NULL` ("كان الإثراء متوقفًا") وخلية `NULL` في ملف مُثرى ("هذه القيمة ليست عنوان IP"). |
+| `scanned_files`, `scanned_events` | نطاق التشغيل. |
+| `output_rows`, `duplicate_rows_removed` | الصفوف المكتوبة، والتكرارات المطابقة تمامًا التي أُزيلت أثناء الكتابة. |
+
+بالنسبة إلى أوامر المخطط الزمني المستندة إلى القواعد، يمثل صف `timeline` الواحد **حدثًا واحدًا × تطابق قاعدة واحدًا**: الحدث الذي يطابق عدة قواعد ينتج صفًا لكل تطابق، لذا فإن `EventID` *ليس* فريدًا. في `aws-ct-search`، ينتج كل حدث مطابق صفًا واحدًا.
+
+```sql
+-- Critical and high alerts in a time range, with their ATT&CK techniques.
+-- `Level` is an ENUM, so cast the literal to compare by severity rather than alphabetically.
+SELECT Timestamp, RuleTitle, EventName, SrcIP, TechniqueIDs
+FROM timeline
+WHERE Level >= 'high'::suzaku_level
+  AND Timestamp BETWEEN TIMESTAMP '2024-01-01' AND TIMESTAMP '2024-02-01'
+  AND ErrorCode IS NULL          -- the call succeeded
+ORDER BY Timestamp;
+
+-- ATT&CK technique coverage, no string parsing required
+SELECT technique, count(*) AS hits
+FROM (SELECT unnest(TechniqueIDs) AS technique FROM timeline)
+GROUP BY 1 ORDER BY hits DESC;
+```
+
+يُجري Suzaku نقطة تفتيش (checkpoint) لقاعدة البيانات قبل الخروج، لذا يكون ملف `.duckdb` مكتملًا ويمكن فتحه للقراءة فقط (انسخه بعد انتهاء الأمر، وليس أثناء تشغيله).

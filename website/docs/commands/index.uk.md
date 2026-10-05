@@ -10,5 +10,8 @@
 * `aws-ct-timeline`: Створює часову шкалу DFIR для AWS CloudTrail
 * `update-rules`: Оновлює правила виявлення Sigma
 
+## Команди пошуку:
+* `aws-ct-search`: Пошук у журналах AWS CloudTrail
+
 ## Загальні команди:
 * `help`: Виводить меню довідки для команд

@@ -143,9 +143,9 @@ without guessing:
 | `scanned_files`, `scanned_events` | Coverage of the run. |
 | `output_rows`, `duplicate_rows_removed` | Rows written, and exact duplicates dropped on write. |
 
-A `timeline` row is one **event × rule match**: an event matching several rules produces one row
-per match, so `EventID` is *not* unique. That grain is also recorded as a table comment
-(`SELECT comment FROM duckdb_tables()`).
+For the rule-based timeline commands, a `timeline` row is one **event × rule match**: an event
+matching several rules produces one row per match, so `EventID` is *not* unique. For
+`aws-ct-search`, each matching event produces one row.
 
 ```sql
 -- Critical and high alerts in a time range, with their ATT&CK techniques.
