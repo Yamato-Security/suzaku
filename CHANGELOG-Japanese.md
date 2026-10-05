@@ -8,6 +8,10 @@
 
 - `aws-ct-timeline`、`azure-timeline`、`gws-timeline`に`-s, --sort`オプションを追加した。画面・CSV・JSON・JSONLの結果を、ログファイルの走査順ではなく時刻順に出力する。イベント時刻を時点として比較するため、`-l`や`Z`/`+09:00`が混在するログでも正しく並ぶ。時刻を解釈できない行は末尾に置き、同時刻の行は内容で並べるので、同じ検出結果集合・出力設定なら、ファイルの走査順に関係なく検出行が同じ順序になる。端末出力全体やDuckDBファイルのバイト一致は保証しない。`temporal_ordered`の相関では、同時刻イベントの入力順が検出成否に影響する場合がある。結果は実行終了までメモリに保持する(1結果あたり約1.3KB、`--raw-output`併用時は約3KB)。CloudTrailの190万件の検知では、ピークメモリが2.4GB(`--raw-output`併用時は5.5GB)増え、約70秒の実行時間が1〜2秒延びた。DuckDBのソート処理は`-s`の影響を受けず、DuckDBだけを出力する場合は追加のコピーを保持しない。下記の相関タイムスタンプ修正はDuckDBにも適用される。 (@fukusuket)
 
+**改善:**
+
+- `aws-ct-timeline`のデフォルト出力プロファイル(`config/aws_profile.yaml`)の列順を、AzureとGoogle Workspaceのプロファイルに揃えた。`Timestamp, RuleTitle, Level`の後に、サービス・操作・結果・誰が・どこから(`EventSource, EventName, ErrorCode, UserName, UserType, SrcIP`)、その他の詳細と続き、`RuleAuthor, Tags, RuleID`で終わる。これまでは`RuleAuthor`が3列目にあり、ノートPCなど画面の狭い環境では`Level`・`UserName`・`SrcIP`が画面外に押し出されていた。CSV出力をヘッダー名ではなく列の位置で読み込んでいるツールは修正が必要になる。 (@fukusuket)
+
 **バグ修正:**
 
 - 同じ実行でも結果サマリーの表示が変わることがある問題を修正した。「Top alerts」表とルール作成者の表は件数だけで並べていたため、件数が同じ項目の並びや上位5件に入る顔ぶれが`HashMap`の順序で変わり、「Dates with most total detections」も件数が同じ日付から任意に選んでいた。件数が同じ場合はルール名・作成者名の順に並べ、日付は最も早い日を採用するようにした。 (@fukusuket)
