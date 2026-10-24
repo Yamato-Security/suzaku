@@ -1,4 +1,4 @@
-use crate::core::color::SuzakuColor::Red;
+use crate::core::color::SuzakuColor::{Orange, Red};
 use crate::core::duckdb_out::{
     self, MULTI_VALUE_SEPARATOR, OUTCOME_ENUM, SuzakuMeta, list_expr, nullable, quote_ident,
     timestamp_expr,
@@ -21,7 +21,7 @@ use num_format::{Locale, ToFormattedString};
 use serde::Serialize;
 use serde_json::Value;
 use sigma_rust::{Event, event_from_json};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -249,17 +249,39 @@ fn summary_access_key_id(event: &Event, include_sts: bool) -> Option<String> {
 }
 
 /// The principal an event is summarized under: its `userIdentity.arn`, or `userIdentity.userName`
-/// when the record has no ARN, or `None` to leave the event out.
+/// when the record has no ARN, or `None` to leave the event out. The flag is `true` when the key is
+/// a user name, so the caller can tell the user that the `UserARN` column holds names.
 ///
 /// The fallback exists for AWS Management Console CSV downloads, which carry the user name but no
 /// ARN. For a role, that name is the session name, so different roles using the same session name
 /// are summarized as one principal. An ARN and a user name can never be the same string (IAM user
 /// and session names cannot contain `:`), so the two kinds of key do not collide.
-fn summary_principal(event: &Event) -> Option<String> {
+fn summary_principal(event: &Event) -> Option<(String, bool)> {
+    if let Some(arn) = event.get("userIdentity.arn") {
+        return Some((arn.value_to_string(), false));
+    }
     event
-        .get("userIdentity.arn")
-        .or_else(|| event.get("userIdentity.userName"))
-        .map(|v| v.value_to_string())
+        .get("userIdentity.userName")
+        .map(|name| (name.value_to_string(), true))
+}
+
+/// Tells the user that some rows of the summary are keyed by a user name, not an ARN, as happens
+/// with AWS Management Console CSV input. The column keeps its `UserARN` name so the output schema
+/// does not depend on the input format, and a `-d` scan can mix both kinds of key.
+fn print_name_keyed_note(no_color: bool, events: usize, principals: usize) {
+    if events == 0 {
+        return;
+    }
+    p(
+        Orange.rdg(no_color),
+        &format!(
+            "Note: {} events ({} principals) had no userIdentity.arn (e.g. AWS Console CSV input). \
+             They are summarized by user name, or session name for a role, in the UserARN column.",
+            events.to_formatted_string(&Locale::en),
+            principals.to_formatted_string(&Locale::en)
+        ),
+        true,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -291,6 +313,8 @@ pub fn aws_summary(
     }
     let abused_aws_api_calls = read_abused_aws_api_calls("rules/config/abused_aws_api_calls.csv");
     let mut user_data: HashMap<String, CTSummary> = HashMap::new();
+    let mut name_keyed_events = 0;
+    let mut name_keyed_principals: HashSet<String> = HashSet::new();
     let mut single_summary_func = |json_value: &Value| {
         if !filter_by_time(&input_opt.time_opt, json_value, "eventTime") {
             return;
@@ -299,9 +323,13 @@ pub fn aws_summary(
             Ok(event) => event,
             Err(_) => return,
         };
-        let Some(user_identity_arn) = summary_principal(&event) else {
+        let Some((user_identity_arn, keyed_by_name)) = summary_principal(&event) else {
             return;
         };
+        if keyed_by_name {
+            name_keyed_events += 1;
+            name_keyed_principals.insert(user_identity_arn.clone());
+        }
         let event_time = match event.get("eventTime") {
             Some(time) => time.value_to_string(),
             None => "-".to_string(),
@@ -403,33 +431,29 @@ pub fn aws_summary(
         ) {
             log_error(&format!("Failed to scan directory {}: {e}", d.display()));
         }
-        output_summary(
-            &user_data,
-            output,
-            no_color,
-            hide_descriptions,
-            abused_aws_api_values,
-            output_types,
-            clobber,
-            geo_ip.is_some(),
-        );
     } else if let Some(f) = file {
         match load_aws_events_from_file(f) {
-            Ok(events) => {
-                summary_func(&events);
-                output_summary(
-                    &user_data,
-                    output,
-                    no_color,
-                    hide_descriptions,
-                    abused_aws_api_values,
-                    output_types,
-                    clobber,
-                    geo_ip.is_some(),
-                );
+            Ok(events) => summary_func(&events),
+            Err(e) => {
+                report_unreadable_input(no_color, f, &e);
+                return;
             }
-            Err(e) => report_unreadable_input(no_color, f, &e),
         }
+    } else {
+        return;
+    }
+    output_summary(
+        &user_data,
+        output,
+        no_color,
+        hide_descriptions,
+        abused_aws_api_values,
+        output_types,
+        clobber,
+        geo_ip.is_some(),
+    );
+    if !user_data.is_empty() {
+        print_name_keyed_note(no_color, name_keyed_events, name_keyed_principals.len());
     }
 }
 
@@ -1067,7 +1091,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             summary_principal(&event),
-            Some("arn:aws:iam::123456789012:user/u".to_string())
+            Some(("arn:aws:iam::123456789012:user/u".to_string(), false))
         );
     }
 
@@ -1077,7 +1101,7 @@ mod tests {
         let event = event_from_json(r#"{"userIdentity":{"userName":"example-session"}}"#).unwrap();
         assert_eq!(
             summary_principal(&event),
-            Some("example-session".to_string())
+            Some(("example-session".to_string(), true))
         );
     }
 

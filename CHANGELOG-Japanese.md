@@ -6,7 +6,7 @@
 
 - AWSのコマンド（`aws-ct-timeline`・`aws-ct-summary`・`aws-ct-metrics`・`aws-ct-search`）で、AWS Management ConsoleからCSV形式でダウンロードしたCloudTrailのイベント履歴を読み込めるようにした。各行をCloudTrailのレコードに組み立て直す（`Event name` → `eventName`、`User name` → `userIdentity.userName`、`Resources` → `resources[]`、`Read-only` → 真偽値の`readOnly`など）ので、ルールやsummary・metricsコマンドはJSON入力と同じフィールド名を使う。空欄のセルはフィールドなしとして扱うため、`errorCode|exists`を条件とするルールが成功した呼び出しにマッチすることはない。`root`には`userIdentity.type: Root`を補うので、rootの操作を検知するルールも動く。`aws-ct-summary`はARNが無い場合に`userIdentity.userName`で集計する。CSVは各イベントの要約なので、次の情報は得られない。
   - `userIdentity.arn`/`type`/`accountId`/`principalId`、`errorMessage`、`requestParameters`、`responseElements`、`additionalEventData`が含まれない。これらを参照するルール（CloudTrailルール794本のうち約24本。ログイン失敗やMFAなしのログインなど、コンソールログイン系のルールを含む）はマッチせず、タイムラインの`UserARN`・`UserAccountID`・`UserPrincipalID`・`ErrorMessage`列は空になる（`UserType`もroot以外は空）。
-  - `aws-ct-summary`はユーザー名で集計し、ロールの場合はそれがセッション名なので、同じセッション名を使う別のロールは1つのプリンシパルとして数えられる。ユーザー名が無い行（AWSのサービスがユーザーに代わって行う呼び出しなど）は除外されるため、同じ期間のJSONとは件数が異なることがある。
+  - `aws-ct-summary`はユーザー名で集計し、ロールの場合はそれがセッション名なので、同じセッション名を使う別のロールは1つのプリンシパルとして数えられる。ユーザー名が無い行（AWSのサービスがユーザーに代わって行う呼び出しなど）は除外されるため、同じ期間のJSONとは件数が異なることがある。列名は`UserARN`のままとし、名前で集計したイベントの件数を注意として表示する。
   - コンソールのダウンロードはリージョンごとになる。コンソールへのサインインやIAMのイベントが記録される`us-east-1`も別途ダウンロードすること。
 
   コンソールのCloudTrail CSVではないCSVは、どのルールにもマッチしない行として読み込むのではなく、警告を出して読み込まない。フィールド数が合わない行（多くは引用符の崩れ）や`Event time`が無い行はスキップし、これらを含む行単位の問題は行番号とともにエラーログに記録する。 (@fukusuket)
