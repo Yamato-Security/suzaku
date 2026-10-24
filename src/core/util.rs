@@ -65,6 +65,16 @@ pub fn error_msg(no_color: bool, msg: &str) {
     p(Red.rdg(no_color), msg, true);
 }
 
+/// Reports that the single input file given with `-f` could not be read as a log. Unlike a
+/// skipped file in a `-d` scan this stays on the terminal as well as going to the error log: the
+/// run has nothing else to process, so hiding it in a file would leave an empty result with no
+/// visible reason.
+pub fn report_unreadable_input(no_color: bool, path: &std::path::Path, e: &dyn std::fmt::Display) {
+    let msg = format!("Could not read {}: {e}", path.display());
+    log_error(&msg);
+    error_msg(no_color, &msg);
+}
+
 /// Prints a fatal error in red and exits with a non-zero status, so that
 /// input/filesystem failures end the run with a clean, actionable message
 /// instead of a Rust panic and backtrace. Unlike ordinary warnings this stays on

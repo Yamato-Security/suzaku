@@ -5,7 +5,8 @@ use crate::core::log_source::LogSource;
 use crate::core::scan::{load_aws_events_from_file, process_events_from_dir};
 use crate::core::timeline_writer::{duckdb_column_name, resolve_output_targets};
 use crate::core::util::{
-    error_msg, fatal_error, get_writer, output_path_info, p, sanitize_csv_field, upsert_count_entry,
+    error_msg, fatal_error, get_writer, output_path_info, p, report_unreadable_input,
+    sanitize_csv_field, upsert_count_entry,
 };
 use crate::option::cli::{MetricsOptions, OutputFormat};
 use crate::option::geoip::GeoIPSearch;
@@ -227,7 +228,10 @@ pub fn aws_metrics(opt: &MetricsOptions, no_color: bool) {
                 stats_func(&events);
                 scan.files = 1;
             }
-            Err(_) => return,
+            Err(e) => {
+                report_unreadable_input(no_color, f, &e);
+                return;
+            }
         }
     }
 

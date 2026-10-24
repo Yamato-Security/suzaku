@@ -9,7 +9,7 @@ use crate::core::timeline_writer::{
     OutputConfig, OutputContext, correlation_timestamp, init_writers, write_correlation_record,
     write_record,
 };
-use crate::core::util::{fatal_error, load_profile, output_path_info, p};
+use crate::core::util::{fatal_error, load_profile, output_path_info, p, report_unreadable_input};
 use crate::option::cli::{CommonOptions, TimelineOptions};
 use crate::option::geoip::GeoIPSearch;
 use chrono::{DateTime, Utc};
@@ -156,7 +156,7 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
             &log,
         )
     } else if let Some(f) = &options.input_opt.filepath {
-        scan_file(
+        match scan_file(
             f,
             &mut context,
             &mut summary,
@@ -165,8 +165,13 @@ pub fn make_timeline(options: &TimelineOptions, common_opt: &CommonOptions, log:
             &mut matched_correlation,
             &correlation_engine,
             &log,
-        );
-        1
+        ) {
+            Ok(()) => 1,
+            Err(e) => {
+                report_unreadable_input(no_color, f, &e);
+                0
+            }
+        }
     } else {
         0
     };

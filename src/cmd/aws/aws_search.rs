@@ -3,7 +3,7 @@ use crate::core::duckdb_out::SuzakuMeta;
 use crate::core::log_source::LogSource;
 use crate::core::scan::{load_aws_events_from_file, process_events_from_dir};
 use crate::core::timeline_writer::{OutputConfig, OutputContext, init_writers, write_record};
-use crate::core::util::{fatal_error, load_profile, output_path_info, p};
+use crate::core::util::{fatal_error, load_profile, output_path_info, p, report_unreadable_input};
 use crate::option::cli::{CommonOptions, SearchOptions};
 use crate::option::geoip::GeoIPSearch;
 use crate::option::timefiler::filter_by_time;
@@ -144,10 +144,12 @@ level: informational";
             ),
         }
     } else if let Some(f) = file {
-        let events = load_aws_events_from_file(f);
-        if let Ok(events) = events {
-            search_func(&events);
-            scanned_files = 1;
+        match load_aws_events_from_file(f) {
+            Ok(events) => {
+                search_func(&events);
+                scanned_files = 1;
+            }
+            Err(e) => report_unreadable_input(no_color, f, &e),
         }
     }
 
