@@ -8,7 +8,8 @@ use crate::core::log_source::LogSource;
 use crate::core::scan::{load_aws_events_from_file, process_events_from_dir};
 use crate::core::timeline_writer::resolve_output_targets;
 use crate::core::util::{
-    error_msg, fatal_error, get_writer, output_path_info, p, sanitize_csv_field, upsert_count_entry,
+    error_msg, fatal_error, get_writer, output_path_info, p, report_unreadable_input,
+    sanitize_csv_field, upsert_count_entry,
 };
 use crate::option::cli::{InputOption, OutputFormat};
 use crate::option::geoip::GeoIPSearch;
@@ -247,6 +248,20 @@ fn summary_access_key_id(event: &Event, include_sts: bool) -> Option<String> {
     }
 }
 
+/// The principal an event is summarized under: its `userIdentity.arn`, or `userIdentity.userName`
+/// when the record has no ARN, or `None` to leave the event out.
+///
+/// The fallback exists for AWS Management Console CSV downloads, which carry the user name but no
+/// ARN. For a role, that name is the session name, so different roles using the same session name
+/// are summarized as one principal. An ARN and a user name can never be the same string (IAM user
+/// and session names cannot contain `:`), so the two kinds of key do not collide.
+fn summary_principal(event: &Event) -> Option<String> {
+    event
+        .get("userIdentity.arn")
+        .or_else(|| event.get("userIdentity.userName"))
+        .map(|v| v.value_to_string())
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn aws_summary(
     input_opt: &InputOption,
@@ -284,9 +299,8 @@ pub fn aws_summary(
             Ok(event) => event,
             Err(_) => return,
         };
-        let user_identity_arn = match event.get("userIdentity.arn") {
-            Some(arn) => arn.value_to_string(),
-            None => return,
+        let Some(user_identity_arn) = summary_principal(&event) else {
+            return;
         };
         let event_time = match event.get("eventTime") {
             Some(time) => time.value_to_string(),
@@ -400,19 +414,21 @@ pub fn aws_summary(
             geo_ip.is_some(),
         );
     } else if let Some(f) = file {
-        let events = load_aws_events_from_file(f);
-        if let Ok(events) = events {
-            summary_func(&events);
-            output_summary(
-                &user_data,
-                output,
-                no_color,
-                hide_descriptions,
-                abused_aws_api_values,
-                output_types,
-                clobber,
-                geo_ip.is_some(),
-            );
+        match load_aws_events_from_file(f) {
+            Ok(events) => {
+                summary_func(&events);
+                output_summary(
+                    &user_data,
+                    output,
+                    no_color,
+                    hide_descriptions,
+                    abused_aws_api_values,
+                    output_types,
+                    clobber,
+                    geo_ip.is_some(),
+                );
+            }
+            Err(e) => report_unreadable_input(no_color, f, &e),
         }
     }
 }
@@ -1037,6 +1053,38 @@ mod tests {
                 Some("-".to_string())
             );
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // summary_principal のテスト
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_summary_principal_prefers_arn() {
+        let event = event_from_json(
+            r#"{"userIdentity":{"arn":"arn:aws:iam::123456789012:user/u","userName":"u"}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            summary_principal(&event),
+            Some("arn:aws:iam::123456789012:user/u".to_string())
+        );
+    }
+
+    #[test]
+    fn test_summary_principal_falls_back_to_user_name() {
+        // A console CSV row has a user name but no ARN.
+        let event = event_from_json(r#"{"userIdentity":{"userName":"example-session"}}"#).unwrap();
+        assert_eq!(
+            summary_principal(&event),
+            Some("example-session".to_string())
+        );
+    }
+
+    #[test]
+    fn test_summary_principal_none_without_arn_or_user_name() {
+        let event = event_from_json(r#"{"eventName":"RotateKey"}"#).unwrap();
+        assert_eq!(summary_principal(&event), None);
     }
 
     // -----------------------------------------------------------------------

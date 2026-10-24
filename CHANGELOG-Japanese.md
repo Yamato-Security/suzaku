@@ -6,7 +6,7 @@
 
 - AWSのコマンド（`aws-ct-timeline`・`aws-ct-summary`・`aws-ct-metrics`・`aws-ct-search`）で、AWS Management ConsoleからCSV形式でダウンロードしたCloudTrailのイベント履歴を読み込めるようにした。各行をCloudTrailのレコードに組み立て直す（`Event name` → `eventName`、`User name` → `userIdentity.userName`、`Resources` → `resources[]`、`Read-only` → 真偽値の`readOnly`など）ので、ルールやsummary・metricsコマンドはJSON入力と同じフィールド名を使う。空欄のセルはフィールドなしとして扱うため、`errorCode|exists`を条件とするルールが成功した呼び出しにマッチすることはない。`root`には`userIdentity.type: Root`を補うので、rootの操作を検知するルールも動く。`aws-ct-summary`はARNが無い場合に`userIdentity.userName`で集計する。CSVは各イベントの要約なので、次の情報は得られない。
   - `userIdentity.arn`/`type`/`accountId`/`principalId`、`errorMessage`、`requestParameters`、`responseElements`、`additionalEventData`が含まれない。これらを参照するルール（CloudTrailルール794本のうち約24本。ログイン失敗やMFAなしのログインなど、コンソールログイン系のルールを含む）はマッチせず、タイムラインの`UserARN`・`UserAccountID`・`UserPrincipalID`・`ErrorMessage`列は空になる（`UserType`もroot以外は空）。
-  - `aws-ct-summary`はユーザー名で集計し、ロールの場合はそれがセッション名なので、同じセッション名を使う別のロールは1つのプリンシパルとして数えられる。ユーザー名が無い行（AWSのサービスがユーザーに代わって行う呼び出しなど）は除外されるため、同じ期間のJSONとは件数が異なることがある。列名は`UserARN`のままとし、名前で集計したイベントの件数を注意として表示する。
+  - `aws-ct-summary`はユーザー名で集計し、ロールの場合はそれがセッション名なので、同じセッション名を使う別のロールは1つのプリンシパルとして数えられる。ユーザー名が無い行（AWSのサービスがユーザーに代わって行う呼び出しなど）は除外されるため、同じ期間のJSONとは件数が異なることがある。
   - コンソールのダウンロードはリージョンごとになる。コンソールへのサインインやIAMのイベントが記録される`us-east-1`も別途ダウンロードすること。
 
   コンソールのCloudTrail CSVではないCSVは、どのルールにもマッチしない行として読み込むのではなく、警告を出して読み込まない。フィールド数が合わない行（多くは引用符の崩れ）や`Event time`が無い行はスキップし、これらを含む行単位の問題は行番号とともにエラーログに記録する。 (@fukusuket)
@@ -22,8 +22,6 @@
 - `aws-ct-summary`の`-s, --include-sts-keys`でイベントを絞り込まないようにした。これまでは`-s`を指定しないと、一時的なSTSアクセスキー(`ASIA...`)を使ったイベントがサマリーから丸ごと除外されていた。そのため、AssumeRole・SSO・コンソールセッション・EC2/Lambdaのロールによる操作の大半が見えず、侵害されたロールによる操作も含まれていた。今後はこれらのイベントも常に集計し、`-s`は`UserAccessKeyIDs`(JSONでは`user_access_key_ids`)に`ASIA...`のキーを表示するかどうかだけを切り替える。`aws-ct-metrics`での同じフラグの挙動と揃えた。出力の列は変わらないが、`-s`なしの場合、以前のバージョンよりプリンシパル数や件数が増える。また`aws-ct-summary`と`aws-ct-metrics`の両方で、`-s`をヘルプの`Filtering`から`Output`の項目に移し、何を切り替えるオプションかがわかるヘルプ文にした。 (@fukusuket)
 
 **バグ修正:**
-
-- `aws-ct-summary`は、`-s, --include-sts-keys`を指定しない場合、一時的なSTSアクセスキー（`ASIA...`）を使ったイベントを、アクセスキー一覧から外すだけでなくイベントごと破棄していた。そのため、AssumeRole・SSO・コンソールセッション・EC2/Lambdaのロールによる操作（一般的なアカウントでは操作の大半を占め、侵害されたロールによる活動もここに現れる）がほぼすべて失われ、該当するプリンシパルがサマリーに出ないか、件数が少なく集計されていた。これらのイベントも通常どおり集計し、`UserAccessKeyIDs`（JSONでは`user_access_key_ids`）から`ASIA...`のキーだけを除外するようにした。同じフラグに対する`aws-ct-metrics`の挙動と揃えた。該当するプリンシパルのイベント件数は増えるが、出力の列は変わらない。 (@fukusuket)
 
 - `-f`で指定したファイルをログとして読めなかった場合（対応していないCSV、読めないParquetファイルなど）、何も表示されずに空の結果になっていた。`aws-ct-summary`と`aws-ct-search`はエラーを無視し、`aws-ct-metrics`は何も表示せずに終了し、タイムライン系のコマンドはそのファイルをDuckDBの`suzaku_meta.scanned_files`にスキャン済みとして記録していた。いずれも理由を赤字で表示してエラーログにも記録し、失敗したファイルはスキャン済みに数えないようにした。また、`-d`/`-f`のヘルプに対応しているすべての入力形式を載せた（`jsonl`と`csv`が抜けていた）。 (@fukusuket)
 
