@@ -41,11 +41,11 @@ pub fn scan_file<'a>(
 ) -> Result<(), Box<dyn Error>> {
     let path_str = f.display().to_string();
     let events = if path_str.ends_with(".csv") {
-        load_csv_events(&get_content(f), log, &path_str)?
+        load_csv_events(&get_content(f)?, log, &path_str)?
     } else if path_str.ends_with(".parquet") {
         load_parquet_events(f)?
     } else {
-        load_json_from_file(&get_content(f), log)?
+        load_json_from_file(&get_content(f)?, log)?
     };
     let events = normalize_events(events, log);
     detect_events(
@@ -653,10 +653,11 @@ pub enum CsvWarningKind {
     /// reader's `flexible(true)` this is how a stray or unterminated quote shows up, as the
     /// `csv` crate itself does not report malformed quoting.
     FieldCountMismatch { expected: usize, found: usize },
-    /// A field of an AWS console CSV contains a line break; the row is kept. The console never
-    /// writes one, so this is almost always an unterminated quote in the last column that has
-    /// swallowed the following rows into this field.
-    EmbeddedNewline,
+    /// A field of an AWS console CSV contains a line break; the field is dropped and the row kept.
+    /// The console never writes one, so this is almost always an unterminated quote that has
+    /// swallowed the following rows into this field. The fields before the quote were read
+    /// normally, but this one must not reach the rules.
+    EmbeddedNewline { column: String },
     /// An AWS console CSV row has no `Event time`; the row is skipped.
     MissingEventTime,
     /// `Resources` is not a JSON array of objects; the field is dropped and the row kept.
@@ -674,9 +675,9 @@ impl std::fmt::Display for CsvWarningKind {
                 f,
                 "expected {expected} fields but found {found}, row skipped (possibly broken quoting)"
             ),
-            CsvWarningKind::EmbeddedNewline => write!(
+            CsvWarningKind::EmbeddedNewline { column } => write!(
                 f,
-                "a field contains a line break, possibly an unterminated quote that swallowed the following rows"
+                "{column} contains a line break, possibly an unterminated quote that swallowed the following rows, field dropped"
             ),
             CsvWarningKind::MissingEventTime => write!(f, "no Event time, row skipped"),
             CsvWarningKind::InvalidResources => {
@@ -880,14 +881,15 @@ fn aws_console_csv_row_to_event(
 ) -> Option<Value> {
     let mut map = serde_json::Map::new();
     let mut warn = |kind| warnings.push(CsvWarning { line, kind });
-    let mut newline_seen = false;
     for (header, value) in headers.iter().zip(record.iter()) {
         if value.is_empty() {
             continue;
         }
-        if !newline_seen && value.contains('\n') {
-            newline_seen = true;
-            warn(CsvWarningKind::EmbeddedNewline);
+        if value.contains('\n') {
+            warn(CsvWarningKind::EmbeddedNewline {
+                column: header.to_string(),
+            });
+            continue;
         }
         match header {
             "Resources" => match convert_console_resources(value) {
@@ -1401,9 +1403,9 @@ pub fn load_aws_events_from_file(f: &PathBuf) -> Result<Vec<Value>, Box<dyn Erro
     if path.ends_with(".parquet") {
         load_parquet_events(f)
     } else if path.ends_with(".csv") {
-        Ok(load_csv_events(&get_content(f), &LogSource::Aws, &path)?)
+        Ok(load_csv_events(&get_content(f)?, &LogSource::Aws, &path)?)
     } else {
-        load_json_from_file(&get_content(f), &LogSource::Aws)
+        load_json_from_file(&get_content(f)?, &LogSource::Aws)
     }
 }
 
@@ -1471,20 +1473,21 @@ pub fn load_json_from_file(
     Ok(events)
 }
 
-pub fn get_content(f: &PathBuf) -> String {
+/// Read one json/jsonl/csv/gz file given with `-f`. A read failure (permissions, non-UTF-8
+/// content, a missing file) or an unsupported extension is returned to the caller, so it can be
+/// reported instead of turning into an empty file that looks like a successful scan.
+pub fn get_content(f: &PathBuf) -> io::Result<String> {
     let path = f.display().to_string();
-    let result = if path.ends_with(".json") || path.ends_with(".jsonl") || path.ends_with(".csv") {
+    if path.ends_with(".json") || path.ends_with(".jsonl") || path.ends_with(".csv") {
         fs::read_to_string(f)
     } else if path.ends_with(".gz") {
         read_gz_file(f)
     } else {
-        return "".to_string();
-    };
-    // Warn instead of silently returning empty content on a read failure.
-    result.unwrap_or_else(|e| {
-        log_warn(&format!("Skipping {path}: {e}"));
-        String::new()
-    })
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "unsupported file extension (expected .json, .jsonl, .gz, .csv or .parquet)",
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -2354,18 +2357,23 @@ detection:
     #[test]
     fn console_csv_unterminated_quote_in_last_column_is_reported() {
         // In the last column the swallowed rows leave the field count intact, so the line break
-        // inside the field is what gives it away. The row itself is kept.
+        // inside the field is what gives it away. The broken field is dropped; the fields before
+        // it were read normally, so the row is kept.
         let csv = console_csv(&[
             "u,,2024-01-01T00:00:00Z,s3.amazonaws.com,A,us-east-1,192.0.2.1,ua,,[],r,e1,true,AwsApiCall,123456789012,\"Management",
             "u,,2024-01-01T00:00:01Z,s3.amazonaws.com,B,us-east-1,192.0.2.1,ua,,[],r,e2,true,AwsApiCall,123456789012,Management",
         ]);
         let out = parse_aws(&csv);
         assert_eq!(out.events.len(), 1);
+        assert_eq!(out.events[0]["eventID"], "e1");
+        assert!(out.events[0].get("eventCategory").is_none());
         assert_eq!(
             out.warnings,
             [CsvWarning {
                 line: 2,
-                kind: CsvWarningKind::EmbeddedNewline
+                kind: CsvWarningKind::EmbeddedNewline {
+                    column: "Event category".to_string()
+                }
             }]
         );
     }
@@ -2456,6 +2464,24 @@ detection:
         assert_eq!(processed, 5);
         // The single-file path reports the same file as a failure instead of an empty success.
         assert!(load_aws_events_from_file(&dir.path().join("ual.csv")).is_err());
+    }
+
+    #[test]
+    fn single_file_read_failures_are_errors_not_empty_results() {
+        // `-f` reports these instead of printing an empty result. A missing file stands in for
+        // any read failure (permissions, non-UTF-8 content), which go through the same path.
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("missing");
+        for ext in ["json", "jsonl", "json.gz", "csv"] {
+            let path = missing.with_extension(ext);
+            assert!(load_aws_events_from_file(&path).is_err(), "{ext}");
+        }
+        let unknown = dir.path().join("events.txt");
+        fs::write(&unknown, "{}").unwrap();
+        assert!(load_aws_events_from_file(&unknown).is_err());
+        // A read failure must not be reported as "not a console CSV".
+        let err = load_aws_events_from_file(&missing.with_extension("csv")).unwrap_err();
+        assert!(err.downcast_ref::<io::Error>().is_some(), "{err}");
     }
 
     #[test]
