@@ -4,7 +4,7 @@ SuzakuのAWS系コマンド（`aws-ct-timeline`、`aws-ct-metrics`、`aws-ct-sum
 
 ```bash
 ./suzaku aws-ct-timeline -f event_history.csv
-./suzaku aws-ct-summary -d ./console-downloads/
+./suzaku aws-ct-summary -d ./console-downloads/ -o summary.csv
 ```
 
 CSVはS3にログを配信する証跡が無い場合の手段としては便利ですが、CloudTrailのレコードそのものではなく、各イベントの**要約**です。証跡のJSONログ（またはイベント履歴のJSONダウンロード）がある場合は、そちらを使ってください。
