@@ -128,6 +128,7 @@ plugins:
             Git Cloning: Gitクローン
             Compiling From Source: ソースからのコンパイル
             Running Suzaku: Suzakuの実行
+            Reading AWS Console CSV Downloads: AWSコンソールのCSVを読み込む
             Commands: コマンド
             Command List: コマンドの一覧
             Analysis Commands: 分析コマンド
@@ -514,6 +515,7 @@ nav:
       - Compiling From Source: getting-started/compiling.md
       - Running Suzaku: getting-started/running.md
       - Converting Logs to Parquet: getting-started/parquet-input.md
+      - Reading AWS Console CSV Downloads: getting-started/console-csv-input.md
   - Commands:
       - Command List: commands/index.md
       - Analysis Commands: commands/analysis.md

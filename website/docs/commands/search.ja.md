@@ -34,8 +34,8 @@
 Usage: suzaku aws-ct-search <INPUT> [OPTIONS]
 
 Input:
-  -d, --directory <DIR>  複数gz/json/parquetファイルのディレクトリパス
-  -f, --file <FILE>      gz/json/parquetファイルのパス
+  -d, --directory <DIR>  複数gz/json/jsonl/csv/parquetファイルのディレクトリパス
+  -f, --file <FILE>      gz/json/jsonl/csv/parquetファイルのパス
 
 Filtering:
   -F, --filter <FILTER...>     特定のフィールドで絞り込む

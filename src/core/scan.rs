@@ -26,6 +26,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{fs, io};
 
+/// Scan one log file. An `Err` means the file could not be read as a log at all, so it must not
+/// be counted as scanned.
 #[allow(clippy::too_many_arguments)]
 pub fn scan_file<'a>(
     f: &PathBuf,
@@ -36,20 +38,14 @@ pub fn scan_file<'a>(
     matched_correlation: &mut Vec<TimestampedEvent<'a>>,
     correlation_engine: &'a CorrelationEngine,
     log: &LogSource,
-) {
+) -> Result<(), Box<dyn Error>> {
     let path_str = f.display().to_string();
     let events = if path_str.ends_with(".csv") {
-        parse_csv_events(&get_content(f))
+        load_csv_events(&get_content(f), log, &path_str)?
     } else if path_str.ends_with(".parquet") {
-        match load_parquet_events(f) {
-            Ok(value) => value,
-            Err(_e) => return,
-        }
+        load_parquet_events(f)?
     } else {
-        match load_json_from_file(&get_content(f), log) {
-            Ok(value) => value,
-            Err(_e) => return,
-        }
+        load_json_from_file(&get_content(f), log)?
     };
     let events = normalize_events(events, log);
     detect_events(
@@ -61,6 +57,7 @@ pub fn scan_file<'a>(
         matched_correlation,
         correlation_engine,
     );
+    Ok(())
 }
 
 /// Scan every log file under `d`, returning how many files were read (recorded in the DuckDB
@@ -171,6 +168,9 @@ where
     }
 
     let mut scanned_files = 0usize;
+    // Files that were found but could not be read as logs. Each reason is in the error log;
+    // the total is shown once the scan ends so the reduced coverage is visible on the terminal.
+    let mut skipped_files = 0usize;
     for path in file_paths {
         // `path` is the real `PathBuf`, so files with non-UTF-8 names still resolve and are read.
         // Render lossily only for the extension checks (extensions are ASCII) and the progress
@@ -192,7 +192,10 @@ where
                     process_events(&events);
                     scanned_files += 1;
                 }
-                Err(e) => log_warn(&format!("Skipping {path_str}: {e}")),
+                Err(e) => {
+                    log_warn(&format!("Skipping {path_str}: {e}"));
+                    skipped_files += 1;
+                }
             }
             if show_progress {
                 pb.inc(1);
@@ -212,6 +215,7 @@ where
                     // The message goes to the error log, not the terminal, so it
                     // cannot corrupt the progress bar redraw.
                     log_warn(&format!("Skipping {path_str}: {e}"));
+                    skipped_files += 1;
                     if show_progress {
                         pb.inc(1);
                     }
@@ -223,6 +227,7 @@ where
                 Ok(contents) => contents,
                 Err(e) => {
                     log_warn(&format!("Skipping {path_str}: {e}"));
+                    skipped_files += 1;
                     if show_progress {
                         pb.inc(1);
                     }
@@ -237,7 +242,17 @@ where
         };
 
         let events = if path_str.ends_with("csv") {
-            parse_csv_events(&log_contents)
+            match load_csv_events(&log_contents, log, &path_str) {
+                Ok(events) => events,
+                Err(e) => {
+                    log_warn(&format!("Skipping {path_str}: {e}"));
+                    skipped_files += 1;
+                    if show_progress {
+                        pb.inc(1);
+                    }
+                    continue;
+                }
+            }
         } else {
             log_contents_to_events(&log_contents, log)
         };
@@ -255,6 +270,18 @@ where
         } else {
             pb.finish_with_message(style("Scanning finished.\n").color256(214).to_string());
         }
+    }
+    if skipped_files > 0 {
+        p(Orange.rdg(no_color), "Skipped files: ", false);
+        p(
+            None,
+            &format!(
+                "{} (could not be read as logs; see the error log for the reasons)",
+                skipped_files.to_formatted_string(&Locale::en)
+            ),
+            true,
+        );
+        println!();
     }
     Ok(scanned_files)
 }
@@ -592,26 +619,347 @@ fn normalize_events(events: Vec<Value>, log: &LogSource) -> Vec<Value> {
     }
 }
 
-/// Parse a `Search-UnifiedAuditLog` CSV export into one JSON object per row.
-/// The real audit record is carried in the `AuditData` column and is unwrapped
-/// afterwards by `normalize_azure_event`.
-fn parse_csv_events(contents: &str) -> Vec<Value> {
-    let mut events = Vec::new();
+/// How many CSV row warnings are written out in full per file. The rest are only counted, so a
+/// badly broken file cannot flood the error log, but the total still says how much was lost.
+const MAX_DETAILED_CSV_WARNINGS: usize = 10;
+
+/// The columns that identify an AWS Management Console CloudTrail "Event history" download.
+const AWS_CONSOLE_CSV_REQUIRED_COLUMNS: &[&str] =
+    &["Event ID", "Event time", "Event name", "Event source"];
+
+/// Console CSV column -> CloudTrail record field (dot path) for the columns copied as strings.
+/// `Resources` and `Read-only` need converting and are handled separately.
+const AWS_CONSOLE_CSV_COLUMNS: &[(&str, &str)] = &[
+    ("Event time", "eventTime"),
+    ("Event source", "eventSource"),
+    ("Event name", "eventName"),
+    ("AWS region", "awsRegion"),
+    ("Source IP address", "sourceIPAddress"),
+    ("User agent", "userAgent"),
+    ("Error code", "errorCode"),
+    ("User name", "userIdentity.userName"),
+    ("AWS access key", "userIdentity.accessKeyId"),
+    ("Request ID", "requestID"),
+    ("Event ID", "eventID"),
+    ("Event type", "eventType"),
+    ("Recipient Account Id", "recipientAccountId"),
+    ("Event category", "eventCategory"),
+];
+
+/// A problem with one CSV row that did not stop the rest of the file from being read.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CsvWarningKind {
+    /// The row has a different number of fields than the header; the row is skipped. With the
+    /// reader's `flexible(true)` this is how a stray or unterminated quote shows up, as the
+    /// `csv` crate itself does not report malformed quoting.
+    FieldCountMismatch { expected: usize, found: usize },
+    /// A field of an AWS console CSV contains a line break; the row is kept. The console never
+    /// writes one, so this is almost always an unterminated quote in the last column that has
+    /// swallowed the following rows into this field.
+    EmbeddedNewline,
+    /// An AWS console CSV row has no `Event time`; the row is skipped.
+    MissingEventTime,
+    /// `Resources` is not a JSON array of objects; the field is dropped and the row kept.
+    InvalidResources,
+    /// `Read-only` is neither `true` nor `false`; the field is dropped and the row kept.
+    InvalidReadOnly(String),
+    /// The `csv` crate could not read the row; the row is skipped.
+    RecordError(String),
+}
+
+impl std::fmt::Display for CsvWarningKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CsvWarningKind::FieldCountMismatch { expected, found } => write!(
+                f,
+                "expected {expected} fields but found {found}, row skipped (possibly broken quoting)"
+            ),
+            CsvWarningKind::EmbeddedNewline => write!(
+                f,
+                "a field contains a line break, possibly an unterminated quote that swallowed the following rows"
+            ),
+            CsvWarningKind::MissingEventTime => write!(f, "no Event time, row skipped"),
+            CsvWarningKind::InvalidResources => {
+                write!(f, "Resources is not a JSON array of objects, field dropped")
+            }
+            CsvWarningKind::InvalidReadOnly(v) => {
+                write!(f, "Read-only is {v:?}, not true/false, field dropped")
+            }
+            CsvWarningKind::RecordError(e) => write!(f, "cannot read the row: {e}, row skipped"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CsvWarning {
+    /// 1-based line number where the row starts.
+    pub line: u64,
+    pub kind: CsvWarningKind,
+}
+
+/// The rows parsed from a CSV file, plus the row-level problems met on the way. The parser does
+/// not log anything itself: the caller knows the file name and records the warnings with it.
+#[derive(Debug, Default)]
+pub struct CsvParseOutcome {
+    pub events: Vec<Value>,
+    pub warnings: Vec<CsvWarning>,
+}
+
+/// A CSV file that could not be read at all.
+#[derive(Debug)]
+pub enum CsvParseError {
+    Header(csv::Error),
+    /// Read as AWS input, but the header is not that of a console CloudTrail CSV.
+    UnsupportedAwsFormat,
+}
+
+impl std::fmt::Display for CsvParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CsvParseError::Header(e) => write!(f, "cannot read the CSV header: {e}"),
+            CsvParseError::UnsupportedAwsFormat => write!(
+                f,
+                "not an AWS Management Console CloudTrail event history CSV (expected the columns {})",
+                AWS_CONSOLE_CSV_REQUIRED_COLUMNS.join(", ")
+            ),
+        }
+    }
+}
+
+impl Error for CsvParseError {}
+
+fn is_aws_console_csv(headers: &csv::StringRecord) -> bool {
+    AWS_CONSOLE_CSV_REQUIRED_COLUMNS
+        .iter()
+        .all(|c| headers.iter().any(|h| h == *c))
+}
+
+/// Parse a CSV file into one JSON object per row.
+///
+/// For AWS input the file must be a Management Console CloudTrail "Event history" download, and
+/// each row is rebuilt as a CloudTrail record (see `aws_console_csv_row_to_event`) so rules and
+/// the summary/metrics commands see the same field names as with JSON input. Any other CSV read as
+/// AWS input is rejected, rather than turned into rows no rule can match.
+///
+/// For every other log source each row stays a flat `{header: value}` map. That is what a
+/// `Search-UnifiedAuditLog` export needs: the real audit record is carried in the `AuditData`
+/// column and is unwrapped afterwards by `normalize_azure_event`. `LogSource::All` also keeps the
+/// flat map, as no command scans logs with it (it is only used to load rules).
+fn parse_csv_events(contents: &str, log: &LogSource) -> Result<CsvParseOutcome, CsvParseError> {
+    let mut outcome = CsvParseOutcome::default();
+    // The `csv` crate strips a leading UTF-8 BOM itself.
     let mut reader = csv::ReaderBuilder::new()
         .flexible(true)
         .from_reader(contents.as_bytes());
-    let headers = match reader.headers() {
-        Ok(h) => h.clone(),
-        Err(_) => return events,
-    };
-    for record in reader.records().flatten() {
-        let mut map = serde_json::Map::new();
-        for (header, field) in headers.iter().zip(record.iter()) {
-            map.insert(header.to_string(), Value::String(field.to_string()));
-        }
-        events.push(Value::Object(map));
+    let headers = reader.headers().map_err(CsvParseError::Header)?.clone();
+    let aws = matches!(log, LogSource::Aws);
+    if aws && !is_aws_console_csv(&headers) {
+        return Err(CsvParseError::UnsupportedAwsFormat);
     }
-    events
+    // For CRLF files (console downloads are CRLF) a record's `Position` points at the `\n` that
+    // ends the previous line, so `Position::line()` is one short. Line numbers are counted from
+    // the byte offset instead, after stepping past any line-break bytes there (a record never
+    // starts with one, as blank lines are skipped), incrementally to stay linear.
+    let bytes = contents.as_bytes();
+    let (mut counted_to, mut line) = (0usize, 1u64);
+    let mut line_of = |byte: u64| {
+        let mut byte = (byte as usize).min(bytes.len());
+        while byte < bytes.len() && matches!(bytes[byte], b'\r' | b'\n') {
+            byte += 1;
+        }
+        if byte > counted_to {
+            line += bytes[counted_to..byte]
+                .iter()
+                .filter(|&&b| b == b'\n')
+                .count() as u64;
+            counted_to = byte;
+        }
+        line
+    };
+    for record in reader.records() {
+        // Reading from an in-memory `&str` with `flexible(true)` does not fail in practice (the
+        // contents are already valid UTF-8); if a row ever does, report it and move on.
+        let record = match record {
+            Ok(record) => record,
+            Err(e) => {
+                let line = e.position().map(|p| line_of(p.byte())).unwrap_or_default();
+                outcome.warnings.push(CsvWarning {
+                    line,
+                    kind: CsvWarningKind::RecordError(e.to_string()),
+                });
+                continue;
+            }
+        };
+        let row_line = record
+            .position()
+            .map(|p| line_of(p.byte()))
+            .unwrap_or_default();
+        if record.len() != headers.len() {
+            outcome.warnings.push(CsvWarning {
+                line: row_line,
+                kind: CsvWarningKind::FieldCountMismatch {
+                    expected: headers.len(),
+                    found: record.len(),
+                },
+            });
+            continue;
+        }
+        if aws {
+            if let Some(event) =
+                aws_console_csv_row_to_event(&headers, &record, row_line, &mut outcome.warnings)
+            {
+                outcome.events.push(event);
+            }
+        } else {
+            let mut map = serde_json::Map::new();
+            for (header, field) in headers.iter().zip(record.iter()) {
+                map.insert(header.to_string(), Value::String(field.to_string()));
+            }
+            outcome.events.push(Value::Object(map));
+        }
+    }
+    Ok(outcome)
+}
+
+/// Insert `value` at a dot-separated `path` (e.g. `userIdentity.userName`), creating the
+/// intermediate objects.
+fn insert_path(map: &mut serde_json::Map<String, Value>, path: &str, value: Value) {
+    match path.split_once('.') {
+        None => {
+            map.insert(path.to_string(), value);
+        }
+        Some((head, rest)) => {
+            let child = map
+                .entry(head.to_string())
+                .or_insert_with(|| Value::Object(serde_json::Map::new()));
+            if let Value::Object(child) = child {
+                insert_path(child, rest, value);
+            }
+        }
+    }
+}
+
+/// Convert the console's `Resources` column (`[{"resourceType": ..., "resourceName": ...}]`) to
+/// CloudTrail's `resources` (`[{"type": ..., "ARN": ...}]`). Other keys are kept as they are.
+/// `None` unless the value is a JSON array of objects; the array is not partially salvaged.
+fn convert_console_resources(raw: &str) -> Option<Value> {
+    let Ok(Value::Array(items)) = serde_json::from_str::<Value>(raw) else {
+        return None;
+    };
+    let mut converted = Vec::with_capacity(items.len());
+    for item in items {
+        let Value::Object(obj) = item else {
+            return None;
+        };
+        let renamed = obj
+            .into_iter()
+            .map(|(k, v)| match k.as_str() {
+                "resourceName" => ("ARN".to_string(), v),
+                "resourceType" => ("type".to_string(), v),
+                _ => (k, v),
+            })
+            .collect();
+        converted.push(Value::Object(renamed));
+    }
+    Some(Value::Array(converted))
+}
+
+/// Rebuild one row of a console CloudTrail CSV as a CloudTrail record.
+///
+/// The console CSV carries only a summary of each event (no `userIdentity.arn`, `errorMessage`,
+/// `requestParameters`, `responseElements`, ...), so rules on those fields cannot match.
+///
+/// An empty cell becomes an absent field, never `""`: the console writes an empty `Error code` for
+/// every successful call, and most CloudTrail rules test `errorCode|exists`, which an empty string
+/// would satisfy -- every row would then match them.
+fn aws_console_csv_row_to_event(
+    headers: &csv::StringRecord,
+    record: &csv::StringRecord,
+    line: u64,
+    warnings: &mut Vec<CsvWarning>,
+) -> Option<Value> {
+    let mut map = serde_json::Map::new();
+    let mut warn = |kind| warnings.push(CsvWarning { line, kind });
+    let mut newline_seen = false;
+    for (header, value) in headers.iter().zip(record.iter()) {
+        if value.is_empty() {
+            continue;
+        }
+        if !newline_seen && value.contains('\n') {
+            newline_seen = true;
+            warn(CsvWarningKind::EmbeddedNewline);
+        }
+        match header {
+            "Resources" => match convert_console_resources(value) {
+                // CloudTrail omits `resources` when an event has none.
+                Some(Value::Array(items)) if items.is_empty() => {}
+                Some(resources) => {
+                    map.insert("resources".to_string(), resources);
+                }
+                None => warn(CsvWarningKind::InvalidResources),
+            },
+            "Read-only" => match value {
+                "true" => {
+                    map.insert("readOnly".to_string(), Value::Bool(true));
+                }
+                "false" => {
+                    map.insert("readOnly".to_string(), Value::Bool(false));
+                }
+                other => warn(CsvWarningKind::InvalidReadOnly(other.to_string())),
+            },
+            _ => match AWS_CONSOLE_CSV_COLUMNS.iter().find(|(c, _)| *c == header) {
+                Some((_, path)) => insert_path(&mut map, path, Value::String(value.to_string())),
+                // A column this version does not know: keep it under its own name rather than
+                // silently dropping data.
+                None => {
+                    map.insert(header.to_string(), Value::String(value.to_string()));
+                }
+            },
+        }
+    }
+    if !map.contains_key("eventTime") {
+        warn(CsvWarningKind::MissingEventTime);
+        return None;
+    }
+    // The console shows the root user as `root`; in CloudTrail that is `userIdentity.type: Root`
+    // (which carries no `userName`). Restore the type so rules on root activity still match.
+    if let Some(Value::Object(identity)) = map.get_mut("userIdentity")
+        && identity.get("userName").and_then(Value::as_str) == Some("root")
+    {
+        identity.insert("type".to_string(), Value::String("Root".to_string()));
+    }
+    Some(Value::Object(map))
+}
+
+/// Record a CSV file's row warnings in the error log: the first `MAX_DETAILED_CSV_WARNINGS` in
+/// full, then one line with the total.
+fn log_csv_warnings(path: &str, warnings: &[CsvWarning]) {
+    for w in warnings.iter().take(MAX_DETAILED_CSV_WARNINGS) {
+        log_warn(&format!("{path}:{}: {}", w.line, w.kind));
+    }
+    if !warnings.is_empty() {
+        let more = warnings.len().saturating_sub(MAX_DETAILED_CSV_WARNINGS);
+        let suffix = if more > 0 {
+            format!(" ({more} not shown individually)")
+        } else {
+            String::new()
+        };
+        log_warn(&format!(
+            "{path}: {} CSV row problem(s){suffix}",
+            warnings.len()
+        ));
+    }
+}
+
+/// Parse a CSV file's contents, recording its row warnings under `path`.
+fn load_csv_events(
+    contents: &str,
+    log: &LogSource,
+    path: &str,
+) -> Result<Vec<Value>, CsvParseError> {
+    let outcome = parse_csv_events(contents, log)?;
+    log_csv_warnings(path, &outcome.warnings);
+    Ok(outcome.events)
 }
 
 fn log_contents_to_events(log_contents: &str, log: &LogSource) -> Vec<Value> {
@@ -1047,10 +1395,13 @@ fn load_parquet_events_capped(
     Ok(events)
 }
 
-/// Load AWS events from one file of any supported format (json/jsonl/gz/parquet).
+/// Load AWS events from one file of any supported format (json/jsonl/gz/parquet/csv).
 pub fn load_aws_events_from_file(f: &PathBuf) -> Result<Vec<Value>, Box<dyn Error>> {
-    if f.display().to_string().ends_with(".parquet") {
+    let path = f.display().to_string();
+    if path.ends_with(".parquet") {
         load_parquet_events(f)
+    } else if path.ends_with(".csv") {
+        Ok(load_csv_events(&get_content(f), &LogSource::Aws, &path)?)
     } else {
         load_json_from_file(&get_content(f), &LogSource::Aws)
     }
@@ -1826,7 +2177,7 @@ mod tests {
     fn test_parse_csv_events_unified_audit_log() {
         let csv = "\"RecordType\",\"Operations\",\"AuditData\"\r\n\
             \"AzureActiveDirectory\",\"UserLoggedIn\",\"{\"\"Operation\"\":\"\"UserLoggedIn\"\",\"\"Workload\"\":\"\"AzureActiveDirectory\"\"}\"\r\n";
-        let rows = parse_csv_events(csv);
+        let rows = parse_csv_events(csv, &LogSource::Azure).unwrap().events;
         assert_eq!(rows.len(), 1);
         // Row carries AuditData as a string; normalization unwraps it to the record.
         let ev = normalize_azure_event(rows.into_iter().next().unwrap());
@@ -1834,6 +2185,309 @@ mod tests {
             ev.get("Operation").unwrap().as_str().unwrap(),
             "UserLoggedIn"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // AWS Management Console CloudTrail CSV
+    // -----------------------------------------------------------------------
+
+    const CONSOLE_CSV_FIXTURE: &str = "test_files/csv/aws_console_event_history.csv";
+    const CONSOLE_CSV_HEADER: &str = "User name,AWS access key,Event time,Event source,Event name,AWS region,Source IP address,User agent,Error code,Resources,Request ID,Event ID,Read-only,Event type,Recipient Account Id,Event category";
+
+    fn console_csv(rows: &[&str]) -> String {
+        let mut s = CONSOLE_CSV_HEADER.to_string();
+        for r in rows {
+            s.push('\n');
+            s.push_str(r);
+        }
+        s.push('\n');
+        s
+    }
+
+    fn parse_aws(contents: &str) -> CsvParseOutcome {
+        parse_csv_events(contents, &LogSource::Aws).unwrap()
+    }
+
+    #[test]
+    fn console_csv_rows_become_cloudtrail_records() {
+        let events = load_aws_events_from_file(&PathBuf::from(CONSOLE_CSV_FIXTURE)).unwrap();
+        assert_eq!(events.len(), 5);
+        assert_eq!(
+            events[0],
+            json!({
+                "userIdentity": {"userName": "example-session", "accessKeyId": "ASIAIOSFODNN7EXAMPLE"},
+                "eventTime": "2024-01-01T00:00:00Z",
+                "eventSource": "s3.amazonaws.com",
+                "eventName": "GetBucketAcl",
+                "awsRegion": "us-east-1",
+                "sourceIPAddress": "192.0.2.10",
+                "userAgent": "aws-cli/2.15.0",
+                "resources": [{"type": "AWS::S3::Bucket", "ARN": "example-bucket"}],
+                "requestID": "11111111-1111-4111-8111-111111111111",
+                "eventID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                "readOnly": true,
+                "eventType": "AwsApiCall",
+                "recipientAccountId": "123456789012",
+                "eventCategory": "Management",
+            })
+        );
+        assert_eq!(events[1]["errorCode"], "AccessDenied");
+        // `[]` means no resources, which CloudTrail expresses by omitting the field.
+        assert!(events[1].get("resources").is_none());
+        assert_eq!(events[3]["readOnly"], false);
+        // An AWS service event carries no identity at all.
+        assert!(events[4].get("userIdentity").is_none());
+        assert_eq!(events[4]["eventType"], "AwsServiceEvent");
+    }
+
+    #[test]
+    fn console_csv_empty_error_code_is_absent_so_exists_rules_do_not_match() {
+        // Most CloudTrail rules test `errorCode|exists`. The console writes an empty `Error code`
+        // for every successful call; turning that into `""` would make those rules match every
+        // row. Evaluated through Sigma, not just by inspecting the JSON.
+        let rule = sigma_rust::rule_from_yaml(
+            r#"
+title: t
+logsource: {product: aws, service: cloudtrail}
+detection:
+    selection:
+        eventName: GetBucketAcl
+    error_code:
+        errorCode|exists: true
+    condition: selection and error_code
+"#,
+        )
+        .unwrap();
+        let events = load_aws_events_from_file(&PathBuf::from(CONSOLE_CSV_FIXTURE)).unwrap();
+        assert!(events[0].get("errorCode").is_none());
+        let matched: Vec<bool> = events[..2]
+            .iter()
+            .map(|e| rule.is_match(&event_from_json(&e.to_string()).unwrap()))
+            .collect();
+        assert_eq!(matched, [false, true]);
+    }
+
+    #[test]
+    fn console_csv_root_user_gets_root_identity_type() {
+        let events = load_aws_events_from_file(&PathBuf::from(CONSOLE_CSV_FIXTURE)).unwrap();
+        assert_eq!(events[2]["userIdentity"]["userName"], "root");
+        assert_eq!(events[2]["userIdentity"]["type"], "Root");
+        // Nobody else is given a type: the CSV does not say what it is.
+        assert!(events[0]["userIdentity"].get("type").is_none());
+    }
+
+    #[test]
+    fn console_csv_with_bom_and_reordered_and_unknown_columns() {
+        let csv = "\u{FEFF}Event name,Event source,Event time,Event ID,Some new column\n\
+                   ListUsers,iam.amazonaws.com,2024-01-01T00:00:00Z,id-1,extra\n";
+        let out = parse_aws(csv);
+        assert!(out.warnings.is_empty());
+        assert_eq!(
+            out.events,
+            [json!({
+                "eventName": "ListUsers",
+                "eventSource": "iam.amazonaws.com",
+                "eventTime": "2024-01-01T00:00:00Z",
+                "eventID": "id-1",
+                // An unknown column is kept under its own name rather than dropped.
+                "Some new column": "extra",
+            })]
+        );
+    }
+
+    #[test]
+    fn console_csv_header_only_is_an_empty_success() {
+        let out = parse_aws(&console_csv(&[]));
+        assert!(out.events.is_empty());
+        assert!(out.warnings.is_empty());
+    }
+
+    #[test]
+    fn aws_rejects_a_csv_that_is_not_a_console_download() {
+        let ual = "\"RecordType\",\"Operations\",\"AuditData\"\r\n\"x\",\"y\",\"{}\"\r\n";
+        assert!(matches!(
+            parse_csv_events(ual, &LogSource::Aws),
+            Err(CsvParseError::UnsupportedAwsFormat)
+        ));
+        assert!(matches!(
+            parse_csv_events("", &LogSource::Aws),
+            Err(CsvParseError::UnsupportedAwsFormat)
+        ));
+    }
+
+    #[test]
+    fn non_aws_log_sources_keep_console_csv_rows_flat() {
+        // Only the AWS commands convert. `LogSource::All` is not used to scan logs, and keeps
+        // the flat map like Azure.
+        let csv = console_csv(&[
+            "u,,2024-01-01T00:00:00Z,s3.amazonaws.com,GetBucketAcl,us-east-1,192.0.2.1,ua,,[],r,e,true,AwsApiCall,123456789012,Management",
+        ]);
+        for log in [LogSource::Azure, LogSource::All] {
+            let out = parse_csv_events(&csv, &log).unwrap();
+            assert_eq!(out.events[0]["Event name"], "GetBucketAcl");
+            assert!(out.events[0].get("eventName").is_none());
+        }
+    }
+
+    #[test]
+    fn console_csv_row_with_wrong_field_count_is_skipped_and_reported() {
+        // An unterminated quote in a middle column swallows the following rows into one field,
+        // leaving a short row. The `csv` crate reports nothing; the field count gives it away.
+        let csv = console_csv(&[
+            "u,,2024-01-01T00:00:00Z,s3.amazonaws.com,A,us-east-1,192.0.2.1,\"ua,,[],r,e1,true,AwsApiCall,123456789012,Management",
+            "u,,2024-01-01T00:00:01Z,s3.amazonaws.com,B,us-east-1,192.0.2.1,ua,,[],r,e2,true,AwsApiCall,123456789012,Management",
+        ]);
+        let out = parse_aws(&csv);
+        assert!(out.events.is_empty());
+        assert_eq!(
+            out.warnings,
+            [CsvWarning {
+                line: 2,
+                kind: CsvWarningKind::FieldCountMismatch {
+                    expected: 16,
+                    found: 8
+                }
+            }]
+        );
+    }
+
+    #[test]
+    fn console_csv_unterminated_quote_in_last_column_is_reported() {
+        // In the last column the swallowed rows leave the field count intact, so the line break
+        // inside the field is what gives it away. The row itself is kept.
+        let csv = console_csv(&[
+            "u,,2024-01-01T00:00:00Z,s3.amazonaws.com,A,us-east-1,192.0.2.1,ua,,[],r,e1,true,AwsApiCall,123456789012,\"Management",
+            "u,,2024-01-01T00:00:01Z,s3.amazonaws.com,B,us-east-1,192.0.2.1,ua,,[],r,e2,true,AwsApiCall,123456789012,Management",
+        ]);
+        let out = parse_aws(&csv);
+        assert_eq!(out.events.len(), 1);
+        assert_eq!(
+            out.warnings,
+            [CsvWarning {
+                line: 2,
+                kind: CsvWarningKind::EmbeddedNewline
+            }]
+        );
+    }
+
+    #[test]
+    fn console_csv_invalid_values_drop_the_field_or_the_row() {
+        let csv = console_csv(&[
+            // Read-only is neither true nor false: field dropped, row kept.
+            "u,,2024-01-01T00:00:00Z,s3.amazonaws.com,A,us-east-1,192.0.2.1,ua,,[],r,e1,yes,AwsApiCall,123456789012,Management",
+            // Resources is not JSON: field dropped, row kept.
+            "u,,2024-01-01T00:00:01Z,s3.amazonaws.com,B,us-east-1,192.0.2.1,ua,,not-json,r,e2,true,AwsApiCall,123456789012,Management",
+            // Resources is JSON but not an array of objects: same.
+            "u,,2024-01-01T00:00:02Z,s3.amazonaws.com,C,us-east-1,192.0.2.1,ua,,\"[\"\"x\"\"]\",r,e3,true,AwsApiCall,123456789012,Management",
+            // No Event time: row skipped.
+            "u,,,s3.amazonaws.com,D,us-east-1,192.0.2.1,ua,,[],r,e4,true,AwsApiCall,123456789012,Management",
+        ]);
+        let out = parse_aws(&csv);
+        let names: Vec<&str> = out
+            .events
+            .iter()
+            .map(|e| e["eventName"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["A", "B", "C"]);
+        assert!(out.events[0].get("readOnly").is_none());
+        assert!(out.events[1].get("resources").is_none());
+        assert!(out.events[2].get("resources").is_none());
+        assert_eq!(
+            out.warnings,
+            [
+                CsvWarning {
+                    line: 2,
+                    kind: CsvWarningKind::InvalidReadOnly("yes".to_string())
+                },
+                CsvWarning {
+                    line: 3,
+                    kind: CsvWarningKind::InvalidResources
+                },
+                CsvWarning {
+                    line: 4,
+                    kind: CsvWarningKind::InvalidResources
+                },
+                CsvWarning {
+                    line: 5,
+                    kind: CsvWarningKind::MissingEventTime
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn console_csv_line_numbers_are_right_for_crlf_and_quoted_line_breaks() {
+        // `csv::Position::line()` is off by one for CRLF input, which is what the console
+        // downloads, so the line is derived from the byte offset.
+        let bad = "u,,,s3.amazonaws.com,X,us-east-1,192.0.2.1,ua,,[],r,e,true,AwsApiCall,123456789012,Management";
+        let ok = "u,,2024-01-01T00:00:00Z,s3.amazonaws.com,A,us-east-1,192.0.2.1,ua,,[],r,e,true,AwsApiCall,123456789012,Management";
+        let crlf = console_csv(&[ok, bad]).replace('\n', "\r\n");
+        assert_eq!(parse_aws(&crlf).warnings[0].line, 3);
+        // A quoted line break makes a row span two lines; the next row starts two lines later.
+        let multiline = console_csv(&[&ok.replace(",ua,", ",\"u\na\","), bad]);
+        assert_eq!(parse_aws(&multiline).warnings.last().unwrap().line, 4);
+    }
+
+    #[test]
+    fn console_csv_warnings_beyond_the_detail_cap_are_still_counted() {
+        let bad = "u,,,s3.amazonaws.com,X,us-east-1,192.0.2.1,ua,,[],r,e,true,AwsApiCall,123456789012,Management";
+        let rows = vec![bad; MAX_DETAILED_CSV_WARNINGS + 5];
+        let out = parse_aws(&console_csv(&rows));
+        assert_eq!(out.warnings.len(), MAX_DETAILED_CSV_WARNINGS + 5);
+        assert!(out.events.is_empty());
+    }
+
+    #[test]
+    fn unrecognized_csv_is_not_counted_as_scanned() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("ual.csv"), "RecordType,AuditData\nx,{}\n").unwrap();
+        fs::copy(CONSOLE_CSV_FIXTURE, dir.path().join("console.csv")).unwrap();
+        let mut processed = 0usize;
+        let scanned = process_events_from_dir(
+            |events: &[Value]| processed += events.len(),
+            &dir.path().to_path_buf(),
+            false,
+            true,
+            &LogSource::Aws,
+            &FileDateOption::default(),
+        )
+        .unwrap();
+        assert_eq!(scanned, 1, "only the console CSV is a scanned file");
+        assert_eq!(processed, 5);
+        // The single-file path reports the same file as a failure instead of an empty success.
+        assert!(load_aws_events_from_file(&dir.path().join("ual.csv")).is_err());
+    }
+
+    #[test]
+    fn scan_file_fails_on_unrecognized_csv_and_succeeds_on_console_csv() {
+        // `aws-ct-timeline -f` counts the file as scanned only when `scan_file` succeeds.
+        use crate::core::timeline_writer::{OutputConfig, Writers};
+        use crate::core::util::load_profile;
+
+        let dir = tempfile::tempdir().unwrap();
+        let ual = dir.path().join("ual.csv");
+        fs::write(&ual, "RecordType,AuditData\nx,{}\n").unwrap();
+        let mut geo = None;
+        let profile = load_profile(&LogSource::Aws, &geo, true);
+        let config = OutputConfig::new(true, false, false, false);
+        let mut context = OutputContext::new(&profile, &mut geo, &config, Writers::new(), &[]);
+        let mut summary = DetectionSummary::default();
+        let options = TimelineOptions::default();
+        let engine = CorrelationEngine::new();
+        let mut matched_correlation = Vec::new();
+        for (path, ok) in [(ual, false), (PathBuf::from(CONSOLE_CSV_FIXTURE), true)] {
+            let result = scan_file(
+                &path,
+                &mut context,
+                &mut summary,
+                &options,
+                &vec![],
+                &mut matched_correlation,
+                &engine,
+                &LogSource::Aws,
+            );
+            assert_eq!(result.is_ok(), ok, "{}", path.display());
+        }
     }
 
     #[test]
