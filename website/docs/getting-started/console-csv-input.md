@@ -39,7 +39,7 @@ Only the English column names are recognised. A CSV that is not a console CloudT
 ## Limitations
 
 1. **Download every region you need, including `us-east-1`.** The console downloads one region at a time. Console sign-ins and IAM events are recorded in `us-east-1`.
-2. **Some rules cannot match.** The CSV has no `userIdentity.arn`/`type`/`accountId`/`principalId`, `errorMessage`, `requestParameters`, `responseElements` or `additionalEventData`. Rules on those fields — about 24 of the 794 CloudTrail rules, including the console-login rules such as failed logins and logins without MFA — do not match.
+2. **Some rules cannot match.** The CSV has no `userIdentity.arn`/`type`/`accountId`/`principalId`, `errorMessage`, `requestParameters`, `responseElements` or `additionalEventData`. Rules on those fields — about 22 of the 796 CloudTrail rules, including the console-login rules such as failed logins and logins without MFA — do not match.
 3. **Some timeline columns are empty.** `UserARN`, `UserAccountID`, `UserPrincipalID` and `ErrorMessage` are always empty, and `UserType` is empty except for root.
 4. **`aws-ct-summary` groups by user name.** Without an ARN, events are grouped by `User name` in the `UserARN` column, and the command prints a note with the number of such events. For a role this is the session name, so different roles used with the same session name are counted as one principal. Rows with no user name (such as calls AWS services make on a user's behalf) are left out, so the counts can differ from a JSON export of the same period.
 5. **Google Workspace does not read CSV.** The `-d`/`-f` help lists `csv` because the input options are shared by the AWS, Azure and Google Workspace commands; `gws-timeline` does not accept CSV input.

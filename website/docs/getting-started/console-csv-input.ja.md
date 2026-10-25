@@ -39,7 +39,7 @@ CSVはS3にログを配信する証跡が無い場合の手段としては便利
 ## 制限事項
 
 1. **必要なリージョンをすべてダウンロードする（`us-east-1`を含む）。** コンソールのダウンロードはリージョンごとです。コンソールへのサインインやIAMのイベントは`us-east-1`に記録されます。
-2. **マッチしないルールがある。** CSVには`userIdentity.arn`/`type`/`accountId`/`principalId`、`errorMessage`、`requestParameters`、`responseElements`、`additionalEventData`がありません。これらを参照するルール（CloudTrailルール794本のうち約24本。ログイン失敗やMFAなしのログインなど、コンソールログイン系のルールを含む）はマッチしません。
+2. **マッチしないルールがある。** CSVには`userIdentity.arn`/`type`/`accountId`/`principalId`、`errorMessage`、`requestParameters`、`responseElements`、`additionalEventData`がありません。これらを参照するルール（CloudTrailルール796本のうち約22本。ログイン失敗やMFAなしのログインなど、コンソールログイン系のルールを含む）はマッチしません。
 3. **タイムラインの一部の列が空になる。** `UserARN`・`UserAccountID`・`UserPrincipalID`・`ErrorMessage`は常に空になり、`UserType`もroot以外は空になります。
 4. **`aws-ct-summary`はユーザー名で集計する。** ARNが無いため、`UserARN`列に`User name`を入れて集計し、その件数を注意として表示します。ロールの場合はセッション名なので、同じセッション名を使う別のロールは1つのプリンシパルとして数えられます。ユーザー名が無い行（AWSのサービスがユーザーに代わって行う呼び出しなど）は除外されるため、同じ期間のJSONとは件数が異なることがあります。
 5. **Google WorkspaceはCSVに対応していない。** 入力オプションはAWS・Azure・Google Workspaceのコマンドで共通のため、`-d`/`-f`のヘルプには`csv`が載っていますが、`gws-timeline`はCSV入力に対応していません。
