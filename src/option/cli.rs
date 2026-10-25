@@ -180,8 +180,8 @@ pub struct MetricsOptions {
     #[clap(flatten)]
     pub input_opt: InputOption,
 
-    /// Include temporary AWS STS access key IDs
-    #[arg(help_heading = Some("Filtering"), short = 's', long = "include-sts-keys", display_order = 204)]
+    /// Count temporary AWS STS access key IDs (ASIA...) as values of accessKeyId fields
+    #[arg(help_heading = Some("Output"), short = 's', long = "include-sts-keys", display_order = 304)]
     pub include_sts: bool,
 
     /// The field(s) to generate metrics for. Comma-separate or repeat to aggregate several
@@ -203,7 +203,7 @@ pub struct MetricsOptions {
 
     /// Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate
     /// or repeat to write several at once, e.g. -t csv,duckdb
-    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_enum, value_delimiter = ',', default_value = "csv", value_name = "FORMAT,...", display_order = 304)]
+    #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_enum, value_delimiter = ',', default_value = "csv", value_name = "FORMAT,...", display_order = 305)]
     pub output_types: Vec<OutputFormat>,
 }
 
@@ -298,8 +298,8 @@ pub enum Commands {
         #[clap(flatten)]
         input_opt: InputOption,
 
-        /// Include temporary AWS STS access key IDs
-        #[arg(help_heading = Some("Filtering"), short = 's', long = "include-sts-keys")]
+        /// List temporary AWS STS access key IDs (ASIA...) in UserAccessKeyIDs (events are always counted)
+        #[arg(help_heading = Some("Output"), short = 's', long = "include-sts-keys", display_order = 304)]
         include_sts: bool,
 
         /// Overwrite files when saving
@@ -312,7 +312,7 @@ pub enum Commands {
 
         /// Output format(s): csv (default), json, jsonl, duckdb. Comma-separate or repeat
         /// to write several at once, e.g. -t csv,duckdb
-        #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_enum, value_delimiter = ',', default_value = "csv", value_name = "FORMAT,...", display_order = 304)]
+        #[arg(help_heading = Some("Output"), short = 't', long = "output-type", value_enum, value_delimiter = ',', default_value = "csv", value_name = "FORMAT,...", display_order = 305)]
         output_types: Vec<OutputFormat>,
 
         /// Hide description of the commonly abused API calls

@@ -17,7 +17,7 @@
 
 > 注意: フィールド名は**大文字・小文字を区別**し、スキャン開始前に検証されます。`-F sourceIPaddress`(小文字の`a`)はデータセット全体をスキャンして無意味な`-` 100%を出力する代わりに、`Did you mean 'sourceIPAddress'?`というエラーで拒否されます。APIごとに内容が異なるコンテナ配下は任意のパスをそのまま指定できます(例: `requestParameters.bucketName`、`additionalEventData.MFAUsed`)。
 
-> 注意: AWS STSの一時アクセスキーID(`ASIA...`)は、セッションごとに新しいキーが発行され結果が膨らむため、デフォルトでは除外されます。含める場合は`-s`を指定してください。
+> 注意: AWS STSの一時アクセスキーID(`ASIA...`)は、セッションごとに新しいキーが発行され結果が膨らむため、デフォルトでは`accessKeyId`系フィールドの値として集計しません。イベント自体は他のフィールドで集計されます。キーも集計する場合は`-s`を指定してください。
 
 ## コマンド使用例
 ```
@@ -28,7 +28,6 @@ Input:
   -f, --file <FILE>      gz/jsonファイルのパス
 
 Filtering:
-  -s, --include-sts-keys       AWS STSの一時アクセスキーIDを含める
       --timeline-start <DATE>  読み込むイベントの開始時刻 (例: "2022-02-22T23:59:59Z)
       --timeline-end <DATE>    読み込むイベントの終了時刻 (例: "2020-02-22T00:00:00Z")
       --time-offset <OFFSET>   オフセットに基づいて直近のイベントをスキャン (例: 1y, 3M, 30d, 24h, 30m)
@@ -40,6 +39,7 @@ Output:
   -C, --clobber                      保存時にファイルを上書きする
   -G, --geo-ip <MAXMIND-DB-DIR>      IPアドレスにGeoIP情報(ASN、市、国)を追加する [エイリアス: --GeoIP]
   -o, --output <FILE>                結果をファイルに保存する
+  -s, --include-sts-keys             AWS STSの一時アクセスキーID(ASIA...)をaccessKeyId系フィールドの値として集計する
   -t, --output-type <FORMAT,...>     出力形式(-o指定時のみ有効): csv (デフォルト), json, jsonl, duckdb。カンマ区切りまたは複数回指定で同時に出力する (例: -t csv,duckdb) [デフォルト: csv]
 
 General Options:

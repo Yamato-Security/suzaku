@@ -115,7 +115,7 @@ Total access key ids: 629
 ...
 ```
 
-> Note that since there will be a large amount of temporary AWS STS access key IDs, these are filtered out by default. Add the `-s, --include-sts-keys` option if you want to include these.
+> Note that since there will be a large amount of temporary AWS STS access key IDs (`ASIA...`, a new one per session), they are not listed here by default. The events made with them are still counted in every other column. Add the `-s, --include-sts-keys` option if you want to list them.
 
 ### `UserAgents` example:
 ```
@@ -147,7 +147,6 @@ Input:
   -f, --file <FILE>      File path to one gz/json file
 
 Filtering:
-  -s, --include-sts-keys       Include temporary AWS STS access key IDs
       --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
       --timeline-end <DATE>    End time of the events to load (ex: "2020-02-22T00:00:00Z")
       --time-offset <OFFSET>   Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
@@ -159,6 +158,7 @@ Output:
   -D, --hide-descriptions         Hide description of the commonly abused API calls
   -G, --geo-ip <MAXMIND-DB-DIR>   Add GeoIP (ASN, city, country) info to IP addresses [alias: --GeoIP]
   -o, --output <FILE>             Save the results to a file
+  -s, --include-sts-keys          List temporary AWS STS access key IDs (ASIA...) in UserAccessKeyIDs (events are always counted)
   -t, --output-type <FORMAT,...>  Output format(s): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [default: csv] [possible values: csv, json, jsonl, duckdb]
 
 General Options:

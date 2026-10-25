@@ -94,7 +94,7 @@ impl CTSummary {
         aws_region: String,
         source_ip: String,
         user_type: String,
-        access_key_id: String,
+        access_key_id: Option<String>,
         user_agent: String,
         abused_api_success: String,
         abused_api_failed: String,
@@ -113,7 +113,9 @@ impl CTSummary {
         upsert_count_entry(&mut self.aws_regions, aws_region, &event_time);
         upsert_count_entry(&mut self.src_ips, source_ip, &event_time);
         self.user_types.insert(user_type);
-        upsert_count_entry(&mut self.access_key_ids, access_key_id, &event_time);
+        if let Some(access_key_id) = access_key_id {
+            upsert_count_entry(&mut self.access_key_ids, access_key_id, &event_time);
+        }
         upsert_count_entry(&mut self.user_agents, user_agent, &event_time);
 
         if !abused_api_success.is_empty() {
@@ -220,6 +222,31 @@ fn build_json_records(
 // パブリックエントリポイント
 // ---------------------------------------------------------------------------
 
+/// Prefix of AWS STS temporary access key IDs (as opposed to `AKIA` long-term keys).
+const STS_KEY_PREFIX: &str = "ASIA";
+
+/// The access key ID to record for `event` in the per-principal access key list, or `None` to
+/// leave the list untouched.
+///
+/// Temporary STS keys are noise in that list (a new key per session), so they are left out unless
+/// `-s` is given -- but only the key is left out, the event itself is still summarized. `-s` used
+/// to be an event filter, which hid nearly everything done through AssumeRole, SSO, console
+/// sessions and instance/Lambda roles: most activity in a modern account, and where
+/// compromised-role activity shows up. Same rule and same flag as `aws-ct-metrics`.
+fn summary_access_key_id(event: &Event, include_sts: bool) -> Option<String> {
+    match event.get("userIdentity.accessKeyId") {
+        Some(access_key_id) => {
+            let key = access_key_id.value_to_string();
+            if !include_sts && key.starts_with(STS_KEY_PREFIX) {
+                None
+            } else {
+                Some(key)
+            }
+        }
+        None => Some("-".to_string()),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn aws_summary(
     input_opt: &InputOption,
@@ -293,16 +320,7 @@ pub fn aws_summary(
             Some(user_type) => user_type.value_to_string(),
             None => "-".to_string(),
         };
-        let user_identity_access_key_id = match event.get("userIdentity.accessKeyId") {
-            Some(access_key_id) => {
-                let key = access_key_id.value_to_string();
-                if !*include_sts && key.starts_with("ASIA") {
-                    return;
-                }
-                key
-            }
-            None => "-".to_string(),
-        };
+        let user_identity_access_key_id = summary_access_key_id(&event, *include_sts);
         let user_agent = match event.get("userAgent") {
             Some(agent) => agent.value_to_string(),
             None => "-".to_string(),
@@ -869,7 +887,7 @@ mod tests {
             "us-east-1".to_string(),
             "1.2.3.4".to_string(),
             "IAMUser".to_string(),
-            "AKIAIOSFODNN7EXAMPLE".to_string(),
+            Some("AKIAIOSFODNN7EXAMPLE".to_string()),
             "aws-cli/2.0".to_string(),
             "ListBuckets (s3.amazonaws.com) - List all S3 buckets".to_string(),
             "".to_string(),
@@ -881,7 +899,7 @@ mod tests {
             "us-west-2".to_string(),
             "5.6.7.8".to_string(),
             "IAMUser".to_string(),
-            "AKIAIOSFODNN7EXAMPLE".to_string(),
+            Some("AKIAIOSFODNN7EXAMPLE".to_string()),
             "aws-sdk/1.0".to_string(),
             "".to_string(),
             "".to_string(),
@@ -936,6 +954,89 @@ mod tests {
                 .other_api_success
                 .contains_key("GetObject (s3.amazonaws.com)")
         );
+    }
+
+    #[test]
+    fn test_ct_summary_event_without_access_key_is_still_counted() {
+        // `None` leaves the access key list untouched but the event is summarized as usual.
+        let mut summary = make_test_summary();
+        summary.add_event(
+            "2024-01-03T00:00:00Z".to_string(),
+            "eu-west-1".to_string(),
+            "9.9.9.9".to_string(),
+            "AssumedRole".to_string(),
+            None,
+            "console.amazonaws.com".to_string(),
+            "".to_string(),
+            "".to_string(),
+            "DescribeInstances (ec2.amazonaws.com)".to_string(),
+            "".to_string(),
+        );
+        assert_eq!(summary.num_of_events, 3);
+        assert_eq!(summary.last_timestamp, "2024-01-03T00:00:00Z");
+        assert!(summary.aws_regions.contains_key("eu-west-1"));
+        assert!(summary.src_ips.contains_key("9.9.9.9"));
+        assert!(summary.user_types.contains("AssumedRole"));
+        assert!(
+            summary
+                .other_api_success
+                .contains_key("DescribeInstances (ec2.amazonaws.com)")
+        );
+        assert_eq!(summary.access_key_ids.len(), 1);
+        assert_eq!(summary.access_key_ids["AKIAIOSFODNN7EXAMPLE"].0, 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // summary_access_key_id のテスト
+    // -----------------------------------------------------------------------
+
+    fn event_with_key(key: Option<&str>) -> Event {
+        let json = match key {
+            Some(k) => format!(
+                r#"{{"eventName":"GetCallerIdentity","userIdentity":{{"arn":"arn:aws:sts::123456789012:assumed-role/r/s","accessKeyId":"{k}"}}}}"#
+            ),
+            None => r#"{"eventName":"ConsoleLogin","userIdentity":{"arn":"arn:aws:iam::123456789012:user/u"}}"#.to_string(),
+        };
+        event_from_json(&json).unwrap()
+    }
+
+    #[test]
+    fn test_summary_access_key_id_omits_sts_key_by_default() {
+        // The STS key is left out of the list, but `None` here does not drop the event: the
+        // caller still passes it to `add_event` (previously the whole event was discarded).
+        let event = event_with_key(Some("ASIAIOSFODNN7EXAMPLE"));
+        assert_eq!(summary_access_key_id(&event, false), None);
+    }
+
+    #[test]
+    fn test_summary_access_key_id_includes_sts_key_with_flag() {
+        let event = event_with_key(Some("ASIAIOSFODNN7EXAMPLE"));
+        assert_eq!(
+            summary_access_key_id(&event, true),
+            Some("ASIAIOSFODNN7EXAMPLE".to_string())
+        );
+    }
+
+    #[test]
+    fn test_summary_access_key_id_keeps_long_term_key() {
+        let event = event_with_key(Some("AKIAIOSFODNN7EXAMPLE"));
+        for include_sts in [false, true] {
+            assert_eq!(
+                summary_access_key_id(&event, include_sts),
+                Some("AKIAIOSFODNN7EXAMPLE".to_string())
+            );
+        }
+    }
+
+    #[test]
+    fn test_summary_access_key_id_records_missing_key_as_dash() {
+        let event = event_with_key(None);
+        for include_sts in [false, true] {
+            assert_eq!(
+                summary_access_key_id(&event, include_sts),
+                Some("-".to_string())
+            );
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1592,7 +1693,7 @@ mod tests {
             "us-east-1".to_string(),
             "1.2.3.4".to_string(),
             "AssumedRole".to_string(),
-            "AKIAIOSFODNN7EXAMPLE".to_string(),
+            Some("AKIAIOSFODNN7EXAMPLE".to_string()),
             "aws-cli/2.0".to_string(),
             "".to_string(),
             "".to_string(),
