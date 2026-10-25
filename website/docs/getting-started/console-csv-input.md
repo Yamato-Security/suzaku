@@ -32,7 +32,7 @@ Each row is rebuilt as a CloudTrail record, so rules and the summary/metrics com
 | `Recipient Account Id` | `recipientAccountId` | |
 | `Event category` | `eventCategory` | |
 
-An empty cell becomes an absent field, so a rule testing `errorCode|exists` does not match a successful call. A column not in this table is kept under its own name.
+An empty cell becomes an absent field, so the rules testing `errorCode|exists` tell failed calls from successful ones. With an empty string instead, the rules looking for failed calls would match every call and those looking for successful calls (`not` the error) would match none. A column not in this table is kept under its own name.
 
 Only the English column names are recognised. A CSV that is not a console CloudTrail download is not read: `-f` prints the reason, and `-d` skips the file, does not count it as scanned, and writes the reason to the error log. Rows with a wrong number of fields (usually broken quoting) are skipped, and every row problem is written to the error log with its line number.
 

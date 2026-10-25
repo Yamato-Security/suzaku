@@ -872,7 +872,8 @@ fn convert_console_resources(raw: &str) -> Option<Value> {
 ///
 /// An empty cell becomes an absent field, never `""`: the console writes an empty `Error code` for
 /// every successful call, and most CloudTrail rules test `errorCode|exists`, which an empty string
-/// would satisfy -- every row would then match them.
+/// would satisfy -- the rules looking for failed calls would then match every row, and those
+/// looking for successful calls (`not` the error) would match none.
 fn aws_console_csv_row_to_event(
     headers: &csv::StringRecord,
     record: &csv::StringRecord,
@@ -2246,8 +2247,9 @@ mod tests {
     #[test]
     fn console_csv_empty_error_code_is_absent_so_exists_rules_do_not_match() {
         // Most CloudTrail rules test `errorCode|exists`. The console writes an empty `Error code`
-        // for every successful call; turning that into `""` would make those rules match every
-        // row. Evaluated through Sigma, not just by inspecting the JSON.
+        // for every successful call; turning that into `""` would make the rules looking for
+        // failures match every row (and those looking for successes match none). Evaluated
+        // through Sigma, not just by inspecting the JSON.
         let rule = sigma_rust::rule_from_yaml(
             r#"
 title: t
