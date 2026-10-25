@@ -115,7 +115,7 @@ Total access key ids: 629
 ...
 ```
 
->　一時的なAWS STSアクセスキーIDは大量に存在するため、デフォルトではフィルタリングしています。これらを含めたい場合は、`-s, --include-sts-keys`オプションを追加してください。
+>　一時的なAWS STSアクセスキーID(`ASIA...`、セッションごとに新しく発行される)は大量に存在するため、デフォルトではここに表示しません。これらのキーを使ったイベントは、他の列では集計されます。キーも表示したい場合は、`-s, --include-sts-keys`オプションを追加してください。
 
 ### `UserAgents`の例
 ```
@@ -150,11 +150,11 @@ Filtering:
       --timeline-start <DATE>  読み込むイベントの開始時刻 (例: "2022-02-22T23:59:59Z)
       --timeline-end <DATE>    読み込むイベントの終了時刻 (例: "2020-02-22T00:00:00Z")
       --time-offset <OFFSET>   オフセットに基づいて直近のイベントをスキャン (例: 1y, 3M, 30d, 24h, 30m)
-  -s, --include-sts-keys  一時的なAWS STSアクセスキーIDを結果に含める
 
 Output:
   -o, --output <FILE>           CSVファイルに結果を保存
   -D, --hide-descriptions       一般的に悪用されるAPIコールの説明を非表示にする
+  -s, --include-sts-keys        AWS STSの一時アクセスキーID(ASIA...)をUserAccessKeyIDsに表示する(イベントは常に集計する)
   -G, --GeoIP <MAXMIND-DB-DIR>  IPアドレスにGeoIP (ASN、都市、国)情報を追加する
 
 Display Settings:

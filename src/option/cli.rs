@@ -180,8 +180,8 @@ pub struct MetricsOptions {
     #[clap(flatten)]
     pub input_opt: InputOption,
 
-    /// Include temporary AWS STS access key IDs
-    #[arg(help_heading = Some("Filtering"), short = 's', long = "include-sts-keys", display_order = 204)]
+    /// Count temporary AWS STS access key IDs (ASIA...) as values of accessKeyId fields
+    #[arg(help_heading = Some("Output"), short = 's', long = "include-sts-keys", display_order = 301)]
     pub include_sts: bool,
 
     /// The field(s) to generate metrics for. Comma-separate or repeat to aggregate several
@@ -298,8 +298,8 @@ pub enum Commands {
         #[clap(flatten)]
         input_opt: InputOption,
 
-        /// Include temporary AWS STS access key IDs
-        #[arg(help_heading = Some("Filtering"), short = 's', long = "include-sts-keys")]
+        /// List temporary AWS STS access key IDs (ASIA...) in UserAccessKeyIDs (events are always counted)
+        #[arg(help_heading = Some("Output"), short = 's', long = "include-sts-keys", display_order = 301)]
         include_sts: bool,
 
         /// Overwrite files when saving
