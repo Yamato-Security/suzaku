@@ -152,10 +152,12 @@ Filtering:
       --time-offset <OFFSET>   オフセットに基づいて直近のイベントをスキャン (例: 1y, 3M, 30d, 24h, 30m)
 
 Output:
-  -o, --output <FILE>           CSVファイルに結果を保存
-  -D, --hide-descriptions       一般的に悪用されるAPIコールの説明を非表示にする
-  -s, --include-sts-keys        AWS STSの一時アクセスキーID(ASIA...)をUserAccessKeyIDsに表示する(イベントは常に集計する)
-  -G, --GeoIP <MAXMIND-DB-DIR>  IPアドレスにGeoIP (ASN、都市、国)情報を追加する
+  -C, --clobber                   保存時にファイルを上書きする
+  -D, --hide-descriptions         一般的に悪用されるAPIコールの説明を非表示にする
+  -G, --geo-ip <MAXMIND-DB-DIR>   IPアドレスにGeoIP情報(ASN、市、国)を追加する [エイリアス: --GeoIP]
+  -o, --output <FILE>             結果をファイルに保存
+  -s, --include-sts-keys          AWS STSの一時アクセスキーID(ASIA...)をUserAccessKeyIDsに表示する(イベントは常に集計する)
+  -t, --output-type <FORMAT,...>  出力形式: csv (デフォルト), json, jsonl, duckdb。カンマ区切りまたは複数回指定で同時に出力する (例: -t csv,duckdb) [デフォルト: csv]
 
 Display Settings:
   -K, --no-color               カラーで出力しない

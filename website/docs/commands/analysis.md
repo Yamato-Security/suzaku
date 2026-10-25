@@ -37,9 +37,9 @@ Filtering:
 Output:
   -F, --field-name <FIELD_NAME,...>  The field(s) to generate metrics for. Comma-separate or repeat to aggregate several in a single scan, e.g. -F sourceIPAddress,userAgent [default: eventName]
   -C, --clobber                      Overwrite files when saving
-  -s, --include-sts-keys             Count temporary AWS STS access key IDs (ASIA...) as values of accessKeyId fields
   -G, --geo-ip <MAXMIND-DB-DIR>      Add GeoIP (ASN, city, country) info to IP addresses [alias: --GeoIP]
   -o, --output <FILE>                Save the results to a file
+  -s, --include-sts-keys             Count temporary AWS STS access key IDs (ASIA...) as values of accessKeyId fields
   -t, --output-type <FORMAT,...>     Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [default: csv] [possible values: csv, json, jsonl, duckdb]
 
 General Options:

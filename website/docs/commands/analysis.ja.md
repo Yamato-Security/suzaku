@@ -37,9 +37,9 @@ Filtering:
 Output:
   -F, --field-name <FIELD_NAME,...>  メトリクスを作成するフィールド。カンマ区切りまたは複数回指定で、1回のスキャンで複数フィールドを集計する (例: -F sourceIPAddress,userAgent) [デフォルト: eventName]
   -C, --clobber                      保存時にファイルを上書きする
-  -s, --include-sts-keys             AWS STSの一時アクセスキーID(ASIA...)をaccessKeyId系フィールドの値として集計する
   -G, --geo-ip <MAXMIND-DB-DIR>      IPアドレスにGeoIP情報(ASN、市、国)を追加する [エイリアス: --GeoIP]
   -o, --output <FILE>                結果をファイルに保存する
+  -s, --include-sts-keys             AWS STSの一時アクセスキーID(ASIA...)をaccessKeyId系フィールドの値として集計する
   -t, --output-type <FORMAT,...>     出力形式(-o指定時のみ有効): csv (デフォルト), json, jsonl, duckdb。カンマ区切りまたは複数回指定で同時に出力する (例: -t csv,duckdb) [デフォルト: csv]
 
 General Options:
