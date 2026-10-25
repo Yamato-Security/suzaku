@@ -17,7 +17,7 @@ For example, a large `-` share for `userIdentity.accessKeyId` tells you how much
 
 > Note: field names are **case-sensitive** and are validated before the scan starts. `-F sourceIPaddress` (lowercase `a`) is rejected with `Did you mean 'sourceIPAddress'?` instead of scanning the whole dataset and reporting a meaningless 100% `-`. Any sub-path of an API-specific container is accepted as-is (ex: `requestParameters.bucketName`, `additionalEventData.MFAUsed`).
 
-> Note: temporary AWS STS access key IDs (`ASIA...`) are excluded by default because a new key per session inflates the results. Add `-s` to include them.
+> Note: temporary AWS STS access key IDs (`ASIA...`) are not counted as values of `accessKeyId` fields by default, because a new key per session inflates the results. The events themselves are still counted in the other fields. Add `-s` to count the keys too.
 
 ## Command usage
 ```
@@ -28,7 +28,6 @@ Input:
   -f, --file <FILE>      File path to one gz/json/parquet file
 
 Filtering:
-  -s, --include-sts-keys       Include temporary AWS STS access key IDs
       --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
       --timeline-end <DATE>    End time of the events to load (ex: "2020-02-22T00:00:00Z")
       --time-offset <OFFSET>   Scan recent events based on an offset (ex: 1y, 3M, 30d, 24h, 30m)
@@ -38,6 +37,7 @@ Filtering:
 Output:
   -F, --field-name <FIELD_NAME,...>  The field(s) to generate metrics for. Comma-separate or repeat to aggregate several in a single scan, e.g. -F sourceIPAddress,userAgent [default: eventName]
   -C, --clobber                      Overwrite files when saving
+  -s, --include-sts-keys             Count temporary AWS STS access key IDs (ASIA...) as values of accessKeyId fields
   -G, --geo-ip <MAXMIND-DB-DIR>      Add GeoIP (ASN, city, country) info to IP addresses [alias: --GeoIP]
   -o, --output <FILE>                Save the results to a file
   -t, --output-type <FORMAT,...>     Output format(s) (only used with -o): csv (default), json, jsonl, duckdb. Comma-separate or repeat to write several at once, e.g. -t csv,duckdb [default: csv] [possible values: csv, json, jsonl, duckdb]

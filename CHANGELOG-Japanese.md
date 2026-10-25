@@ -19,6 +19,8 @@
 
 - `aws-ct-timeline`のデフォルト出力プロファイル(`config/aws_profile.yaml`)の列順を、AzureとGoogle Workspaceのプロファイルに揃えた。`Timestamp, RuleTitle, Level`の後に、サービス・操作・結果・誰が・どこから(`EventSource, EventName, ErrorCode, UserName, UserType, SrcIP`)、その他の詳細と続き、`RuleAuthor, Tags, RuleID`で終わる。これまでは`RuleAuthor`が3列目にあり、ノートPCなど画面の狭い環境では`Level`・`UserName`・`SrcIP`が画面外に押し出されていた。CSV出力をヘッダー名ではなく列の位置で読み込んでいるツールは修正が必要になる。 (@fukusuket)
 
+- `aws-ct-summary`の`-s, --include-sts-keys`でイベントを絞り込まないようにした。これまでは`-s`を指定しないと、一時的なSTSアクセスキー(`ASIA...`)を使ったイベントがサマリーから丸ごと除外されていた。そのため、AssumeRole・SSO・コンソールセッション・EC2/Lambdaのロールによる操作の大半が見えず、侵害されたロールによる操作も含まれていた。今後はこれらのイベントも常に集計し、`-s`は`UserAccessKeyIDs`(JSONでは`user_access_key_ids`)に`ASIA...`のキーを表示するかどうかだけを切り替える。`aws-ct-metrics`での同じフラグの挙動と揃えた。出力の列は変わらないが、`-s`なしの場合、以前のバージョンよりプリンシパル数や件数が増える。また`aws-ct-summary`と`aws-ct-metrics`の両方で、`-s`をヘルプの`Filtering`から`Output`の項目に移し、何を切り替えるオプションかがわかるヘルプ文にした。 (@fukusuket)
+
 **バグ修正:**
 
 - `aws-ct-summary`は、`-s, --include-sts-keys`を指定しない場合、一時的なSTSアクセスキー（`ASIA...`）を使ったイベントを、アクセスキー一覧から外すだけでなくイベントごと破棄していた。そのため、AssumeRole・SSO・コンソールセッション・EC2/Lambdaのロールによる操作（一般的なアカウントでは操作の大半を占め、侵害されたロールによる活動もここに現れる）がほぼすべて失われ、該当するプリンシパルがサマリーに出ないか、件数が少なく集計されていた。これらのイベントも通常どおり集計し、`UserAccessKeyIDs`（JSONでは`user_access_key_ids`）から`ASIA...`のキーだけを除外するようにした。同じフラグに対する`aws-ct-metrics`の挙動と揃えた。該当するプリンシパルのイベント件数は増えるが、出力の列は変わらない。 (@fukusuket)
