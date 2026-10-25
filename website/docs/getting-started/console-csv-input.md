@@ -4,7 +4,7 @@ Suzaku's AWS commands (`aws-ct-timeline`, `aws-ct-metrics`, `aws-ct-summary`, `a
 
 ```bash
 ./suzaku aws-ct-timeline -f event_history.csv
-./suzaku aws-ct-summary -d ./console-downloads/
+./suzaku aws-ct-summary -d ./console-downloads/ -o summary.csv
 ```
 
 The CSV is a convenient fallback when no trail delivers logs to S3, but it is a **summary** of each event, not the CloudTrail record. Prefer the JSON logs from a trail (or the JSON download from Event history) whenever you have them.
