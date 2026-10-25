@@ -14,8 +14,8 @@ General Options:
   -r, --rules <DIR/FILE>  Specify a custom rule directory or file (default: ./rules)
 
 Input:
-  -d, --directory <DIR>  Directory of multiple gz/json/parquet files
-  -f, --file <FILE>      File path to one gz/json/parquet file
+  -d, --directory <DIR>  Directory of multiple gz/json/jsonl/csv/parquet files
+  -f, --file <FILE>      File path to one gz/json/jsonl/csv/parquet file
 
 Filtering:
       --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)
@@ -201,8 +201,8 @@ General Options:
   -r, --rules <DIR/FILE>  Specify a custom rule directory or file (default: ./rules)
 
 Input:
-  -d, --directory <DIR>  Directory of multiple gz/json/parquet files
-  -f, --file <FILE>      File path to one gz/json/parquet file
+  -d, --directory <DIR>  Directory of multiple gz/json/jsonl/csv/parquet files
+  -f, --file <FILE>      File path to one gz/json/jsonl/csv/parquet file
 
 Filtering:
       --timeline-start <DATE>  Start time of the events to load (ex: "2022-02-22T23:59:59Z)

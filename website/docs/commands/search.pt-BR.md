@@ -34,8 +34,8 @@ Use `-F` quando souber qual campo contém o valor (por exemplo `eventName:Consol
 Usage: suzaku aws-ct-search <INPUT> [OPTIONS]
 
 Input:
-  -d, --directory <DIR>  Directory of multiple gz/json/parquet files
-  -f, --file <FILE>      File path to one gz/json/parquet file
+  -d, --directory <DIR>  Directory of multiple gz/json/jsonl/csv/parquet files
+  -f, --file <FILE>      File path to one gz/json/jsonl/csv/parquet file
 
 Filtering:
   -F, --filter <FILTER...>     Filter by specific field(s)
