@@ -13,7 +13,7 @@ hide:
 Security</a> และเขียนด้วย <a href="https://www.rust-lang.org/">Rust</a> ลองนึกถึง
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a> แต่สำหรับล็อกบนคลาวด์แทนที่จะเป็น
 ล็อกเหตุการณ์ของ Windows — พร้อมการรองรับ <a href="https://github.com/SigmaHQ/sigma">Sigma</a> โดยกำเนิดสำหรับ
-AWS CloudTrail (มีแผนรองรับ Azure และ GCP)
+AWS CloudTrail, Azure/Entra ID/M365 และ Google Workspace
 </p>
 
 <div class="hb-cta" markdown>
@@ -43,8 +43,8 @@ AWS CloudTrail (มีแผนรองรับ Azure และ GCP)
 
     ---
 
-    การตรวจจับด้วย [Sigma](https://github.com/SigmaHQ/sigma) โดยกำเนิดสำหรับล็อกบนคลาวด์ — AWS CloudTrail ในวันนี้
-    มีแผนรองรับ Azure และ GCP รองรับกฎแบบ correlation และ field modifier เกือบทั้งหมด
+    การตรวจจับด้วย [Sigma](https://github.com/SigmaHQ/sigma) แบบเนทีฟสำหรับ AWS CloudTrail,
+    Azure/Entra ID/M365 และ Google Workspace รองรับกฎแบบ correlation และ field modifier เกือบทั้งหมด
 
 -   :material-timeline-clock:{ .lg .middle } __ไทม์ไลน์การพิสูจน์หลักฐานที่รวดเร็ว__
 
@@ -57,8 +57,8 @@ AWS CloudTrail (มีแผนรองรับ Azure และ GCP)
 
     ---
 
-    ปลอดภัยด้านหน่วยความจำ ทำงานแบบหลายเธรด และทำงานได้อย่างอิสระ สแกนล็อก `.json` และล็อกบีบอัด `.json.gz` บน
-    Windows, Linux และ macOS
+    ปลอดภัยด้านหน่วยความจำ ทำงานแบบหลายเธรด และทำงานได้อย่างอิสระ สแกน `.json`, `.jsonl`, `.json.gz`, Parquet
+    และไฟล์ CSV ที่ดาวน์โหลดจากคอนโซล AWS บน Windows, Linux และ macOS
 
 -   :material-chart-box:{ .lg .middle } __สรุปข้อมูลผู้โจมตี__
 
@@ -77,7 +77,7 @@ AWS CloudTrail (มีแผนรองรับ Azure และ GCP)
 
     ---
 
-    บันทึกผลลัพธ์เป็น **CSV, JSON และ JSONL** เพื่อวิเคราะห์ด้วยเครื่องมือที่คุณเลือก
+    บันทึกผลลัพธ์เป็น **CSV, JSON, JSONL และ DuckDB** เพื่อวิเคราะห์ด้วยเครื่องมือที่คุณเลือก
 
 </div>
 

@@ -8,6 +8,10 @@
 
 ## Commandes de chronologie DFIR :
 * `aws-ct-timeline` : Crée une chronologie DFIR AWS CloudTrail
+* `azure-timeline` : Crée une chronologie DFIR Azure/Entra ID/M365
+* `gws-timeline` : Crée une chronologie DFIR Google Workspace
+
+## Commandes de mise à jour :
 * `update-rules` : Met à jour les règles de détection Sigma
 
 ## Commandes de recherche :

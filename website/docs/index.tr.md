@@ -13,8 +13,8 @@ hide:
 Security</a> tarafından oluşturulan ve <a href="https://www.rust-lang.org/">Rust</a> ile yazılmış,
 <strong>bulut günlükleri için Sigma tabanlı bir tehdit avcılığı ve hızlı adli zaman çizelgesi
 oluşturucusudur</strong>. <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>'yı
-hayal edin, ancak Windows olay günlükleri yerine bulut günlükleri için — AWS CloudTrail için yerel
-<a href="https://github.com/SigmaHQ/sigma">Sigma</a> desteğiyle (Azure ve GCP planlanıyor).
+hayal edin, ancak Windows olay günlükleri yerine bulut günlükleri için — AWS CloudTrail,
+Azure/Entra ID/M365 ve Google Workspace için yerel <a href="https://github.com/SigmaHQ/sigma">Sigma</a> desteğiyle.
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ hayal edin, ancak Windows olay günlükleri yerine bulut günlükleri için — 
 
     ---
 
-    Bulut günlükleri için yerel [Sigma](https://github.com/SigmaHQ/sigma) tespiti — bugün AWS CloudTrail,
-    Azure ve GCP planlanıyor. Korelasyon kuralları ve neredeyse tüm alan değiştiricileri desteklenir.
+    AWS CloudTrail, Azure/Entra ID/M365 ve Google Workspace için yerel
+    [Sigma](https://github.com/SigmaHQ/sigma) tespiti. Korelasyon kuralları ve neredeyse tüm alan değiştiricileri desteklenir.
 
 -   :material-timeline-clock:{ .lg .middle } __Hızlı adli zaman çizelgeleri__
 
@@ -58,8 +58,8 @@ hayal edin, ancak Windows olay günlükleri yerine bulut günlükleri için — 
 
     ---
 
-    Bellek açısından güvenli, çok iş parçacıklı ve bağımsız. Windows, Linux ve macOS üzerinde `.json`
-    ve sıkıştırılmış `.json.gz` günlüklerini tarar.
+    Bellek açısından güvenli, çok iş parçacıklı ve bağımsız. Windows, Linux ve macOS üzerinde `.json`,
+    `.jsonl`, `.json.gz`, Parquet ve AWS Konsolu CSV indirmelerini tarar.
 
 -   :material-chart-box:{ .lg .middle } __Saldırgan özetleri__
 
@@ -78,7 +78,7 @@ hayal edin, ancak Windows olay günlükleri yerine bulut günlükleri için — 
 
     ---
 
-    Tercih ettiğiniz araçta analiz için sonuçları **CSV, JSON ve JSONL** olarak kaydedin.
+    Tercih ettiğiniz araçta analiz için sonuçları **CSV, JSON, JSONL ve DuckDB** olarak kaydedin.
 
 </div>
 

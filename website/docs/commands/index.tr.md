@@ -8,6 +8,10 @@
 
 ## DFIR Zaman Çizelgesi Komutları:
 * `aws-ct-timeline`: Bir AWS CloudTrail DFIR zaman çizelgesi oluşturur
+* `azure-timeline`: Bir Azure/Entra ID/M365 DFIR zaman çizelgesi oluşturur
+* `gws-timeline`: Bir Google Workspace DFIR zaman çizelgesi oluşturur
+
+## Güncelleme Komutları:
 * `update-rules`: Sigma tespit kurallarını günceller
 
 ## Arama Komutları:

@@ -4,8 +4,8 @@ Suzaku (朱雀) berarti ["Burung Vermilion"](https://en.wikipedia.org/wiki/Vermi
 
 Suzaku adalah generator timeline untuk threat hunting dan forensik cepat bagi log cloud.
 (Bayangkan [Hayabusa](https://github.com/Yamato-Security/hayabusa) tetapi untuk log cloud alih-alih log peristiwa Windows.)
-Saat ini sedang dalam pengembangan aktif dengan dukungan deteksi [Sigma](https://github.com/SigmaHQ/sigma) native untuk log AWS CloudTrail.
-Kami berencana untuk mendukung log Azure dan GCP juga.
+Saat ini sedang dalam pengembangan aktif dengan dukungan deteksi [Sigma](https://github.com/SigmaHQ/sigma) native untuk log AWS CloudTrail, Azure/Entra ID/M365, dan Google Workspace.
+Kami berencana untuk mendukung log GCP juga.
 
 Dengan log cloud, terdapat ribuan panggilan API yang berbeda dan lebih banyak peristiwa daripada yang dapat ditelusuri siapa pun secara manual.
 Suzaku dirancang tidak hanya untuk menemukan serangan di tengah kebisingan, tetapi juga untuk menyediakan timeline DFIR yang hanya berisi peristiwa dan data yang Anda perlukan untuk melakukan investigasi forensik cepat.

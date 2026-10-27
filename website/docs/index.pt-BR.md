@@ -14,7 +14,7 @@ forense rápida de logs de nuvem</strong>, criado pela <a href="https://github.c
 Security</a> e escrito em <a href="https://www.rust-lang.org/">Rust</a>. Imagine o
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>, mas para logs de nuvem em vez de
 logs de eventos do Windows — com suporte nativo a <a href="https://github.com/SigmaHQ/sigma">Sigma</a> para
-AWS CloudTrail (Azure e GCP planejados).
+AWS CloudTrail, Azure/Entra ID/M365 e Google Workspace.
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ AWS CloudTrail (Azure e GCP planejados).
 
     ---
 
-    Detecção nativa com [Sigma](https://github.com/SigmaHQ/sigma) para logs de nuvem — AWS CloudTrail hoje,
-    Azure e GCP planejados. Regras de correlação e quase todos os modificadores de campo são suportados.
+    Detecção nativa com [Sigma](https://github.com/SigmaHQ/sigma) para AWS CloudTrail,
+    Azure/Entra ID/M365 e Google Workspace. Regras de correlação e quase todos os modificadores de campo são suportados.
 
 -   :material-timeline-clock:{ .lg .middle } __Timelines de forense rápida__
 
@@ -58,8 +58,8 @@ AWS CloudTrail (Azure e GCP planejados).
 
     ---
 
-    Seguro em memória, multi-thread e autônomo. Analisa logs `.json` e `.json.gz` compactados no
-    Windows, Linux e macOS.
+    Seguro em memória, multi-thread e autônomo. Analisa `.json`, `.jsonl`, `.json.gz`, Parquet e
+    downloads CSV do Console da AWS no Windows, Linux e macOS.
 
 -   :material-chart-box:{ .lg .middle } __Resumos de atacantes__
 
@@ -78,7 +78,7 @@ AWS CloudTrail (Azure e GCP planejados).
 
     ---
 
-    Salve os resultados em **CSV, JSON e JSONL** para análise na ferramenta de sua escolha.
+    Salve os resultados em **CSV, JSON, JSONL e DuckDB** para análise na ferramenta de sua escolha.
 
 </div>
 

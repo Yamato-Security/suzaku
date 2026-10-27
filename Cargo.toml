@@ -1,6 +1,6 @@
 [package]
 name = "suzaku"
-version = "2.0.1"
+version = "3.0.0"
 repository = "https://github.com/Yamato-Security/suzaku"
 authors = ["Yamato Security @SecurityYamato"]
 edition = "2024"
@@ -56,7 +56,9 @@ arrow-json = "59.1.0"
 # Require >= 1.10504: earlier bundled builds fail on the current Windows CI MSVC toolset
 # (14.51), whose STL removed `stdext::checked_array_iterator` that DuckDB's vendored fmt
 # used; 1.10504 patches that header and links the Restart Manager lib. (duckdb-rs #786)
-duckdb = { version = "1.10504", features = ["bundled"] }
+# Stay below 1.20000: its bundled cc backend fails to link on Linux AArch64 because
+# `static_extension_autoregister` cannot resolve `duckdb_register_static_extensions`.
+duckdb = { version = ">=1.10504, <1.20000", features = ["bundled"] }
 
 [target.'cfg(unix)'.dependencies] #Mac and Linux
 openssl = { version = "0.10", features = ["vendored"] }  #vendored is needed to compile statically.

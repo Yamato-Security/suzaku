@@ -8,6 +8,10 @@
 
 ## DFIR-Zeitleisten-Befehle:
 * `aws-ct-timeline`: Erstellt eine AWS-CloudTrail-DFIR-Zeitleiste
+* `azure-timeline`: Erstellt eine Azure/Entra ID/M365-DFIR-Zeitleiste
+* `gws-timeline`: Erstellt eine Google-Workspace-DFIR-Zeitleiste
+
+## Aktualisierungsbefehle:
 * `update-rules`: Aktualisiert die Sigma-Erkennungsregeln
 
 ## Suchbefehle:

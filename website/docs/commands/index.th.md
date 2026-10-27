@@ -8,6 +8,10 @@
 
 ## คำสั่งสำหรับไทม์ไลน์ DFIR:
 * `aws-ct-timeline`: สร้างไทม์ไลน์ DFIR ของ AWS CloudTrail
+* `azure-timeline`: สร้างไทม์ไลน์ DFIR ของ Azure/Entra ID/M365
+* `gws-timeline`: สร้างไทม์ไลน์ DFIR ของ Google Workspace
+
+## คำสั่งอัปเดต:
 * `update-rules`: อัปเดตกฎการตรวจจับของ Sigma
 
 ## คำสั่งการค้นหา:

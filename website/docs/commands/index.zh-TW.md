@@ -8,6 +8,10 @@
 
 ## DFIR 時間軸命令：
 * `aws-ct-timeline`：建立 AWS CloudTrail DFIR 時間軸
+* `azure-timeline`：建立 Azure/Entra ID/M365 DFIR 時間軸
+* `gws-timeline`：建立 Google Workspace DFIR 時間軸
+
+## 更新命令：
 * `update-rules`：更新 Sigma 偵測規則
 
 ## 搜尋指令：

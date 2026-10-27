@@ -4,8 +4,8 @@ Suzaku (朱雀) significa ["Pájaro Bermellón"](https://en.wikipedia.org/wiki/V
 
 Suzaku es un generador de líneas de tiempo de caza de amenazas y análisis forense rápido para registros en la nube.
 (Imagina [Hayabusa](https://github.com/Yamato-Security/hayabusa) pero para registros en la nube en lugar de registros de eventos de Windows.)
-Actualmente está en desarrollo activo con soporte nativo de detección [Sigma](https://github.com/SigmaHQ/sigma) para registros de AWS CloudTrail.
-Planeamos dar soporte también a los registros de Azure y GCP.
+Actualmente está en desarrollo activo con soporte nativo de detección [Sigma](https://github.com/SigmaHQ/sigma) para registros de AWS CloudTrail, Azure/Entra ID/M365 y Google Workspace.
+Planeamos dar soporte también a los registros de GCP.
 
 Con los registros en la nube, hay miles de llamadas a la API diferentes y más eventos de los que cualquiera podría examinar manualmente.
 Suzaku está diseñado no solo para encontrar los ataques en medio del ruido, sino también para proporcionarte una línea de tiempo DFIR que contiene únicamente los eventos y datos que necesitas para realizar una investigación forense rápida.

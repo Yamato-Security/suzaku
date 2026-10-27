@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use const_format::concatcp;
 
-pub const RELEASE_NAME: &str = "El Niño Release";
+pub const RELEASE_NAME: &str = "Vulnpocalypse Release";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const FULL_VERSION: &str = concatcp!(VERSION, " ", RELEASE_NAME);
 

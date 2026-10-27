@@ -4,8 +4,8 @@ Suzaku (朱雀) ဆိုသည်မှာ [တရုတ်ဒဏ္ဍာရ�
 
 Suzaku သည် cloud logs များအတွက် ခြိမ်းခြောက်မှု ရှာဖွေခြင်းနှင့် မြန်ဆန်သော forensics timeline ဖန်တီးပေးသည့် ကိရိယာတစ်ခုဖြစ်သည်။
 ([Hayabusa](https://github.com/Yamato-Security/hayabusa) ကို Windows event logs အစား cloud logs အတွက်ဖြစ်သည်ဟု မြင်ယောင်ကြည့်ပါ။)
-၎င်းသည် AWS CloudTrail logs များအတွက် native [Sigma](https://github.com/SigmaHQ/sigma) detection ပံ့ပိုးမှုနှင့်အတူ လက်ရှိတွင် တက်ကြွစွာ ဖွံ့ဖြိုးတိုးတက်နေဆဲဖြစ်သည်။
-ကျွန်ုပ်တို့သည် Azure နှင့် GCP logs များကိုပါ ပံ့ပိုးရန် စီစဉ်ထားပါသည်။
+၎င်းသည် AWS CloudTrail, Azure/Entra ID/M365 နှင့် Google Workspace logs များအတွက် native [Sigma](https://github.com/SigmaHQ/sigma) detection ပံ့ပိုးမှုနှင့်အတူ လက်ရှိတွင် တက်ကြွစွာ ဖွံ့ဖြိုးတိုးတက်နေဆဲဖြစ်သည်။
+ကျွန်ုပ်တို့သည် GCP logs များကိုပါ ပံ့ပိုးရန် စီစဉ်ထားပါသည်။
 
 cloud logs များတွင် မတူညီသော API calls ထောင်ပေါင်းများစွာရှိပြီး မည်သူမျှ ကိုယ်တိုင်လက်ဖြင့် စစ်ဆေးနိုင်သည်ထက် ပိုများသော events များရှိသည်။
 Suzaku ကို ဆူညံသံများကြားမှ တိုက်ခိုက်မှုများကို ရှာဖွေတွေ့ရှိရန်သာမက မြန်ဆန်သော forensics စုံစမ်းစစ်ဆေးမှုပြုလုပ်ရန် သင်လိုအပ်သော events နှင့် data များသာ ပါဝင်သည့် DFIR timeline ကိုပါ ပေးအပ်ရန် ဒီဇိုင်းရေးဆွဲထားသည်။

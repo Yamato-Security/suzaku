@@ -4,8 +4,8 @@ Suzaku (朱雀), [Çin mitolojisinde](https://en.wikipedia.org/wiki/Four_Holy_Be
 
 Suzaku, bulut günlükleri için bir tehdit avcılığı ve hızlı adli bilişim zaman çizelgesi oluşturucusudur.
 ([Hayabusa](https://github.com/Yamato-Security/hayabusa) düşünün ama Windows olay günlükleri yerine bulut günlükleri için.)
-Şu anda AWS CloudTrail günlükleri için yerel [Sigma](https://github.com/SigmaHQ/sigma) tespit desteğiyle aktif olarak geliştirilmektedir.
-Azure ve GCP günlüklerini de desteklemeyi planlıyoruz.
+Şu anda AWS CloudTrail, Azure/Entra ID/M365 ve Google Workspace günlükleri için yerel [Sigma](https://github.com/SigmaHQ/sigma) tespit desteğiyle aktif olarak geliştirilmektedir.
+GCP günlüklerini de desteklemeyi planlıyoruz.
 
 Bulut günlüklerinde, binlerce farklı API çağrısı ve herhangi birinin manuel olarak elden geçirebileceğinden daha fazla olay vardır.
 Suzaku, yalnızca gürültü arasındaki saldırıları bulmak için değil, aynı zamanda size hızlı adli bilişim incelemesi yapmak için ihtiyaç duyduğunuz yalnızca olayları ve verileri içeren bir DFIR zaman çizelgesi sağlamak için tasarlanmıştır.

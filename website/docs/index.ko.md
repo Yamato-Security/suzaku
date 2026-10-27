@@ -12,8 +12,8 @@ hide:
 <strong>Suzaku</strong> (朱雀)는 <a href="https://github.com/Yamato-Security">Yamato
 Security</a>가 제작하고 <a href="https://www.rust-lang.org/">Rust</a>로 작성한 <strong>클라우드 로그를 위한 Sigma 기반 위협 헌팅 및 빠른 포렌식 타임라인
 생성기</strong>입니다. <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>를 떠올려보되,
-Windows 이벤트 로그가 아닌 클라우드 로그를 위한 것이며 — AWS CloudTrail에 대한 네이티브
-<a href="https://github.com/SigmaHQ/sigma">Sigma</a> 지원을 제공합니다(Azure 및 GCP는 계획 중).
+Windows 이벤트 로그가 아닌 클라우드 로그를 위한 것이며 — AWS CloudTrail, Azure/Entra ID/M365,
+Google Workspace에 대한 네이티브 <a href="https://github.com/SigmaHQ/sigma">Sigma</a> 지원을 제공합니다.
 </p>
 
 <div class="hb-cta" markdown>
@@ -43,8 +43,8 @@ Windows 이벤트 로그가 아닌 클라우드 로그를 위한 것이며 — A
 
     ---
 
-    클라우드 로그를 위한 네이티브 [Sigma](https://github.com/SigmaHQ/sigma) 탐지 — 현재는 AWS CloudTrail,
-    Azure 및 GCP는 계획 중입니다. 상관관계 규칙과 거의 모든 필드 수정자를 지원합니다.
+    AWS CloudTrail, Azure/Entra ID/M365 및 Google Workspace를 위한 네이티브
+    [Sigma](https://github.com/SigmaHQ/sigma) 탐지. 상관관계 규칙과 거의 모든 필드 수정자를 지원합니다.
 
 -   :material-timeline-clock:{ .lg .middle } __빠른 포렌식 타임라인__
 
@@ -58,7 +58,7 @@ Windows 이벤트 로그가 아닌 클라우드 로그를 위한 것이며 — A
     ---
 
     메모리 안전성을 갖추고 멀티스레드로 동작하며 독립 실행이 가능합니다. Windows, Linux, macOS에서
-    `.json` 및 압축된 `.json.gz` 로그를 스캔합니다.
+    `.json`, `.jsonl`, `.json.gz`, Parquet 및 AWS 콘솔 CSV 다운로드를 스캔합니다.
 
 -   :material-chart-box:{ .lg .middle } __공격자 요약__
 
@@ -77,7 +77,7 @@ Windows 이벤트 로그가 아닌 클라우드 로그를 위한 것이며 — A
 
     ---
 
-    원하는 도구에서 분석할 수 있도록 결과를 **CSV, JSON, JSONL**로 저장합니다.
+    원하는 도구에서 분석할 수 있도록 결과를 **CSV, JSON, JSONL, DuckDB**로 저장합니다.
 
 </div>
 

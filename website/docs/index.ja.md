@@ -13,8 +13,8 @@ hide:
 によって作られた、<strong>クラウドログ向けの Sigma ベースのスレットハンティング兼高速フォレンジック
 タイムライン生成ツール</strong>です。<a href="https://www.rust-lang.org/">Rust</a> で記述されています。
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a> の「クラウドログ版」とお考えください。
-AWS CloudTrail に対する <a href="https://github.com/SigmaHQ/sigma">Sigma</a> のネイティブ対応を備えています
-（Azure・GCP は対応予定）。
+AWS CloudTrail、Azure/Entra ID/M365、Google Workspace に対する
+<a href="https://github.com/SigmaHQ/sigma">Sigma</a> のネイティブ対応を備えています。
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ AWS CloudTrail に対する <a href="https://github.com/SigmaHQ/sigma">Sigma</a>
 
     ---
 
-    クラウドログに対する [Sigma](https://github.com/SigmaHQ/sigma) のネイティブ検知。現在は AWS
-    CloudTrail に対応し、Azure・GCP は対応予定。相関ルールとほぼ全てのフィールド修飾子をサポート。
+    AWS CloudTrail、Azure/Entra ID/M365、Google Workspace に対する
+    [Sigma](https://github.com/SigmaHQ/sigma) のネイティブ検知。相関ルールとほぼ全てのフィールド修飾子をサポート。
 
 -   :material-timeline-clock:{ .lg .middle } __高速フォレンジックタイムライン__
 
@@ -58,8 +58,8 @@ AWS CloudTrail に対する <a href="https://github.com/SigmaHQ/sigma">Sigma</a>
 
     ---
 
-    メモリセーフ・マルチスレッド・スタンドアロン。Windows・Linux・macOS で `.json` および圧縮
-    `.json.gz` ログをスキャンします。
+    メモリセーフ・マルチスレッド・スタンドアロン。Windows・Linux・macOS で `.json`、`.jsonl`、
+    `.json.gz`、Parquet、AWSコンソールのCSVダウンロードをスキャンします。
 
 -   :material-chart-box:{ .lg .middle } __攻撃者のサマリ__
 
@@ -78,7 +78,7 @@ AWS CloudTrail に対する <a href="https://github.com/SigmaHQ/sigma">Sigma</a>
 
     ---
 
-    結果を **CSV・JSON・JSONL** で保存し、お好みのツールで解析できます。
+    結果を **CSV・JSON・JSONL・DuckDB** で保存し、お好みのツールで解析できます。
 
 </div>
 

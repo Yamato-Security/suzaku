@@ -6,7 +6,7 @@
 It analyzes logs using the Sigma rule engine (`sigma-rust`) and outputs timelines in CSV/JSON/JSONL format.
 
 - **Language**: Rust (edition = "2024", rust-version = "1.97.1")
-- **Version**: `2.0.1`
+- **Version**: `3.0.0`
 - **Memory Allocator**: `mimalloc` (configured as global allocator)
 - **Parallelism**: `rayon`
 

@@ -8,6 +8,10 @@
 
 ## DFIR टाइमलाइन कमांड:
 * `aws-ct-timeline`: एक AWS CloudTrail DFIR टाइमलाइन बनाता है
+* `azure-timeline`: Azure/Entra ID/M365 DFIR टाइमलाइन बनाता है
+* `gws-timeline`: Google Workspace DFIR टाइमलाइन बनाता है
+
+## अपडेट कमांड:
 * `update-rules`: Sigma डिटेक्शन नियमों को अपडेट करता है
 
 ## खोज कमांड:

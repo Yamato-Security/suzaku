@@ -14,7 +14,7 @@ hide:
 Security</a> та написаний мовою <a href="https://www.rust-lang.org/">Rust</a>. Уявіть собі
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>, але для хмарних журналів замість
 журналів подій Windows — з рідною підтримкою <a href="https://github.com/SigmaHQ/sigma">Sigma</a> для
-AWS CloudTrail (Azure та GCP заплановані).
+AWS CloudTrail, Azure/Entra ID/M365 та Google Workspace.
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ AWS CloudTrail (Azure та GCP заплановані).
 
     ---
 
-    Рідне виявлення [Sigma](https://github.com/SigmaHQ/sigma) для хмарних журналів — AWS CloudTrail вже сьогодні,
-    Azure та GCP заплановані. Підтримуються правила кореляції та майже всі модифікатори полів.
+    Нативне виявлення [Sigma](https://github.com/SigmaHQ/sigma) для AWS CloudTrail,
+    Azure/Entra ID/M365 та Google Workspace. Підтримуються правила кореляції та майже всі модифікатори полів.
 
 -   :material-timeline-clock:{ .lg .middle } __Швидкі форензичні хронології__
 
@@ -58,8 +58,8 @@ AWS CloudTrail (Azure та GCP заплановані).
 
     ---
 
-    Безпечний для пам'яті, багатопотоковий та автономний. Сканує журнали `.json` та стиснені `.json.gz` на
-    Windows, Linux та macOS.
+    Безпечний для пам'яті, багатопотоковий та автономний. Сканує `.json`, `.jsonl`, `.json.gz`, Parquet і
+    CSV-завантаження з консолі AWS на Windows, Linux та macOS.
 
 -   :material-chart-box:{ .lg .middle } __Зведення про зловмисників__
 
@@ -78,7 +78,7 @@ AWS CloudTrail (Azure та GCP заплановані).
 
     ---
 
-    Зберігайте результати у **CSV, JSON та JSONL** для аналізу в інструменті на ваш вибір.
+    Зберігайте результати у **CSV, JSON, JSONL та DuckDB** для аналізу в інструменті на ваш вибір.
 
 </div>
 

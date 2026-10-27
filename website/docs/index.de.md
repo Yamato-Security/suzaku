@@ -14,7 +14,7 @@ Generator für Cloud-Logs</strong>, erstellt von <a href="https://github.com/Yam
 Security</a> und geschrieben in <a href="https://www.rust-lang.org/">Rust</a>. Stellen Sie sich
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a> vor, aber für Cloud-Logs anstelle von
 Windows-Ereignisprotokollen — mit nativer <a href="https://github.com/SigmaHQ/sigma">Sigma</a>-Unterstützung für
-AWS CloudTrail (Azure und GCP geplant).
+AWS CloudTrail, Azure/Entra ID/M365 und Google Workspace.
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ AWS CloudTrail (Azure und GCP geplant).
 
     ---
 
-    Native [Sigma](https://github.com/SigmaHQ/sigma)-Erkennung für Cloud-Logs — AWS CloudTrail heute,
-    Azure und GCP geplant. Korrelationsregeln und nahezu alle Feld-Modifikatoren werden unterstützt.
+    Native [Sigma](https://github.com/SigmaHQ/sigma)-Erkennung für AWS CloudTrail,
+    Azure/Entra ID/M365 und Google Workspace. Korrelationsregeln und nahezu alle Feld-Modifikatoren werden unterstützt.
 
 -   :material-timeline-clock:{ .lg .middle } __Schnelle Forensik-Timelines__
 
@@ -58,8 +58,8 @@ AWS CloudTrail (Azure und GCP geplant).
 
     ---
 
-    Speichersicher, multithreaded und eigenständig. Scannt `.json`- und komprimierte `.json.gz`-Logs unter
-    Windows, Linux und macOS.
+    Speichersicher, multithreaded und eigenständig. Scannt `.json`, `.jsonl`, `.json.gz`, Parquet und
+    AWS-Console-CSV-Downloads unter Windows, Linux und macOS.
 
 -   :material-chart-box:{ .lg .middle } __Angreifer-Zusammenfassungen__
 
@@ -78,7 +78,7 @@ AWS CloudTrail (Azure und GCP geplant).
 
     ---
 
-    Speichern Sie Ergebnisse als **CSV, JSON und JSONL** zur Analyse in dem Tool Ihrer Wahl.
+    Speichern Sie Ergebnisse als **CSV, JSON, JSONL und DuckDB** zur Analyse in dem Tool Ihrer Wahl.
 
 </div>
 
