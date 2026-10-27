@@ -13,7 +13,7 @@ hide:
 產生器</strong>，由 <a href="https://github.com/Yamato-Security">Yamato
 Security</a> 開發，並以 <a href="https://www.rust-lang.org/">Rust</a> 撰寫。想像一下
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>，但對象是雲端日誌而非
-Windows 事件日誌——並原生支援針對 AWS CloudTrail 的 <a href="https://github.com/SigmaHQ/sigma">Sigma</a>（Azure 與 GCP 規劃中）。
+Windows 事件日誌——並原生支援針對 AWS CloudTrail、Azure/Entra ID/M365 與 Google Workspace 的 <a href="https://github.com/SigmaHQ/sigma">Sigma</a>。
 </p>
 
 <div class="hb-cta" markdown>
@@ -43,8 +43,8 @@ Windows 事件日誌——並原生支援針對 AWS CloudTrail 的 <a href="http
 
     ---
 
-    針對雲端日誌的原生 [Sigma](https://github.com/SigmaHQ/sigma) 偵測——目前支援 AWS CloudTrail，
-    Azure 與 GCP 規劃中。支援關聯規則以及幾乎所有的欄位修飾子。
+    針對 AWS CloudTrail、Azure/Entra ID/M365 與 Google Workspace 的原生
+    [Sigma](https://github.com/SigmaHQ/sigma) 偵測。支援關聯規則以及幾乎所有的欄位修飾子。
 
 -   :material-timeline-clock:{ .lg .middle } __快速鑑識時間軸__
 
@@ -56,7 +56,7 @@ Windows 事件日誌——並原生支援針對 AWS CloudTrail 的 <a href="http
 
     ---
 
-    記憶體安全、多執行緒且獨立運行。可在 Windows、Linux 與 macOS 上掃描 `.json` 與壓縮過的 `.json.gz` 日誌。
+    記憶體安全、多執行緒且獨立運行。可在 Windows、Linux 與 macOS 上掃描 `.json`、`.jsonl`、`.json.gz`、Parquet 與 AWS 主控台 CSV 下載檔。
 
 -   :material-chart-box:{ .lg .middle } __攻擊者摘要__
 
@@ -74,7 +74,7 @@ Windows 事件日誌——並原生支援針對 AWS CloudTrail 的 <a href="http
 
     ---
 
-    可將結果儲存為 **CSV、JSON 與 JSONL**，以便使用你慣用的工具進行分析。
+    可將結果儲存為 **CSV、JSON、JSONL 與 DuckDB**，以便使用你慣用的工具進行分析。
 
 </div>
 

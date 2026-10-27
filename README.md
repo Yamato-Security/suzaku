@@ -44,6 +44,24 @@ Among thousands of cloud API calls, Suzaku finds the attacks in the noise and gi
 timeline with only the events you need — plus summaries of attacker activity (source IPs,
 geo-location, regions, user agents) to pivot on.
 
+## 🆕 v3.0.0 — Vulnpocalypse Release
+
+- **Google Workspace support:** The new `gws-timeline` command analyzes Google Workspace Reports
+  API logs. Thank you to [Eric Capuano (@ecapuano)](https://github.com/ecapuano) for this major
+  contribution in [#194](https://github.com/Yamato-Security/suzaku/pull/194).
+- **AWS Management Console CSV support:** AWS CloudTrail Event history CSV downloads can now be
+  analyzed directly by the AWS commands. Thank you to
+  [Fukusuke Takahashi (@fukusuket)](https://github.com/fukusuket) for the implementation in
+  [#204](https://github.com/Yamato-Security/suzaku/pull/204).
+
+AWS Console CSV is a convenient but **lossy summary format**. It omits many nested fields used by
+Sigma rules, including detailed identity, request, response, and error data; approximately 22 of
+796 current rules therefore cannot match it. Downloads contain one region at a time, so collect
+every relevant region (including `us-east-1` for global events). Suzaku currently recognizes the
+English Console CSV headers only. Prefer CloudTrail JSON for complete investigations. See the
+[Console CSV guide](https://yamato-security.github.io/suzaku/getting-started/console-csv-input/)
+for the full field mapping and limitations.
+
 ## 📖 Documentation
 
 All documentation now lives on a dedicated, searchable, multi-language site:

@@ -13,7 +13,7 @@ hide:
 जनरेटर</strong> है, जिसे <a href="https://github.com/Yamato-Security">Yamato
 Security</a> द्वारा बनाया गया है और <a href="https://www.rust-lang.org/">Rust</a> में लिखा गया है। कल्पना कीजिए
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a> की, लेकिन Windows इवेंट लॉग के बजाय क्लाउड लॉग के लिए — 
-AWS CloudTrail के लिए मूल <a href="https://github.com/SigmaHQ/sigma">Sigma</a> समर्थन के साथ (Azure और GCP की योजना है)।
+AWS CloudTrail, Azure/Entra ID/M365 और Google Workspace के लिए मूल <a href="https://github.com/SigmaHQ/sigma">Sigma</a> समर्थन के साथ।
 </p>
 
 <div class="hb-cta" markdown>
@@ -43,8 +43,8 @@ AWS CloudTrail के लिए मूल <a href="https://github.com/SigmaHQ/si
 
     ---
 
-    क्लाउड लॉग के लिए मूल [Sigma](https://github.com/SigmaHQ/sigma) पहचान — आज AWS CloudTrail,
-    Azure और GCP की योजना है। सहसंबंध नियम और लगभग सभी फ़ील्ड संशोधक समर्थित हैं।
+    AWS CloudTrail, Azure/Entra ID/M365 और Google Workspace के लिए मूल
+    [Sigma](https://github.com/SigmaHQ/sigma) पहचान। सहसंबंध नियम और लगभग सभी फ़ील्ड संशोधक समर्थित हैं।
 
 -   :material-timeline-clock:{ .lg .middle } __तेज़ फ़ॉरेंसिक टाइमलाइन__
 
@@ -57,8 +57,8 @@ AWS CloudTrail के लिए मूल <a href="https://github.com/SigmaHQ/si
 
     ---
 
-    मेमोरी-सुरक्षित, मल्टी-थ्रेडेड और स्टैंडअलोन। Windows, Linux और macOS पर `.json` और संपीड़ित `.json.gz` लॉग
-    स्कैन करता है।
+    मेमोरी-सुरक्षित, मल्टी-थ्रेडेड और स्टैंडअलोन। Windows, Linux और macOS पर `.json`, `.jsonl`, `.json.gz`,
+    Parquet और AWS कंसोल CSV डाउनलोड स्कैन करता है।
 
 -   :material-chart-box:{ .lg .middle } __हमलावर सारांश__
 
@@ -77,7 +77,7 @@ AWS CloudTrail के लिए मूल <a href="https://github.com/SigmaHQ/si
 
     ---
 
-    अपनी पसंद के टूल में विश्लेषण के लिए परिणामों को **CSV, JSON और JSONL** में सहेजें।
+    अपनी पसंद के टूल में विश्लेषण के लिए परिणामों को **CSV, JSON, JSONL और DuckDB** में सहेजें।
 
 </div>
 

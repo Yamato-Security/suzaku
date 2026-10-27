@@ -13,7 +13,7 @@ hide:
 Security</a> وكُتب بلغة <a href="https://www.rust-lang.org/">Rust</a>. تخيّل
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>، لكن لسجلات السحابة بدلاً من
 سجلات أحداث Windows — مع دعم أصلي لـ <a href="https://github.com/SigmaHQ/sigma">Sigma</a> لخدمة
-AWS CloudTrail (مع التخطيط لدعم Azure وGCP).
+AWS CloudTrail وAzure/Entra ID/M365 وGoogle Workspace.
 </p>
 
 <div class="hb-cta" markdown>
@@ -43,8 +43,8 @@ AWS CloudTrail (مع التخطيط لدعم Azure وGCP).
 
     ---
 
-    كشف [Sigma](https://github.com/SigmaHQ/sigma) أصلي لسجلات السحابة — AWS CloudTrail اليوم،
-    مع التخطيط لدعم Azure وGCP. قواعد الارتباط ومعظم معدِّلات الحقول مدعومة.
+    كشف [Sigma](https://github.com/SigmaHQ/sigma) أصلي لسجلات AWS CloudTrail وAzure/Entra ID/M365
+    وGoogle Workspace. قواعد الارتباط ومعظم معدِّلات الحقول مدعومة.
 
 -   :material-timeline-clock:{ .lg .middle } __جداول زمنية للتحقيقات الجنائية السريعة__
 
@@ -57,8 +57,8 @@ AWS CloudTrail (مع التخطيط لدعم Azure وGCP).
 
     ---
 
-    آمن للذاكرة، متعدد الخيوط ومستقل. يفحص سجلات `.json` والسجلات المضغوطة `.json.gz` على
-    Windows وLinux وmacOS.
+    آمن للذاكرة، متعدد الخيوط ومستقل. يفحص ملفات `.json` و`.jsonl` و`.json.gz` وParquet وتنزيلات
+    CSV من وحدة تحكم AWS على Windows وLinux وmacOS.
 
 -   :material-chart-box:{ .lg .middle } __ملخصات المهاجمين__
 
@@ -77,7 +77,7 @@ AWS CloudTrail (مع التخطيط لدعم Azure وGCP).
 
     ---
 
-    احفظ النتائج بصيغة **CSV وJSON وJSONL** لتحليلها بالأداة التي تختارها.
+    احفظ النتائج بصيغة **CSV وJSON وJSONL وDuckDB** لتحليلها بالأداة التي تختارها.
 
 </div>
 

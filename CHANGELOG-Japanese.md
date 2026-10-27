@@ -1,6 +1,13 @@
 # 変更点
 
-## 未リリース
+## 3.0.0 [2026/10/27] - Vulnpocalypse Release
+
+> **リリースのハイライト:** [Eric Capuano](https://github.com/ecapuano)氏（`@ecapuano`、#194）の
+> 貢献によりGoogle Workspace Reports APIログを分析できるようになり、
+> [Fukusuke Takahashi](https://github.com/fukusuket)氏（`@fukusuket`、#204）の貢献により、
+> AWS Management ConsoleからダウンロードしたCloudTrailイベント履歴のCSVを分析できるようになった。
+> コンソールCSVは便利だが情報が欠落する要約形式であるため、完全な検知範囲を期待する場合は、
+> 利用前にドキュメントの制限事項を確認すること。
 
 **新機能:**
 
@@ -29,6 +36,13 @@
 - 相関ルールの結果の`Timestamp`列と、サマリーで計上される日付が、スキャンが最後に到達した構成イベントから取られていた問題を修正した。この順序はファイルの走査順に依存するため、同じログでも実行ごとに時刻や日別件数が変わり得た。また`Timestamp`のフィールドが`.eventTime`ではないAzureとGoogle Workspaceの出力プロファイルでは、全構成イベントの時刻が` ¦ `で連結されて表示されていた。どちらも、構成イベントのうち最も新しい時刻を代表時刻として使い、その時点から表示を生成するようにした(小数秒を保持し、`-l`指定時はオフセット付きのローカル時刻)。サマリーの日別集計は`-l`指定時もUTCの日付を使う。そのため相関ルールのタイムスタンプと日別件数が以前のバージョンと異なる場合がある。 (#195) (@fukusuket)
 - 相関（correlation）ルールだけが発火した実行で、`Results saved: None`と表示され、書き込んだばかりの出力ファイルを自分で削除してしまう問題を修正した。`write_correlation_record`が`flush_all`に検知結果があることを伝える`has_written`フラグを設定していなかったことが原因である。 (#194) (@ecapuano)
 - 出力プロファイルの`Timestamp`がネストしたパス（`.id.time`）の場合に、`--timeline-start`/`--timeline-end`と`--time-offset`がすべてのイベントを除外してしまう問題を修正した。時刻フィルタがフラットなフィールド名としてしか検索していなかったためである。ネストした指定も解決するようにし、フラットなキーの挙動は変更していない。 (#194) (@ecapuano)
+
+**その他:**
+
+- `Cargo.lock`を更新し、DuckDB 1.10506.1、ParquetおよびArrow JSON 59.3.2、Clap 4.6.7、Ureq 3.5.0、Serde JSON 1.0.154、Regex 1.13.1、Rayon 1.12.0と、それらの実行時・セキュリティ関連依存パッケージを含む、互換性のある最新の直接・間接依存クレートに更新した。DuckDB 1.20000のbundledバックエンドはLinux AArch64でリンクできないため除外している。更新後の依存関係で全ターゲットのテストスイートが成功することを確認した。 (@YamatoSecurity)
+- CVE-2026-73295への対応としてMkDocs Materialを9.8.0へ更新した。 (#200) (@Shirofune-Security)
+- GitHub Actionsを更新し、ドキュメント用ワークフローで使用するすべてのActionを完全なコミットSHAで固定した。 (#201) (@Shirofune-Security)
+- ドキュメントサイトに`aws-ct-search`専用のコマンドリファレンスを追加した。 (#197) (@fukusuket)
 
 ## 2.0.1 [2026/08/24] - El Niño Release
 

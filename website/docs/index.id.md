@@ -14,7 +14,7 @@ berbasis Sigma untuk log cloud</strong>, yang dibuat oleh <a href="https://githu
 Security</a> dan ditulis dalam <a href="https://www.rust-lang.org/">Rust</a>. Bayangkan
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>, tetapi untuk log cloud alih-alih
 log event Windows — dengan dukungan <a href="https://github.com/SigmaHQ/sigma">Sigma</a> native untuk
-AWS CloudTrail (Azure dan GCP direncanakan).
+AWS CloudTrail, Azure/Entra ID/M365, dan Google Workspace.
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ AWS CloudTrail (Azure dan GCP direncanakan).
 
     ---
 
-    Deteksi [Sigma](https://github.com/SigmaHQ/sigma) native untuk log cloud — AWS CloudTrail saat ini,
-    Azure dan GCP direncanakan. Aturan korelasi dan hampir semua field modifier didukung.
+    Deteksi [Sigma](https://github.com/SigmaHQ/sigma) native untuk AWS CloudTrail,
+    Azure/Entra ID/M365, dan Google Workspace. Aturan korelasi dan hampir semua field modifier didukung.
 
 -   :material-timeline-clock:{ .lg .middle } __Timeline forensik cepat__
 
@@ -58,8 +58,8 @@ AWS CloudTrail (Azure dan GCP direncanakan).
 
     ---
 
-    Memory-safe, multi-threaded dan standalone. Memindai log `.json` dan `.json.gz` terkompresi pada
-    Windows, Linux dan macOS.
+    Memory-safe, multi-threaded dan standalone. Memindai `.json`, `.jsonl`, `.json.gz`, Parquet, dan
+    unduhan CSV Konsol AWS pada Windows, Linux, dan macOS.
 
 -   :material-chart-box:{ .lg .middle } __Ringkasan penyerang__
 
@@ -78,7 +78,7 @@ AWS CloudTrail (Azure dan GCP direncanakan).
 
     ---
 
-    Simpan hasil ke **CSV, JSON dan JSONL** untuk analisis dengan tool pilihan Anda.
+    Simpan hasil ke **CSV, JSON, JSONL dan DuckDB** untuk analisis dengan tool pilihan Anda.
 
 </div>
 

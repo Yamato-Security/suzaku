@@ -8,6 +8,10 @@
 
 ## DFIR 타임라인 명령어:
 * `aws-ct-timeline`: AWS CloudTrail DFIR 타임라인을 생성합니다
+* `azure-timeline`: Azure/Entra ID/M365 DFIR 타임라인을 생성합니다
+* `gws-timeline`: Google Workspace DFIR 타임라인을 생성합니다
+
+## 업데이트 명령어:
 * `update-rules`: Sigma 탐지 규칙을 업데이트합니다
 
 ## 검색 명령어:

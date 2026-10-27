@@ -8,6 +8,10 @@
 
 ## أوامر الجدول الزمني لـ DFIR:
 * `aws-ct-timeline`: يُنشئ جدولًا زمنيًا لـ DFIR من AWS CloudTrail
+* `azure-timeline`: يُنشئ جدولًا زمنيًا لـ DFIR من Azure/Entra ID/M365
+* `gws-timeline`: يُنشئ جدولًا زمنيًا لـ DFIR من Google Workspace
+
+## أوامر التحديث:
 * `update-rules`: يُحدّث قواعد الكشف الخاصة بـ Sigma
 
 ## أوامر البحث:

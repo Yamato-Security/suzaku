@@ -8,6 +8,10 @@
 
 ## Comandos de Linha do Tempo DFIR:
 * `aws-ct-timeline`: Cria uma linha do tempo DFIR do AWS CloudTrail
+* `azure-timeline`: Cria uma linha do tempo DFIR do Azure/Entra ID/M365
+* `gws-timeline`: Cria uma linha do tempo DFIR do Google Workspace
+
+## Comandos de Atualização:
 * `update-rules`: Atualiza as regras de detecção do Sigma
 
 ## Comandos de Busca:

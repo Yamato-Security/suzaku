@@ -4,8 +4,8 @@ Suzaku(朱雀)는 [중국 신화](https://en.wikipedia.org/wiki/Four_Holy_Beasts
 
 Suzaku는 클라우드 로그를 위한 위협 헌팅 및 빠른 포렌식 타임라인 생성기입니다.
 (윈도우 이벤트 로그 대신 클라우드 로그를 다루는 [Hayabusa](https://github.com/Yamato-Security/hayabusa)를 상상해 보세요.)
-현재 AWS CloudTrail 로그에 대한 네이티브 [Sigma](https://github.com/SigmaHQ/sigma) 탐지 지원과 함께 활발히 개발 중입니다.
-Azure 및 GCP 로그도 지원할 계획입니다.
+현재 AWS CloudTrail, Azure/Entra ID/M365 및 Google Workspace 로그에 대한 네이티브 [Sigma](https://github.com/SigmaHQ/sigma) 탐지 지원과 함께 활발히 개발 중입니다.
+GCP 로그도 지원할 계획입니다.
 
 클라우드 로그에는 수천 가지의 서로 다른 API 호출이 있으며, 누구도 수작업으로 일일이 살펴볼 수 없을 만큼 많은 이벤트가 존재합니다.
 Suzaku는 잡음 속에서 공격을 찾아낼 뿐만 아니라, 빠른 포렌식 조사를 수행하는 데 필요한 이벤트와 데이터만을 담은 DFIR 타임라인을 제공하도록 설계되었습니다.

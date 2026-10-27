@@ -4,8 +4,8 @@ Suzaku（朱雀）意指[「朱雀」](https://en.wikipedia.org/wiki/Vermilion_B
 
 Suzaku 是一款針對雲端日誌的威脅獵捕與快速鑑識時間軸產生器。
 （可以想像成是 [Hayabusa](https://github.com/Yamato-Security/hayabusa)，但處理的是雲端日誌而非 Windows 事件日誌。）
-它目前正積極開發中，原生支援針對 AWS CloudTrail 日誌的 [Sigma](https://github.com/SigmaHQ/sigma) 偵測功能。
-我們也計畫支援 Azure 與 GCP 日誌。
+它目前正積極開發中，原生支援針對 AWS CloudTrail、Azure/Entra ID/M365 與 Google Workspace 日誌的 [Sigma](https://github.com/SigmaHQ/sigma) 偵測功能。
+我們也計畫支援 GCP 日誌。
 
 在雲端日誌中，存在數千種不同的 API 呼叫，以及多到任何人都無法以人工逐一篩查的事件。
 Suzaku 的設計目標不僅是要在雜訊中找出攻擊，還要為您提供一份 DFIR 時間軸，其中只包含您執行快速鑑識調查所需的事件與資料。

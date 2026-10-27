@@ -1,6 +1,13 @@
 # Changes
 
-## Unreleased
+## 3.0.0 [2026/10/27] - Vulnpocalypse Release
+
+> **Release highlights:** Suzaku can now analyze Google Workspace Reports API logs thanks to
+> [Eric Capuano](https://github.com/ecapuano) (`@ecapuano`, #194), and AWS CloudTrail Event History
+> CSV files downloaded from the AWS Management Console thanks to
+> [Fukusuke Takahashi](https://github.com/fukusuket) (`@fukusuket`, #204). Console CSV is a
+> convenient but lossy summary format; read the documented limitations before relying on it for
+> complete detection coverage.
 
 **New Features:**
 
@@ -29,6 +36,13 @@
 - A correlation result's `Timestamp` column and the date it was counted under in the summary were taken from whichever member event the scan reached last, which depends on file scan order, so the same logs could report different times and per-day counts between runs. With Azure and Google Workspace output profiles, whose `Timestamp` field is not `.eventTime`, the column instead showed every member's time joined with ` ¦ `. Both now use one representative time, the latest member event, rendered from the instant (fractional seconds kept; local time with offset under `-l`). Summary dates remain UTC even under `-l`. Correlation timestamps and per-day counts can therefore differ from earlier versions. (#195) (@fukusuket)
 - A run in which only correlation rules fired reported `Results saved: None` and deleted the output files it had just written. `write_correlation_record` never set the `has_written` flag that tells `flush_all` the run produced results, so every correlation-only run threw its own output away. (#194) (@ecapuano)
 - `--timeline-start`/`--timeline-end` and `--time-offset` dropped every event for an output profile whose `Timestamp` spec is a nested path (`.id.time`), because the time filter looked the key up only as a flat field name. Nested specs now resolve; flat keys are unchanged. (#194) (@ecapuano)
+
+**Other:**
+
+- Refreshed `Cargo.lock` to the newest compatible direct and transitive dependencies, including DuckDB 1.10506.1, Parquet and Arrow JSON 59.3.2, Clap 4.6.7, Ureq 3.5.0, Serde JSON 1.0.154, Regex 1.13.1, Rayon 1.12.0, and their runtime/security dependencies. DuckDB 1.20000 is excluded because its bundled backend does not link on Linux AArch64. The updated graph passes the complete all-target test suite. (@YamatoSecurity)
+- Updated MkDocs Material to 9.8.0 to address CVE-2026-73295. (#200) (@Shirofune-Security)
+- Updated GitHub Actions and pinned every action used by the documentation workflow to a full commit SHA. (#201) (@Shirofune-Security)
+- Added a dedicated `aws-ct-search` command reference to the documentation site. (#197) (@fukusuket)
 
 ## 2.0.1 [2026/08/24] - El Niño Release
 

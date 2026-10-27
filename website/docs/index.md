@@ -58,8 +58,8 @@ AWS CloudTrail, Azure/Entra ID/M365, and Google Workspace.
 
     ---
 
-    Memory-safe, multi-threaded and standalone. Scans `.json` and compressed `.json.gz` logs on
-    Windows, Linux and macOS.
+    Memory-safe, multi-threaded and standalone. Scans `.json`, `.jsonl`, `.json.gz`, Parquet, and AWS
+    Console CSV downloads on Windows, Linux and macOS.
 
 -   :material-chart-box:{ .lg .middle } __Attacker summaries__
 
@@ -78,7 +78,7 @@ AWS CloudTrail, Azure/Entra ID/M365, and Google Workspace.
 
     ---
 
-    Save results to **CSV, JSON and JSONL** for analysis in your tool of choice.
+    Save results to **CSV, JSON, JSONL and DuckDB** for analysis in your tool of choice.
 
 </div>
 

@@ -11,7 +11,7 @@ hide:
 <p class="hb-tagline">
 <strong>Suzaku</strong> (朱雀) သည် <a href="https://github.com/Yamato-Security">Yamato
 Security</a> မှ ဖန်တီးပြီး <a href="https://www.rust-lang.org/">Rust</a> ဖြင့် ရေးသားထားသော <strong>cloud log များအတွက် Sigma အခြေပြု threat hunting နှင့် မြန်ဆန်သော forensics timeline
-generator</strong> တစ်ခု ဖြစ်သည်။ <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a> ကို စိတ်ကူးကြည့်ပါ၊ သို့သော် Windows event log များအစား cloud log များအတွက် ဖြစ်ပြီး — AWS CloudTrail အတွက် native <a href="https://github.com/SigmaHQ/sigma">Sigma</a> ပံ့ပိုးမှုဖြင့် (Azure နှင့် GCP ကို စီစဉ်ထားသည်)။
+generator</strong> တစ်ခု ဖြစ်သည်။ <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a> ကို စိတ်ကူးကြည့်ပါ၊ သို့သော် Windows event log များအစား cloud log များအတွက် ဖြစ်ပြီး — AWS CloudTrail, Azure/Entra ID/M365 နှင့် Google Workspace အတွက် native <a href="https://github.com/SigmaHQ/sigma">Sigma</a> ပံ့ပိုးမှုဖြင့်။
 </p>
 
 <div class="hb-cta" markdown>
@@ -41,8 +41,8 @@ generator</strong> တစ်ခု ဖြစ်သည်။ <a href="https://git
 
     ---
 
-    Cloud log များအတွက် native [Sigma](https://github.com/SigmaHQ/sigma) detection — ယနေ့ AWS CloudTrail အတွက်၊
-    Azure နှင့် GCP ကို စီစဉ်ထားသည်။ Correlation rule များနှင့် field modifier အားလုံးနီးပါးကို ပံ့ပိုးထားသည်။
+    AWS CloudTrail, Azure/Entra ID/M365 နှင့် Google Workspace အတွက် native
+    [Sigma](https://github.com/SigmaHQ/sigma) detection။ Correlation rule များနှင့် field modifier အားလုံးနီးပါးကို ပံ့ပိုးထားသည်။
 
 -   :material-timeline-clock:{ .lg .middle } __Fast forensics timelines__
 
@@ -55,7 +55,7 @@ generator</strong> တစ်ခု ဖြစ်သည်။ <a href="https://git
 
     ---
 
-    Memory-safe၊ multi-threaded နှင့် standalone ဖြစ်သည်။ Windows၊ Linux နှင့် macOS ပေါ်တွင် `.json` နှင့် compressed `.json.gz` log များကို scan လုပ်သည်။
+    Memory-safe၊ multi-threaded နှင့် standalone ဖြစ်သည်။ Windows၊ Linux နှင့် macOS ပေါ်တွင် `.json`, `.jsonl`, `.json.gz`, Parquet နှင့် AWS Console CSV download များကို scan လုပ်သည်။
 
 -   :material-chart-box:{ .lg .middle } __Attacker summaries__
 
@@ -74,7 +74,7 @@ generator</strong> တစ်ခု ဖြစ်သည်။ <a href="https://git
 
     ---
 
-    သင်ရွေးချယ်သော tool တွင် ခွဲခြမ်းစိတ်ဖြာရန် ရလဒ်များကို **CSV, JSON နှင့် JSONL** အဖြစ် သိမ်းဆည်းပါ။
+    သင်ရွေးချယ်သော tool တွင် ခွဲခြမ်းစိတ်ဖြာရန် ရလဒ်များကို **CSV, JSON, JSONL နှင့် DuckDB** အဖြစ် သိမ်းဆည်းပါ။
 
 </div>
 

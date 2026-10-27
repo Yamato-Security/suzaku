@@ -8,6 +8,10 @@
 
 ## Perintah Timeline DFIR:
 * `aws-ct-timeline`: Membuat timeline DFIR AWS CloudTrail
+* `azure-timeline`: Membuat timeline DFIR Azure/Entra ID/M365
+* `gws-timeline`: Membuat timeline DFIR Google Workspace
+
+## Perintah Pembaruan:
 * `update-rules`: Memperbarui aturan deteksi Sigma
 
 ## Perintah Pencarian:

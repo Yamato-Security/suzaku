@@ -14,7 +14,7 @@ para registros en la nube</strong>, creado por <a href="https://github.com/Yamat
 Security</a> y escrito en <a href="https://www.rust-lang.org/">Rust</a>. Imagina
 <a href="https://github.com/Yamato-Security/hayabusa">Hayabusa</a>, pero para registros en la nube en lugar de
 registros de eventos de Windows — con soporte nativo de <a href="https://github.com/SigmaHQ/sigma">Sigma</a> para
-AWS CloudTrail (Azure y GCP planificados).
+AWS CloudTrail, Azure/Entra ID/M365 y Google Workspace.
 </p>
 
 <div class="hb-cta" markdown>
@@ -44,8 +44,8 @@ AWS CloudTrail (Azure y GCP planificados).
 
     ---
 
-    Detección nativa con [Sigma](https://github.com/SigmaHQ/sigma) para registros en la nube — AWS CloudTrail hoy,
-    Azure y GCP planificados. Reglas de correlación y casi todos los modificadores de campo compatibles.
+    Detección nativa con [Sigma](https://github.com/SigmaHQ/sigma) para AWS CloudTrail,
+    Azure/Entra ID/M365 y Google Workspace. Reglas de correlación y casi todos los modificadores de campo compatibles.
 
 -   :material-timeline-clock:{ .lg .middle } __Líneas de tiempo forenses rápidas__
 
@@ -58,8 +58,8 @@ AWS CloudTrail (Azure y GCP planificados).
 
     ---
 
-    Seguro en memoria, multihilo e independiente. Escanea registros `.json` y comprimidos `.json.gz` en
-    Windows, Linux y macOS.
+    Seguro en memoria, multihilo e independiente. Escanea `.json`, `.jsonl`, `.json.gz`, Parquet y
+    descargas CSV de la consola de AWS en Windows, Linux y macOS.
 
 -   :material-chart-box:{ .lg .middle } __Resúmenes de atacantes__
 
@@ -78,7 +78,7 @@ AWS CloudTrail (Azure y GCP planificados).
 
     ---
 
-    Guarda los resultados en **CSV, JSON y JSONL** para analizarlos con la herramienta de tu elección.
+    Guarda los resultados en **CSV, JSON, JSONL y DuckDB** para analizarlos con la herramienta de tu elección.
 
 </div>
 

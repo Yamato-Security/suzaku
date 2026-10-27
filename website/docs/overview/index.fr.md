@@ -4,8 +4,8 @@ Suzaku (朱雀) signifie ["Oiseau vermillon"](https://en.wikipedia.org/wiki/Verm
 
 Suzaku est un générateur de chronologie pour la chasse aux menaces et l'analyse forensique rapide des journaux cloud.
 (Imaginez [Hayabusa](https://github.com/Yamato-Security/hayabusa), mais pour les journaux cloud au lieu des journaux d'événements Windows.)
-Il est actuellement en cours de développement actif avec une prise en charge native de la détection [Sigma](https://github.com/SigmaHQ/sigma) pour les journaux AWS CloudTrail.
-Nous prévoyons de prendre également en charge les journaux Azure et GCP.
+Il est actuellement en cours de développement actif avec une prise en charge native de la détection [Sigma](https://github.com/SigmaHQ/sigma) pour les journaux AWS CloudTrail, Azure/Entra ID/M365 et Google Workspace.
+Nous prévoyons de prendre également en charge les journaux GCP.
 
 Avec les journaux cloud, il existe des milliers d'appels d'API différents et plus d'événements que quiconque ne pourrait passer en revue manuellement.
 Suzaku est conçu non seulement pour repérer les attaques au milieu du bruit, mais aussi pour vous fournir une chronologie DFIR ne contenant que les événements et les données dont vous avez besoin pour mener une investigation forensique rapide.

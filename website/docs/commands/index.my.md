@@ -8,6 +8,10 @@
 
 ## DFIR အချိန်ဇယား ကွန်မန်းများ:
 * `aws-ct-timeline`: AWS CloudTrail DFIR အချိန်ဇယားကို ဖန်တီးသည်
+* `azure-timeline`: Azure/Entra ID/M365 DFIR အချိန်ဇယားကို ဖန်တီးသည်
+* `gws-timeline`: Google Workspace DFIR အချိန်ဇယားကို ဖန်တီးသည်
+
+## အပ်ဒိတ် ကွန်မန်းများ:
 * `update-rules`: Sigma ထောက်လှမ်းရှာဖွေမှု စည်းမျဉ်းများကို မွမ်းမံသည်
 
 ## ရှာဖွေရေး ကွန်မန်းများ:
